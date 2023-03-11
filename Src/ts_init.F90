@@ -33,17 +33,15 @@ contains
     use m_os, only : file_exist
     use fdf, only: fdf_get
 
-    use m_ts_gf,        only : do_Green, do_Green_Fermi
-    use m_ts_electrode, only : init_Electrode_HS
+    use m_ts_gf,        only : do_Green
     
     use kpoint_scf_m, only : kpoint_scf
     use ts_kpoint_scf_m, only : setup_ts_kpoint_scf
     use ts_kpoint_scf_m, only : ts_kpoint_scf, ts_Gamma_scf
     use m_ts_cctype
-    use m_ts_electype
+    use ts_electrode_m
     use m_ts_options ! Just everything (easier)
     use m_ts_method
-    use m_ts_charge
 
     use m_ts_global_vars, only : TSmode, TSinit, onlyS
     use siesta_options, only : isolve, SOLVE_TRANSI, Nmove
@@ -124,7 +122,7 @@ contains
           end if
        end do
        do i = 1 , N_Elec
-          do ia = Elecs(i)%idx_a , Elecs(i)%idx_a + TotUsedAtoms(Elecs(i)) - 1
+          do ia = Elecs(i)%idx_a , Elecs(i)%idx_a + Elecs(i)%device_atoms() - 1
              if ( .not. ( is_constr(ia,'rigid') .or. is_constr(ia,'rigid-dir') &
                   .or. is_constr(ia,'rigid-max') .or. is_constr(ia,'rigid-max-dir') &
                   .or. is_fixed(ia) ) ) then
@@ -146,13 +144,13 @@ contains
     ! First calculate L/C/R sizes (we remember to subtract the buffer
     ! orbitals)
     nTS = no_u - no_Buf
-    nC  = nTS  - sum(TotUsedOrbs(Elecs))
+    nC  = nTS  - sum(Elecs%device_orbitals())
     if ( nC < 1 ) &
          call die("The contact region size is &
          &smaller than the electrode size. &
          &What have you done? Please correct this insanity...")
     
-    if ( minval(TotUsedOrbs(Elecs)) < 2 ) &
+    if ( minval(Elecs%device_orbitals()) < 2 ) &
          call die('We cannot perform sparse pattern on the electrode &
          &system.')
     
@@ -161,52 +159,25 @@ contains
 
     if ( .not. TS_Analyze ) then
 
-       if ( TS_RHOCORR_METHOD == TS_RHOCORR_FERMI &
-            .and. IONode ) then
-          ! Delete the TS_FERMI file (enables
-          ! reading it in and improve on the convergence)
-          if ( file_exist('TS_FERMI') ) then
-             i = 23455
-             open(unit=i,file='TS_FERMI')
-             close(i,status='delete')
-          end if
-
-       end if
-       
        ! GF generation:
        do i = 1 , N_Elec
 
           ! initialize the electrode for Green function calculation
-          call init_Electrode_HS(Elecs(i))
+          call Elecs(i)%prepare_SE()
 
           ! Whether we can do with a single k-point (say a chain)
           if ( Elecs(i)%is_gamma ) then
             call do_Green(Elecs(i), &
                 ucell,1,(/(/0._dp, 0._dp, 0._dp/)/),(/1._dp/), &
                 Elecs_xa_Eps, .false. )
-            
-            if ( TS_RHOCORR_METHOD == TS_RHOCORR_FERMI ) then
-              call do_Green_Fermi(Elecs(i), &
-                  ucell,1,(/(/0._dp, 0._dp, 0._dp/)/),(/1._dp/), &
-                  Elecs_xa_Eps, .false. )
-            end if
-            
           else
             call do_Green(Elecs(i), &
                 ucell,ts_kpoint_scf%N,ts_kpoint_scf%k,ts_kpoint_scf%w, &
                 Elecs_xa_Eps, .false. )
-
-            if ( TS_RHOCORR_METHOD == TS_RHOCORR_FERMI ) then
-
-              call do_Green_Fermi(Elecs(i), &
-                  ucell,ts_kpoint_scf%N,ts_kpoint_scf%k,ts_kpoint_scf%w, &
-                  Elecs_xa_Eps, .false. )
-
-            end if
           end if
           
           ! clean-up
-          call delete(Elecs(i))
+          call Elecs(i)%delete()
           
        end do
     else
@@ -214,18 +185,18 @@ contains
        neglect_conn = .false.
 
        do i = 1 , N_Elec
-          call delete(Elecs(i)) ! ensure clean electrode
-          call read_Elec(Elecs(i),Bcast=.true.)
+          call Elecs(i)%delete() ! ensure clean electrode
+          call Elecs(i)%read_HS(Bcast=.true.)
           
           ! print out the precision of the electrode (whether it extends
           ! beyond first principal layer)
-          if ( .not. check_Connectivity(Elecs(i)) ) then
+          if ( .not. Elecs(i)%check_connectivity() ) then
 
              neglect_conn = .true.
              
           end if
 
-          call delete(Elecs(i))
+          call Elecs(i)%delete()
        end do
 
        if ( neglect_conn ) then

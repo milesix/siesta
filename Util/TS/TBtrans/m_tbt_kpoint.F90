@@ -30,6 +30,7 @@ module m_tbt_kpoint
   public :: write_k_points
   public :: read_kgrid
   public :: tbt_iokp
+  public :: tbt_kpoint_reset
 
   ! The local k-point method
   integer, public :: K_METHOD = 1
@@ -1018,5 +1019,13 @@ contains
     end subroutine kill_iokp
     
   end subroutine tbt_iokp_read
+
+  subroutine tbt_kpoint_reset()
+
+    if ( associated(kpoint) ) deallocate(kpoint)
+    if ( associated(kweight) ) deallocate(kweight)
+    nullify(kpoint, kweight)
+
+  end subroutine tbt_kpoint_reset
   
 end module m_tbt_kpoint

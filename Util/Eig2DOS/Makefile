@@ -1,12 +1,12 @@
 # ---
-# Copyright (C) 1996-2016	The SIESTA group
+# Copyright (C) 1996-2021       The SIESTA group
 #  This file is distributed under the terms of the
 #  GNU General Public License: see COPYING in the top directory
 #  or http://www.gnu.org/copyleft/gpl.txt .
 # See Docs/Contributors.txt for a list of contributors.
 # ---
 #
-# The VPATH directive below helps to re-use f2kcli.F90 from the top Src.
+# The VPATH directive below allows to re-use m_getopts.f90 from the top Src.
 # Other points to note, until we switch to a better building system:
 #
 #  The arch.make file is supposed to be in $(OBJDIR). This is normally
@@ -21,12 +21,16 @@
 .SUFFIXES:
 .SUFFIXES: .f .f90 .F .F90 .o
 #
-VPATH:=$(shell pwd)/../../Src
-OBJDIR=Obj
+PROGS= Eig2DOS
+default: $(PROGS)
 #
-all: Eig2DOS
-#
-include ../../$(OBJDIR)/arch.make
+TOPDIR=.
+MAIN_OBJDIR=.
+
+VPATH=$(TOPDIR)/Util/Eig2DOS:$(TOPDIR)/Src
+
+include $(MAIN_OBJDIR)/arch.make
+include $(MAIN_OBJDIR)/check_for_build_mk.mk
 #
 #
 FC_DEFAULT:=$(FC)
@@ -37,9 +41,7 @@ DEFS:=$(DEFS) $(DEFS_PREFIX)-UMPI
 FPPFLAGS:=$(FPPFLAGS) $(DEFS_PREFIX)-UMPI 
 INCFLAGS:=$(INCFLAGS) $(NETCDF_INCFLAGS)
 #
-OBJS=m_getopts.o f2kcli.o 
-#
-default: Eig2DOS
+OBJS=m_getopts.o
 #
 Eig2DOS: $(OBJS) Eig2DOS.o
 	$(FC) -o $@ $(LDFLAGS) $(OBJS) Eig2DOS.o
@@ -47,6 +49,8 @@ Eig2DOS: $(OBJS) Eig2DOS.o
 clean:
 	rm -f *.o *.mod Eig2DOS
 
+install: $(PROGS)
+	cp -p $(PROGS) $(SIESTA_INSTALL_DIRECTORY)/bin
+
 # Dependecies
-m_getopts.o: f2kcli.o
-Eig2DOS.o: m_getopts.o f2kcli.o
+Eig2DOS.o: m_getopts.o

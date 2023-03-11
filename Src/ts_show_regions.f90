@@ -11,7 +11,7 @@ subroutine ts_show_regions(ucell,na_u,xa,N_Elec,Elecs)
   use parallel, only : IONode
   use fdf, only : fdf_get
 
-  use m_ts_electype
+  use ts_electrode_m
   use m_ts_method, only : r_aBuf, r_aC, na_Buf, atom_type
   use m_ts_method, only : TYP_BUFFER, TYP_DEVICE
   use m_region
@@ -24,7 +24,7 @@ subroutine ts_show_regions(ucell,na_u,xa,N_Elec,Elecs)
   integer, intent(in)  :: na_u
   real(dp), intent(in) :: xa(3,na_u)
   integer, intent(in) :: N_Elec
-  type(Elec), intent(in) :: Elecs(N_Elec)
+  type(electrode_t), intent(in) :: Elecs(N_Elec)
 
 ! ********************
 ! * LOCAL variables  *
@@ -36,41 +36,41 @@ subroutine ts_show_regions(ucell,na_u,xa,N_Elec,Elecs)
 
   if ( .not. fdf_get('TS.Atoms.Print',.false.) ) then
      
-     write(*,'(/,a)') 'transiesta: Regions of atoms:'
+    write(*,'(/,a)') 'transiesta: Regions of atoms:'
      
-     call rgn_copy(r_aBuf,rgn)
-     if ( rgn%n > 0 ) then
-        call rgn_sort(rgn)
-        rgn%name = 'Buffer'
-        call rgn_print(rgn,name='//',seq_max=12,indent=3)
-     end if
+    if ( r_aBuf%n > 0 ) then
+      call rgn_copy(r_aBuf, rgn)
+      call rgn_sort(rgn)
+      rgn%name = 'Buffer'
+      call rgn_print(rgn, name='//', seq_max=12, indent=3)
+    end if
 
-     ! Prepare the device region
-     call rgn_copy(r_aC,rtmp)
-     do i = 1 , N_Elec
-        ia = Elecs(i)%idx_a
-        ia_mid = ia + TotUsedAtoms(Elecs(i)) - 1
-        call rgn_range(rgn,ia,ia_mid)
-        rgn%name = 'Elec.'//trim(Elecs(i)%name)
-        call rgn_print(rgn,name='##',seq_max=12,indent=3)
-        ! Remove the electrode from the device
-        call rgn_remove(rtmp,rgn,rtmp)
-     end do
-     ! Sort the region
-     call rgn_sort(rtmp)
-     rtmp%name = 'Device'
-     call rgn_print(rtmp,name='--',seq_max=12,indent=3)
+    ! Prepare the device region
+    call rgn_copy(r_aC, rtmp)
+    do i = 1 , N_Elec
+      ia = Elecs(i)%idx_a
+      ia_mid = ia + Elecs(i)%device_atoms() - 1
+      call rgn_range(rgn, ia, ia_mid)
+      rgn%name = 'Elec.'//trim(Elecs(i)%name)
+      call rgn_print(rgn, name='##', seq_max=12, indent=3)
+      ! Remove the electrode from the device
+      call rgn_remove(rtmp, rgn, rtmp)
+    end do
+    ! Sort the region
+    call rgn_sort(rtmp)
+    rtmp%name = 'Device'
+    call rgn_print(rtmp, name='--', seq_max=12, indent=3)
 
-     call rgn_delete(rgn,rtmp)
+    call rgn_delete(rgn, rtmp)
      
-     write(*,*) ! new-line
+    write(*,*) ! new-line
 
-     return
+    return
      
   end if
 
   ! mid-point of device
-  ia_mid = (na_u - na_Buf-sum(TotUsedAtoms(Elecs))+1) / 2
+  ia_mid = (na_u - na_Buf-sum(Elecs%device_atoms())+1) / 2
 
   write(*,'(/,a)') 'transiesta: Atomic coordinates and regions (Ang):'
   ia = 1
@@ -98,8 +98,8 @@ subroutine ts_show_regions(ucell,na_u,xa,N_Elec,Elecs)
         ! electrode position
         do i = 1 , N_Elec
            if ( ia == Elecs(i)%idx_a ) then
-              call out_REGION(ia,TotUsedAtoms(Elecs(i)), &
-                   trim(name(Elecs(i)))//' electrode','#')
+              call out_REGION(ia,Elecs(i)%device_atoms(), &
+                   trim(Elecs(i)%name)//' electrode','#')
               exit
            end if
         end do

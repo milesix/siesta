@@ -16,8 +16,6 @@ C by SIESTA
 C
       use fdf
 
-      use precision
-      use parallel,     only : Node, Nodes, IOnode
       use basis_types, only: nsp, basis_specs_transfer, initialize
       use basis_types, only: iz, lmxkb, nkbl, 
      .           erefkb, lmxo, nzeta, rco, 
@@ -25,7 +23,9 @@ C
      .           atm_label, polorb, semic, nsemic,
      .           cnfigmx, charge, smass, basistype,
      &           rinn, vcte, qcoe, qyuk, qwid, split_norm
+      use basis_types, only: nprin
       use basis_types, only: write_basis_specs
+      use basis_types, only: initialize
       use basis_types, only: basis_def_t, basis_parameters
       use basis_specs, only: read_basis_specs
       use basis_io
@@ -36,9 +36,10 @@ C
       use sys,          only : die
       use atom_options, only : get_atom_options, write_ion_plot_files
       use atm_types, only: species, species_info, nspecies
-      use ldau_specs, only: read_ldau_specs
-      use ldau_specs, only: populate_species_info_ldau
-      use ldau_specs, only: ldau_proj_gen
+
+      use dftu_specs, only: read_dftu_specs
+      use dftu_specs, only: dftu_proj_gen
+      use dftu_specs, only: populate_species_info_dftu
 
       implicit none
 
@@ -47,17 +48,10 @@ C
       type(basis_def_t), pointer   :: basp
       type(species_info),  pointer :: spp
 
-      external atm_transfer
-
 c Reading input for the pseudopotentials and atomic orbitals 
       integer :: narg, length
       logical :: file_exists
       
-! Reading input for the pseudopotentials and atomic orbitals 
-      Node =  0
-      Nodes = 1
-      IOnode = (Node == 0)
-
 !     Get file-name from input line
       narg = command_argument_count()
       if ( narg > 0 ) then
@@ -91,7 +85,6 @@ c Reading input for the pseudopotentials and atomic orbitals
 
       allocate(basis_parameters(nsp))
       allocate(species(nsp))
-      nspecies = nsp ! For atm_types module
       do is = 1 , nsp
         call initialize(basis_parameters(is))
       end do
@@ -99,8 +92,8 @@ c Reading input for the pseudopotentials and atomic orbitals
       call read_basis_specs()
       call basis_specs_transfer()
 
-!     Get the parameters for the generation of the LDA+U projectors
-      call read_ldau_specs()
+!     Get the parameters for the generation of the DFT+U projectors
+      call read_dftu_specs()
 
       call setup_atom_tables(nsp)
 
@@ -110,7 +103,7 @@ c Reading input for the pseudopotentials and atomic orbitals
         spp => species(is)
         call atom_main( iz(is), lmxkb(is),
      $      nkbl(0:,is), erefkb(1:,0:,is),lmxo(is),
-     $      nzeta(0:,1:,is), rco(1:,0:,1:,is), 
+     $      nzeta(0:,1:,is), nprin(0:,1,is), rco(1:,0:,1:,is), 
      $      lambda(1:,0:,1:,is), atm_label(is),
      $      polorb(0:,1:,is), semic(is), nsemic(0:,is),
      $      cnfigmx(0:,is),charge(is),
@@ -121,19 +114,19 @@ c Reading input for the pseudopotentials and atomic orbitals
      &      qwid(0:,1:,is),
      $      split_norm(0:,1:,is),
      &      filtercut(0:,1:,is), basp, spp,
-     &      lj_projs=fdf_get('lj-projs', .false.))
+     &      lj_projs=fdf_get('lj-projs',.false.))
         
 !       Generate the projectors for the LDA+U simulations (if requested)
-        call ldau_proj_gen(is)
+        call dftu_proj_gen(is)
       enddo 
 
       call prinput(nsp)
       
 !     Create the new data structures for atmfuncs.
-      call populate_species_info_ldau()
+      call populate_species_info_dftu()
 
       call remove_atom_tables()
-      
+      nspecies = nsp
       call dump_basis_ascii()
       call dump_basis_netcdf()
       call dump_basis_xml()

@@ -4,7 +4,7 @@ program test_dict
 
   implicit none
 
-  type(dict) :: dic
+  type(dictionary_t) :: dic
   integer :: i, N, step
 
   ! fill dictionary
@@ -15,10 +15,10 @@ program test_dict
 
   write(*,*) 'Overwriting same key'
   do i = 1 , N
-     dic = dic // ('string'.kv."Hello world")
-     if ( mod(i,step) == 0 ) then
-        call show_mem
-     end if
+    dic = dic // ('string'.kv."Hello world")
+    if ( mod(i,step) == 0 ) then
+      call show_mem
+    end if
   end do
 
   ! print all the values

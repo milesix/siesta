@@ -155,7 +155,7 @@ contains
     use class_Sparsity
     use m_ts_elec_se, only: UC_minimum_worksize
     use m_ts_sparse, only : ts_sp_uc
-    use m_ts_electype
+    use ts_electrode_m
     use m_ts_method, only : orb_offset
     use create_Sparsity_Union, only: crtSparsity_Union
     include 'zmumps_struc.h'
@@ -163,7 +163,7 @@ contains
     logical, intent(in) :: IsVolt
     type(zMUMPS_STRUC), intent(inout) :: mum
     integer, intent(in) :: N_Elec
-    type(Elec), intent(inout) :: Elecs(N_Elec)
+    type(electrode_t), intent(inout) :: Elecs(N_Elec)
 
     type(OrbitalDistribution) :: dit
     type(Sparsity) :: tmpSp1, tmpSp2
@@ -185,7 +185,7 @@ contains
     do iEl = 1 , N_Elec
 
        idx = Elecs(iEl)%idx_o
-       no = TotUsedOrbs(Elecs(iEl))
+       no = Elecs(iEl)%device_orbitals()
 
        ! we first create the super-set sparsity
        tmpSp1 = tmpSp2
@@ -212,18 +212,17 @@ contains
     call memory('A', 'Z', io, 'prep_LHS')
     allocate( mum%A( io ) )
 
-!$OMP parallel do default(shared), &
-!$OMP&private(io,ioff,ind)
-    do io = 1, nr
+!$OMP parallel do default(shared), private(io,ioff,ind)
+    do io = 1 , nr
 
        if ( l_ncol(io) /= 0 ) then
        
        ioff = io - orb_offset(io)
        
        do ind = l_ptr(io) + 1 , l_ptr(io) + l_ncol(io) 
-             
-          mum%IRN(ind) = l_col(ind) - orb_offset(l_col(ind))
-          mum%JCN(ind) = ioff
+
+         mum%IRN(ind) = ioff
+         mum%JCN(ind) = l_col(ind) - orb_offset(l_col(ind))
 
        end do
 
@@ -236,11 +235,11 @@ contains
   end subroutine prep_LHS
 
   subroutine allocate_mum(mum,nsize,N_Elec,Elecs,GF)
-    use m_ts_electype
+    use ts_electrode_m
     include 'zmumps_struc.h'
     type(zMUMPS_STRUC), intent(inout) :: mum
     integer, intent(in) :: nsize, N_Elec
-    type(Elec), intent(inout) :: Elecs(N_Elec)
+    type(electrode_t), intent(inout) :: Elecs(N_Elec)
     complex(dp), pointer :: Gf(:)
 
     integer :: no, iEl, io
@@ -262,7 +261,7 @@ contains
 
     no = 0
     do iEl = 1 , N_Elec
-       io = TotUsedOrbs(Elecs(iEl))
+       io = Elecs(iEl)%device_orbitals()
        no = no + io ** 2
     end do
     ! Allocate maximum space available
@@ -284,11 +283,11 @@ contains
        ! GF at the same time. Hence it will be safe
        ! to have them point to the same array.
        ! When the UC_expansion_Sigma_GammaT is called
-       ! first the Sigma is assigned and then 
+       ! first the Sigma is assigned and then
        ! it is required that prepare_GF_inv is called
        ! immediately (which it is)
        ! Hence the GF must NOT be used in between these two calls!
-       io = TotUsedOrbs(Elecs(iEl)) ** 2
+       io = Elecs(iEl)%device_orbitals() ** 2
        Elecs(iEl)%Sigma => Gf(no+1:no+io)
        no = no + io
 
@@ -297,14 +296,14 @@ contains
   end subroutine allocate_mum
 
   subroutine prep_RHS_Eq(mum,no_u_TS,nzs,N_Elec,Elecs,GF)
-    use m_ts_electype
+    use ts_electrode_m
     use m_ts_sparse, only : tsup_sp_uc
     use m_ts_method, only : orb_offset, orb_type, TYP_BUFFER
     use class_Sparsity
     include 'zmumps_struc.h'
     type(zMUMPS_STRUC), intent(inout) :: mum
     integer, intent(in) :: no_u_TS, nzs, N_Elec
-    type(Elec), intent(inout) :: Elecs(N_Elec)
+    type(electrode_t), intent(inout) :: Elecs(N_Elec)
     complex(dp), pointer :: Gf(:)
     integer :: io, j, nr, ind
     integer, pointer :: l_ptr(:), l_ncol(:), l_col(:)
@@ -315,23 +314,16 @@ contains
 
     call allocate_mum(mum,nzs,N_Elec,Elecs,GF)
 
-!$OMP parallel default(shared), &
-!$OMP&private(io,j,ind)
-
     ! TODO, this requires that the sparsity pattern is symmetric
     ! Which it always is!
-!$OMP workshare
-    mum%IRHS_PTR(:) = 1 
-!$OMP end workshare
 
-!$OMP do
+!$OMP parallel do default(shared), private(io,ind)
     do io = 1 , nr
        if ( orb_type(io) /= TYP_BUFFER ) then
        mum%IRHS_PTR(io-orb_offset(io)) = l_ptr(io) + 1
        if ( l_ncol(io) /= 0 ) then ! no entries
        ! Create the row-index
-       do j = 1 , l_ncol(io)
-          ind = l_ptr(io) + j
+       do ind = l_ptr(io) + 1 , l_ptr(io) + l_ncol(io)
           mum%IRHS_SPARSE(ind) = l_col(ind) - orb_offset(l_col(ind))
        end do
 
@@ -339,46 +331,40 @@ contains
        end if
 
     end do
-!$OMP end do nowait
+!$OMP end parallel do
 
-!$OMP end parallel
     mum%IRHS_PTR(no_u_TS+1) = nzs + 1
-
-    if ( ind /= mum%NZ_RHS ) then
-       write(*,*)ind,mum%NZ_RHS
-       call die('Error in sparsity pattern of equilibrium')
-    end if
 
   end subroutine prep_RHS_Eq
 
   subroutine prep_RHS_nEq(mum,no_u_TS,N_Elec, Elecs,Gf)
-    use m_ts_electype
+    use ts_electrode_m
     use m_ts_method, only : ts2s_orb
     use class_Sparsity
     include 'zmumps_struc.h'
     type(zMUMPS_STRUC), intent(inout) :: mum
 
     integer, intent(in) :: no_u_TS, N_Elec
-    type(Elec), intent(inout) :: Elecs(N_Elec)
+    type(electrode_t), intent(inout) :: Elecs(N_Elec)
     complex(dp), pointer :: Gf(:)
-    integer :: iEl, no, i, j, io, ind
+    integer :: iEl, no, io, j, jo, ind
 
     ! We only need a partial size of the Green function
-    no = sum(TotUsedOrbs(Elecs))
+    no = sum(Elecs%device_orbitals())
 
     call allocate_mum(mum,no*no_u_TS,N_Elec,Elecs,GF)
 
     ind = 0
-    do i = 1 , no_u_TS
-       mum%IRHS_PTR(i) = ind + 1
+    do j = 1 , no_u_TS
+       mum%IRHS_PTR(j) = ind + 1
        ! get correct siesta-orbital
-       io = ts2s_orb(i)
+       jo = ts2s_orb(j)
        iElec: do iEl = 1 , N_Elec
-          if ( .not. OrbInElec(Elecs(iEl),io) ) cycle
+          if ( .not. Elecs(iEl)%has_orbital(jo) ) cycle
           ! Create the row-index
-          do j = 1 , no_u_TS
+          do io = 1 , no_u_TS
              ind = ind + 1
-             mum%IRHS_SPARSE(ind) = j
+             mum%IRHS_SPARSE(ind) = io
           end do
           exit iElec
        end do iElec
@@ -392,24 +378,24 @@ contains
   end subroutine prep_RHS_nEq
 
   subroutine insert_Self_Energies(mum, El)
-    use m_ts_electype
+    use ts_electrode_m
     use m_ts_method, only : orb_offset, ts2s_orb
     include 'zmumps_struc.h'
     type(zMUMPS_STRUC), intent(inout) :: mum
-    type(Elec), intent(in) :: El
+    type(electrode_t), intent(in) :: El
 
     integer :: off, ii, no, ind, iso, jso
 
-    no = TotUsedOrbs(El)
+    no = El%device_orbitals()
     off = El%idx_o - 1
 
     if ( El%Bulk ) then
 !$OMP do private(ind,jso,iso,ii)
        do ind = 1 , mum%NZ
-          jso = ts2s_orb(mum%JCN(ind))
-          if ( OrbInElec(El,jso) ) then 
           iso = ts2s_orb(mum%IRN(ind))
-          if ( OrbInElec(El,iso) ) then
+          if ( El%has_orbital(iso) ) then
+          jso = ts2s_orb(mum%JCN(ind))
+          if ( El%has_orbital(jso) ) then 
              ii = (jso - El%idx_o) * no + iso - off
              mum%A(ind) = El%Sigma(ii)
           end if
@@ -420,9 +406,9 @@ contains
 !$OMP do private(ind,jso,iso,ii)
        do ind = 1 , mum%NZ
           jso = ts2s_orb(mum%JCN(ind))
-          if ( OrbInElec(El,jso) ) then
+          if ( El%has_orbital(jso) ) then
           iso = ts2s_orb(mum%IRN(ind))
-          if ( OrbInElec(El,iso) ) then
+          if ( El%has_orbital(iso) ) then
              ii = (jso - El%idx_o) * no + iso - off
              mum%A(ind) = mum%A(ind) - El%Sigma(ii)
           end if

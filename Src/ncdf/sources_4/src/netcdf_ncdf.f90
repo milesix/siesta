@@ -432,12 +432,12 @@ contains
     use variable
     use dictionary
     type(hNCDF), intent(inout) :: this
-    type(dict), intent(inout) :: dic
+    type(dictionary_t), intent(inout) :: dic
     ! Local dictionary keys and variables
     type(hNCDF) :: grp
-    type(dict) :: d, d_var, dv, atts
-    type(var) :: v
-    character(len=DICT_KEY_LENGTH) :: key
+    type(dictionary_t) :: d, d_var, dv, atts
+    type(variable_t) :: v
+    character(len=DICTIONARY_KEY_LENGTH) :: key
     character(len=NF90_MAX_NAME) :: name, char
     character(len=64), allocatable :: dims(:)
     integer, pointer :: chunks(:) => null()
@@ -591,9 +591,9 @@ contains
   ! for NetCDF files.
   recursive subroutine ncdf_crt_delete(dic)
     use dictionary
-    type(dict), intent(inout) :: dic
-    type(dict) :: ld, v_dic, att_dic
-    character(len=DICT_KEY_LENGTH) :: key
+    type(dictionary_t), intent(inout) :: dic
+    type(dictionary_t) :: ld, v_dic, att_dic
+    character(len=DICTIONARY_KEY_LENGTH) :: key
     ! Delete all entries
     ld = .first. dic
     do while ( .not. (.empty.ld) )
@@ -635,7 +635,7 @@ contains
     integer, optional, intent(out) :: dims, vars, atts, format, grps
     logical, optional, intent(out) :: exist
     ! possibly obtain all attributes, dimensions
-    type(dict), optional, intent(inout) :: dict_dim, dict_att
+    type(dictionary_t), optional, intent(inout) :: dict_dim, dict_att
     integer :: ldims, lvars, latts, lformat, lgrps, val, i
     integer, allocatable :: grp_id(:)
     character(len=NF90_MAX_NAME) :: key
@@ -693,7 +693,7 @@ contains
     integer, optional, intent(out) :: dims, vars, atts, format, grps
     logical, optional, intent(out) :: exist
     ! possibly obtain all attributes, dimensions
-    type(dict), optional, intent(inout) :: dict_dim, dict_att
+    type(dictionary_t), optional, intent(inout) :: dict_dim, dict_att
     type(hNCDF) :: this
     ! A file-check has been requested...
     if ( present(exist) ) then
@@ -718,7 +718,7 @@ contains
     logical, optional, intent(out) :: exist
     integer, optional, intent(out) :: dims, vars, atts, format, grps
     ! possibly obtain all attributes, dimensions
-    type(dict), optional, intent(inout) :: dict_dim, dict_att
+    type(dictionary_t), optional, intent(inout) :: dict_dim, dict_att
     integer :: ldims, lvars, latts, lformat, lgrps, val, i
     integer, allocatable :: grp_id(:)
     character(len=NF90_MAX_NAME) :: key
@@ -761,18 +761,18 @@ contains
     use dictionary
     type(hNCDF), intent(inout) :: this
     logical, intent(out) :: assert
-    type(dict), intent(in), optional :: dims, vars
-    type(dict), intent(in), optional :: has_dims, has_vars
+    type(dictionary_t), intent(in), optional :: dims, vars
+    type(dictionary_t), intent(in), optional :: has_dims, has_vars
     real(sp), intent(in), optional :: s_EPS
     real(dp), intent(in), optional :: d_EPS
     ! We currently do not check attributes.
     ! This is a little more tricky as strings, chars, etc... :(
     ! It just needs to be done...
     ! We can currently only check integers :(
-    character(len=DICT_KEY_LENGTH) :: key
-    character(len=VAR_TYPE_LENGTH) :: t
-    type(dict) :: dic ! local loop dictionary...
-    type(var) :: ivar
+    character(len=DICTIONARY_KEY_LENGTH) :: key
+    character(len=VARIABLE_TYPE_LENGTH) :: t
+    type(dictionary_t) :: dic ! local loop dictionary...
+    type(variable_t) :: ivar
     logical :: success
     integer, pointer :: i1(:), i2(:,:)
     integer, allocatable :: i1a(:), i2a(:,:)
@@ -992,7 +992,7 @@ contains
     integer, intent(in) :: type
     character(len=*), intent(in) :: dims(:)
     integer, intent(out) :: id
-    type(dict), optional :: atts
+    type(dictionary_t), optional :: atts
     integer, intent(in), optional :: compress_lvl
     logical, intent(in), optional :: shuffle
     integer, intent(in), optional :: access, chunks(:)
@@ -1043,7 +1043,7 @@ contains
     character(len=*), intent(in) :: name
     integer, intent(in) :: type
     character(len=*), intent(in) :: dims(:)
-    type(dict), optional :: atts
+    type(dictionary_t), optional :: atts
     integer, intent(in), optional :: compress_lvl
     logical, intent(in), optional :: shuffle, fill
     integer, intent(in), optional :: access, chunks(:)
@@ -1079,7 +1079,7 @@ contains
     character(len=*), intent(in) :: name
     logical, intent(in) :: type
     character(len=*), intent(in) :: dims(:)
-    type(dict), optional :: atts
+    type(dictionary_t), optional :: atts
     integer, intent(in), optional :: compress_lvl
     logical, intent(in), optional :: shuffle, fill
     integer, intent(in), optional :: access, chunks(:)
@@ -1151,7 +1151,7 @@ contains
     logical, optional, intent(out) :: exist
     integer, optional, intent(out) :: id
     integer, optional, intent(out) :: size(:)
-    type(dict), optional, intent(inout) :: atts
+    type(dictionary_t), optional, intent(inout) :: atts
     integer :: iret ! We need to retain any error message...
     integer :: lid, nids, i
     integer :: ldids(10) ! In case the user only wishes to read a sub-part of the size
@@ -1256,8 +1256,8 @@ contains
     use variable
     type(hNCDF), intent(inout) :: this
     character(len=*), optional, intent(in) :: name
-    type(var), optional, intent(inout) :: att
-    type(dict), optional, intent(inout) :: atts
+    type(variable_t), optional, intent(inout) :: att
+    type(dictionary_t), optional, intent(inout) :: atts
     if ( .not. ncdf_participate(this) ) return
     if ( present(name) .and. present(att) ) then
       call put_att_id(this,NF90_GLOBAL,trim(name),att)
@@ -1273,8 +1273,8 @@ contains
     use variable
     type(hNCDF), intent(inout) :: this
     character(len=*), optional, intent(in) :: name
-    type(var), optional, intent(inout) :: att
-    type(dict), optional, intent(inout) :: atts
+    type(variable_t), optional, intent(inout) :: att
+    type(dictionary_t), optional, intent(inout) :: atts
     if ( .not. ncdf_participate(this) ) return
     if ( present(name) .and. present(att) ) then
       call get_att_id(this,NF90_GLOBAL,trim(name),att)
@@ -1287,12 +1287,12 @@ contains
   end subroutine get_gatt
   subroutine put_att(this,var,name,att,atts)
     use dictionary
-    use variable, vvar => var
+    use variable
     type(hNCDF), intent(inout) :: this
     character(len=*), intent(in) :: var
     character(len=*), optional, intent(in) :: name
-    type(vvar), optional, intent(inout) :: att
-    type(dict), optional, intent(inout) :: atts
+    type(variable_t), optional, intent(inout) :: att
+    type(dictionary_t), optional, intent(inout) :: atts
     integer :: ID
     if ( .not. ncdf_participate(this) ) return
     call ncdf_inq_var(this,var,id=ID)
@@ -1307,12 +1307,12 @@ contains
   end subroutine put_att
   subroutine get_att(this,var,name,att,atts)
     use dictionary
-    use variable, vvar => var
+    use variable
     type(hNCDF), intent(inout) :: this
     character(len=*), intent(in) :: var
     character(len=*), optional, intent(in) :: name
-    type(vvar), optional, intent(inout) :: att
-    type(dict), optional, intent(inout) :: atts
+    type(variable_t), optional, intent(inout) :: att
+    type(dictionary_t), optional, intent(inout) :: atts
     integer :: ID
     if ( .not. ncdf_participate(this) ) return
     call ncdf_inq_var(this,var,id=ID)
@@ -1330,9 +1330,9 @@ contains
     use variable
     type(hNCDF), intent(inout) :: this
     integer, intent(in) :: ID
-    type(dict), intent(inout) :: atts
-    type(dict) :: att
-    type(var) :: at_var
+    type(dictionary_t), intent(inout) :: atts
+    type(dictionary_t) :: att
+    type(variable_t) :: at_var
     character(len=NF90_MAX_NAME) :: key
     if ( len(atts) == 0 ) return
     att = .first. atts
@@ -1361,7 +1361,7 @@ contains
     type(hNCDF), intent(inout) :: this
     integer, intent(in) :: ID
     character(len=*), intent(in) :: name
-    type(var), intent(inout) :: att
+    type(variable_t), intent(inout) :: att
     integer :: iret
     character(len=NF90_MAX_NAME) :: tmp
     integer(ih), pointer :: h0, h1(:)
@@ -1409,10 +1409,10 @@ contains
     use variable
     type(hNCDF), intent(inout) :: this
     integer, intent(in) :: ID
-    type(dict), intent(inout) :: atts
+    type(dictionary_t), intent(inout) :: atts
     integer :: i, nAtts
     character(len=NF90_MAX_NAME) :: name
-    type(var) :: att
+    type(variable_t) :: att
     if ( id == NF90_GLOBAL ) then
       call ncdf_err(nf90_inquire(this%id, nAttributes=nAtts), &
           "Retrieving number of associated attributes in inquire for file: "//this)
@@ -1435,7 +1435,7 @@ contains
     type(hNCDF), intent(inout) :: this
     integer, intent(in) :: ID
     character(len=*), intent(in) :: name
-    type(var), intent(inout) :: att
+    type(variable_t), intent(inout) :: att
     integer :: xtype, att_len
     character(len=512) :: att_char
     real(sp), allocatable :: a_sp(:)
@@ -1531,7 +1531,7 @@ contains
     integer, optional, intent(out) :: old_fill
     integer :: lf, lof
     ! option collect
-    lf = NF90_NOFILL
+    lf = NF90_FILL
     if ( present(fill) ) lf = fill
     call ncdf_err(nf90_set_fill(this%id,lf, lof), &
         "Setting fill mode in file: "//this)
@@ -1561,36 +1561,34 @@ subroutine get_var_h0_name(this, name, var, start, count, stride)
   call ncdf_get_var(this,name,v,start=start,count=count,stride=stride)
   var = v(1)
 end subroutine get_var_h0_name
-subroutine def_fill_h0(this, name, fill_val, fill)
+subroutine def_fill_h0(this, name, fill_value, fill)
   type(hNCDF), intent(inout) :: this
   character(len=*), intent(in) :: name
-  integer(ih), intent(in) :: fill_val ! non-optional to allow interfacing
+  integer(ih), intent(in) :: fill_value ! non-optional to allow interfacing
   integer, intent(in), optional :: fill
   integer :: lfill
   integer(ih) :: lfill_val
-  integer :: tmp_lr
   integer(ih) :: lr
   integer :: id
   if ( .not. ncdf_participate(this) ) return
   call ncdf_redef(this)
-  call ncdf_inq_var(this,name,id=id,fill=lfill,fill_val=lfill_val)
+  call ncdf_inq_var(this,name,id=id,fill=lfill,fill_value=lfill_val)
   if ( present(fill) ) lfill = fill
-  lfill_val = fill_val
-  call ncdf_err(nf90_def_var_fill(this%id, id, lfill, tmp_lr), &
+  lfill_val = fill_value
+  call ncdf_err(nf90_def_var_fill(this%id, id, lfill, lfill_val), &
        'Setting fill (VAR) variable, '//trim(name)//' in file: '//this)
 end subroutine def_fill_h0
-subroutine inq_var_h0(this, name,fill_val,exist,id,size,atts,fill)
+subroutine inq_var_h0(this, name,fill_value,exist,id,size,atts,fill)
   use dictionary
   type(hNCDF), intent(inout) :: this
   character(len=*), intent(in) :: name
-  integer(ih), intent(out) :: fill_val ! non-optional to allow interfacing
+  integer(ih), intent(out) :: fill_value ! non-optional to allow interfacing
   logical, intent(out), optional :: exist
   integer, intent(out), optional :: id
   integer, intent(out), optional :: size(:)
-  type(dict), intent(inout), optional :: atts
+  type(dictionary_t), intent(inout), optional :: atts
   integer, intent(out), optional :: fill
   integer :: lid, lfill
-  integer :: tmp_lr
   integer(ih) :: lfill_val
   if ( .not. ncdf_participate(this) ) return
   call ncdf_inq_var_def(this,name,id=lid,exist=exist,size=size,atts=atts)
@@ -1598,11 +1596,10 @@ subroutine inq_var_h0(this, name,fill_val,exist,id,size,atts,fill)
      if ( .not. exist ) return
   end if
   if ( present(id) ) id = lid
-  call ncdf_err(nf90_inq_var_fill(this%id, lid, lfill, tmp_lr), &
+  call ncdf_err(nf90_inq_var_fill(this%id, lid, lfill, lfill_val), &
        'Retrieving variable-fill (VAR) '//trim(name)//' in file: '//this)
   if ( present(fill) ) fill = lfill
-  !if ( present(fill_val) ) fill_val = lfill_val
-  fill_val = 0.
+  fill_value = lfill_val
 end subroutine inq_var_h0
 subroutine put_var_h1_name(this,name,var,start,count)
   type(hNCDF), intent(inout) :: this
@@ -1745,36 +1742,34 @@ subroutine get_var_s0_name(this, name, var, start, count, stride)
   call ncdf_get_var(this,name,v,start=start,count=count,stride=stride)
   var = v(1)
 end subroutine get_var_s0_name
-subroutine def_fill_s0(this, name, fill_val, fill)
+subroutine def_fill_s0(this, name, fill_value, fill)
   type(hNCDF), intent(inout) :: this
   character(len=*), intent(in) :: name
-  real(sp), intent(in) :: fill_val ! non-optional to allow interfacing
+  real(sp), intent(in) :: fill_value ! non-optional to allow interfacing
   integer, intent(in), optional :: fill
   integer :: lfill
   real(sp) :: lfill_val
-  integer :: tmp_lr
   real(sp) :: lr
   integer :: id
   if ( .not. ncdf_participate(this) ) return
   call ncdf_redef(this)
-  call ncdf_inq_var(this,name,id=id,fill=lfill,fill_val=lfill_val)
+  call ncdf_inq_var(this,name,id=id,fill=lfill,fill_value=lfill_val)
   if ( present(fill) ) lfill = fill
-  lfill_val = fill_val
-  call ncdf_err(nf90_def_var_fill(this%id, id, lfill, tmp_lr), &
+  lfill_val = fill_value
+  call ncdf_err(nf90_def_var_fill(this%id, id, lfill, lfill_val), &
        'Setting fill (VAR) variable, '//trim(name)//' in file: '//this)
 end subroutine def_fill_s0
-subroutine inq_var_s0(this, name,fill_val,exist,id,size,atts,fill)
+subroutine inq_var_s0(this, name,fill_value,exist,id,size,atts,fill)
   use dictionary
   type(hNCDF), intent(inout) :: this
   character(len=*), intent(in) :: name
-  real(sp), intent(out) :: fill_val ! non-optional to allow interfacing
+  real(sp), intent(out) :: fill_value ! non-optional to allow interfacing
   logical, intent(out), optional :: exist
   integer, intent(out), optional :: id
   integer, intent(out), optional :: size(:)
-  type(dict), intent(inout), optional :: atts
+  type(dictionary_t), intent(inout), optional :: atts
   integer, intent(out), optional :: fill
   integer :: lid, lfill
-  integer :: tmp_lr
   real(sp) :: lfill_val
   if ( .not. ncdf_participate(this) ) return
   call ncdf_inq_var_def(this,name,id=lid,exist=exist,size=size,atts=atts)
@@ -1782,11 +1777,10 @@ subroutine inq_var_s0(this, name,fill_val,exist,id,size,atts,fill)
      if ( .not. exist ) return
   end if
   if ( present(id) ) id = lid
-  call ncdf_err(nf90_inq_var_fill(this%id, lid, lfill, tmp_lr), &
+  call ncdf_err(nf90_inq_var_fill(this%id, lid, lfill, lfill_val), &
        'Retrieving variable-fill (VAR) '//trim(name)//' in file: '//this)
   if ( present(fill) ) fill = lfill
-  !if ( present(fill_val) ) fill_val = lfill_val
-  fill_val = 0.
+  fill_value = lfill_val
 end subroutine inq_var_s0
 subroutine put_gatt_s1(this, name, att)
   type(hNCDF), intent(inout) :: this
@@ -1969,36 +1963,34 @@ subroutine get_var_d0_name(this, name, var, start, count, stride)
   call ncdf_get_var(this,name,v,start=start,count=count,stride=stride)
   var = v(1)
 end subroutine get_var_d0_name
-subroutine def_fill_d0(this, name, fill_val, fill)
+subroutine def_fill_d0(this, name, fill_value, fill)
   type(hNCDF), intent(inout) :: this
   character(len=*), intent(in) :: name
-  real(dp), intent(in) :: fill_val ! non-optional to allow interfacing
+  real(dp), intent(in) :: fill_value ! non-optional to allow interfacing
   integer, intent(in), optional :: fill
   integer :: lfill
   real(dp) :: lfill_val
-  integer :: tmp_lr
   real(dp) :: lr
   integer :: id
   if ( .not. ncdf_participate(this) ) return
   call ncdf_redef(this)
-  call ncdf_inq_var(this,name,id=id,fill=lfill,fill_val=lfill_val)
+  call ncdf_inq_var(this,name,id=id,fill=lfill,fill_value=lfill_val)
   if ( present(fill) ) lfill = fill
-  lfill_val = fill_val
-  call ncdf_err(nf90_def_var_fill(this%id, id, lfill, tmp_lr), &
+  lfill_val = fill_value
+  call ncdf_err(nf90_def_var_fill(this%id, id, lfill, lfill_val), &
        'Setting fill (VAR) variable, '//trim(name)//' in file: '//this)
 end subroutine def_fill_d0
-subroutine inq_var_d0(this, name,fill_val,exist,id,size,atts,fill)
+subroutine inq_var_d0(this, name,fill_value,exist,id,size,atts,fill)
   use dictionary
   type(hNCDF), intent(inout) :: this
   character(len=*), intent(in) :: name
-  real(dp), intent(out) :: fill_val ! non-optional to allow interfacing
+  real(dp), intent(out) :: fill_value ! non-optional to allow interfacing
   logical, intent(out), optional :: exist
   integer, intent(out), optional :: id
   integer, intent(out), optional :: size(:)
-  type(dict), intent(inout), optional :: atts
+  type(dictionary_t), intent(inout), optional :: atts
   integer, intent(out), optional :: fill
   integer :: lid, lfill
-  integer :: tmp_lr
   real(dp) :: lfill_val
   if ( .not. ncdf_participate(this) ) return
   call ncdf_inq_var_def(this,name,id=lid,exist=exist,size=size,atts=atts)
@@ -2006,11 +1998,10 @@ subroutine inq_var_d0(this, name,fill_val,exist,id,size,atts,fill)
      if ( .not. exist ) return
   end if
   if ( present(id) ) id = lid
-  call ncdf_err(nf90_inq_var_fill(this%id, lid, lfill, tmp_lr), &
+  call ncdf_err(nf90_inq_var_fill(this%id, lid, lfill, lfill_val), &
        'Retrieving variable-fill (VAR) '//trim(name)//' in file: '//this)
   if ( present(fill) ) fill = lfill
-  !if ( present(fill_val) ) fill_val = lfill_val
-  fill_val = 0.
+  fill_value = lfill_val
 end subroutine inq_var_d0
 subroutine put_gatt_d1(this, name, att)
   type(hNCDF), intent(inout) :: this
@@ -2154,40 +2145,38 @@ subroutine get_var_c0_name(this, name, var, start, count, stride)
   call ncdf_get_var(this,name,v,start=start,count=count,stride=stride)
   var = v(1)
 end subroutine get_var_c0_name
-subroutine def_fill_c0(this, name, fill_val, fill)
+subroutine def_fill_c0(this, name, fill_value, fill)
   type(hNCDF), intent(inout) :: this
   character(len=*), intent(in) :: name
-  complex(sp), intent(in) :: fill_val ! non-optional to allow interfacing
+  complex(sp), intent(in) :: fill_value ! non-optional to allow interfacing
   integer, intent(in), optional :: fill
   integer :: lfill
   complex(sp) :: lfill_val
-  integer :: tmp_lr
   real(sp) :: lr
   integer :: id(2)
   if ( .not. ncdf_participate(this) ) return
   call ncdf_redef(this)
-  call ncdf_inq_var(this,name,id=id,fill=lfill,fill_val=lfill_val)
+  call ncdf_inq_var(this,name,id=id,fill=lfill,fill_value=lfill_val)
   if ( present(fill) ) lfill = fill
-  lfill_val = fill_val
+  lfill_val = fill_value
   lr = real(lfill_val, sp)
-  call ncdf_err(nf90_def_var_fill(this%id, id(1), lfill, tmp_lr), &
+  call ncdf_err(nf90_def_var_fill(this%id, id(1), lfill, lr), &
        'Setting fill (VAR) Re'//trim(name)//' in file: '//this)
   lr = aimag(lfill_val)
-  call ncdf_err(nf90_def_var_fill(this%id, id(2), lfill, tmp_lr), &
+  call ncdf_err(nf90_def_var_fill(this%id, id(2), lfill, lr), &
        'Setting fill (VAR) Im'//trim(name)//' in file: '//this)
 end subroutine def_fill_c0
-subroutine inq_var_c0(this, name,fill_val,exist,id,size,atts,fill)
+subroutine inq_var_c0(this, name,fill_value,exist,id,size,atts,fill)
   use dictionary
   type(hNCDF), intent(inout) :: this
   character(len=*), intent(in) :: name
-  complex(sp), intent(out) :: fill_val ! non-optional to allow interfacing
+  complex(sp), intent(out) :: fill_value ! non-optional to allow interfacing
   logical, intent(out), optional :: exist
   integer, intent(out), optional :: id(2)
   integer, intent(out), optional :: size(:)
-  type(dict), intent(inout), optional :: atts
+  type(dictionary_t), intent(inout), optional :: atts
   integer, intent(out), optional :: fill
   integer :: lid, lfill
-  integer :: tmp_lr
   real(sp) :: lfill_valr,lfill_valc
   if ( .not. ncdf_participate(this) ) return
   call ncdf_inq_var_def(this,'Re'//name,id=lid,exist=exist,size=size,atts=atts)
@@ -2195,12 +2184,12 @@ subroutine inq_var_c0(this, name,fill_val,exist,id,size,atts,fill)
      if ( .not. exist ) return
   end if
   if ( present(id) ) id(1) = lid
-  call ncdf_err(nf90_inq_var_fill(this%id, lid, lfill, tmp_lr), &
+  call ncdf_err(nf90_inq_var_fill(this%id, lid, lfill, lfill_valr), &
        'Retrieving variable-fill (VAR) Re-'//trim(name)//' in file: '//this)
   if ( present(fill) ) fill = lfill
   call ncdf_inq_var_def(this,'Im'//name,id=lid,size=size,atts=atts)
   if ( present(id) ) id(2) = lid
-  call ncdf_err(nf90_inq_var_fill(this%id, lid, lfill, tmp_lr), &
+  call ncdf_err(nf90_inq_var_fill(this%id, lid, lfill, lfill_valc), &
        'Retrieving variable-fill (VAR) Im-'//trim(name)//' in file: '//this)
   if ( present(fill) ) then
      if ( fill /= lfill ) then
@@ -2208,10 +2197,7 @@ subroutine inq_var_c0(this, name,fill_val,exist,id,size,atts,fill)
    ' are not the same. This is not allowed.')
      end if
   end if
-! if ( present(fill_val) ) then
-     !fill_val = cmplx(lfill_valr,lfill_valc, sp)
-     fill_val = cmplx(0,0, sp)
-! end if
+  fill_value = cmplx(lfill_valr,lfill_valc, sp)
 end subroutine inq_var_c0
 subroutine put_var_c1_name(this,name,var,start,count)
   type(hNCDF), intent(inout) :: this
@@ -2363,40 +2349,38 @@ subroutine get_var_z0_name(this, name, var, start, count, stride)
   call ncdf_get_var(this,name,v,start=start,count=count,stride=stride)
   var = v(1)
 end subroutine get_var_z0_name
-subroutine def_fill_z0(this, name, fill_val, fill)
+subroutine def_fill_z0(this, name, fill_value, fill)
   type(hNCDF), intent(inout) :: this
   character(len=*), intent(in) :: name
-  complex(dp), intent(in) :: fill_val ! non-optional to allow interfacing
+  complex(dp), intent(in) :: fill_value ! non-optional to allow interfacing
   integer, intent(in), optional :: fill
   integer :: lfill
   complex(dp) :: lfill_val
-  integer :: tmp_lr
   real(dp) :: lr
   integer :: id(2)
   if ( .not. ncdf_participate(this) ) return
   call ncdf_redef(this)
-  call ncdf_inq_var(this,name,id=id,fill=lfill,fill_val=lfill_val)
+  call ncdf_inq_var(this,name,id=id,fill=lfill,fill_value=lfill_val)
   if ( present(fill) ) lfill = fill
-  lfill_val = fill_val
+  lfill_val = fill_value
   lr = real(lfill_val, dp)
-  call ncdf_err(nf90_def_var_fill(this%id, id(1), lfill, tmp_lr), &
+  call ncdf_err(nf90_def_var_fill(this%id, id(1), lfill, lr), &
        'Setting fill (VAR) Re'//trim(name)//' in file: '//this)
   lr = aimag(lfill_val)
-  call ncdf_err(nf90_def_var_fill(this%id, id(2), lfill, tmp_lr), &
+  call ncdf_err(nf90_def_var_fill(this%id, id(2), lfill, lr), &
        'Setting fill (VAR) Im'//trim(name)//' in file: '//this)
 end subroutine def_fill_z0
-subroutine inq_var_z0(this, name,fill_val,exist,id,size,atts,fill)
+subroutine inq_var_z0(this, name,fill_value,exist,id,size,atts,fill)
   use dictionary
   type(hNCDF), intent(inout) :: this
   character(len=*), intent(in) :: name
-  complex(dp), intent(out) :: fill_val ! non-optional to allow interfacing
+  complex(dp), intent(out) :: fill_value ! non-optional to allow interfacing
   logical, intent(out), optional :: exist
   integer, intent(out), optional :: id(2)
   integer, intent(out), optional :: size(:)
-  type(dict), intent(inout), optional :: atts
+  type(dictionary_t), intent(inout), optional :: atts
   integer, intent(out), optional :: fill
   integer :: lid, lfill
-  integer :: tmp_lr
   real(dp) :: lfill_valr,lfill_valc
   if ( .not. ncdf_participate(this) ) return
   call ncdf_inq_var_def(this,'Re'//name,id=lid,exist=exist,size=size,atts=atts)
@@ -2404,12 +2388,12 @@ subroutine inq_var_z0(this, name,fill_val,exist,id,size,atts,fill)
      if ( .not. exist ) return
   end if
   if ( present(id) ) id(1) = lid
-  call ncdf_err(nf90_inq_var_fill(this%id, lid, lfill, tmp_lr), &
+  call ncdf_err(nf90_inq_var_fill(this%id, lid, lfill, lfill_valr), &
        'Retrieving variable-fill (VAR) Re-'//trim(name)//' in file: '//this)
   if ( present(fill) ) fill = lfill
   call ncdf_inq_var_def(this,'Im'//name,id=lid,size=size,atts=atts)
   if ( present(id) ) id(2) = lid
-  call ncdf_err(nf90_inq_var_fill(this%id, lid, lfill, tmp_lr), &
+  call ncdf_err(nf90_inq_var_fill(this%id, lid, lfill, lfill_valc), &
        'Retrieving variable-fill (VAR) Im-'//trim(name)//' in file: '//this)
   if ( present(fill) ) then
      if ( fill /= lfill ) then
@@ -2417,10 +2401,7 @@ subroutine inq_var_z0(this, name,fill_val,exist,id,size,atts,fill)
    ' are not the same. This is not allowed.')
      end if
   end if
-! if ( present(fill_val) ) then
-     !fill_val = cmplx(lfill_valr,lfill_valc, dp)
-     fill_val = cmplx(0,0, dp)
-! end if
+  fill_value = cmplx(lfill_valr,lfill_valc, dp)
 end subroutine inq_var_z0
 subroutine put_var_z1_name(this,name,var,start,count)
   type(hNCDF), intent(inout) :: this
@@ -2611,36 +2592,34 @@ subroutine get_var_i0_name(this, name, var, start, count, stride)
   call ncdf_get_var(this,name,v,start=start,count=count,stride=stride)
   var = v(1)
 end subroutine get_var_i0_name
-subroutine def_fill_i0(this, name, fill_val, fill)
+subroutine def_fill_i0(this, name, fill_value, fill)
   type(hNCDF), intent(inout) :: this
   character(len=*), intent(in) :: name
-  integer(is), intent(in) :: fill_val ! non-optional to allow interfacing
+  integer(is), intent(in) :: fill_value ! non-optional to allow interfacing
   integer, intent(in), optional :: fill
   integer :: lfill
   integer(is) :: lfill_val
-  integer :: tmp_lr
   integer(is) :: lr
   integer :: id
   if ( .not. ncdf_participate(this) ) return
   call ncdf_redef(this)
-  call ncdf_inq_var(this,name,id=id,fill=lfill,fill_val=lfill_val)
+  call ncdf_inq_var(this,name,id=id,fill=lfill,fill_value=lfill_val)
   if ( present(fill) ) lfill = fill
-  lfill_val = fill_val
-  call ncdf_err(nf90_def_var_fill(this%id, id, lfill, tmp_lr), &
+  lfill_val = fill_value
+  call ncdf_err(nf90_def_var_fill(this%id, id, lfill, lfill_val), &
        'Setting fill (VAR) variable, '//trim(name)//' in file: '//this)
 end subroutine def_fill_i0
-subroutine inq_var_i0(this, name,fill_val,exist,id,size,atts,fill)
+subroutine inq_var_i0(this, name,fill_value,exist,id,size,atts,fill)
   use dictionary
   type(hNCDF), intent(inout) :: this
   character(len=*), intent(in) :: name
-  integer(is), intent(out) :: fill_val ! non-optional to allow interfacing
+  integer(is), intent(out) :: fill_value ! non-optional to allow interfacing
   logical, intent(out), optional :: exist
   integer, intent(out), optional :: id
   integer, intent(out), optional :: size(:)
-  type(dict), intent(inout), optional :: atts
+  type(dictionary_t), intent(inout), optional :: atts
   integer, intent(out), optional :: fill
   integer :: lid, lfill
-  integer :: tmp_lr
   integer(is) :: lfill_val
   if ( .not. ncdf_participate(this) ) return
   call ncdf_inq_var_def(this,name,id=lid,exist=exist,size=size,atts=atts)
@@ -2648,11 +2627,10 @@ subroutine inq_var_i0(this, name,fill_val,exist,id,size,atts,fill)
      if ( .not. exist ) return
   end if
   if ( present(id) ) id = lid
-  call ncdf_err(nf90_inq_var_fill(this%id, lid, lfill, tmp_lr), &
+  call ncdf_err(nf90_inq_var_fill(this%id, lid, lfill, lfill_val), &
        'Retrieving variable-fill (VAR) '//trim(name)//' in file: '//this)
   if ( present(fill) ) fill = lfill
-  !if ( present(fill_val) ) fill_val = lfill_val
-  fill_val = 0.
+  fill_value = lfill_val
 end subroutine inq_var_i0
 subroutine put_gatt_i1(this, name, att)
   type(hNCDF), intent(inout) :: this

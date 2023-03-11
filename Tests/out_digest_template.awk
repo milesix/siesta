@@ -11,6 +11,10 @@
 /potential\(screened\)/ {printf "%-20s %20.DEFAULTf\n", "Screened pot", $3}
 # basic params
 /k-grid: Cutoff / {printf "%-20s %20.DEFAULTf\n", "kgrid-cutoff", $6}
+# New outputs use a different string for this. Note that they may also contain
+# a prefix, so the number of columns in these lines varies, and we need to
+# identify the numerical value by counting columns starting from the last one.
+/k-cutoff \(effective\)/ {printf "%-20s %20.DEFAULTf\n", "kgrid-cutoff", $(NF-1)}
 /Internal auxiliary supercell/ {print}
 /and projectors:/ {print}
 # basic geometry

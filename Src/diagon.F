@@ -108,14 +108,15 @@ C
 
       use fdf
       use alloc
-      use m_memory
+      use memory_log
       use m_spin,       only: Spiral, qSpiral
       use m_spin,       only: spin
 #ifdef MPI
       use m_diag_option, only: ParallelOverK
       use mpi_siesta
 #endif
-      use siesta_options, only: new_diagk
+      use velocity_shift_m, only: use_velocity_shift
+      use siesta_options, only: diag_wfs_cache
 
       implicit none
 
@@ -142,15 +143,16 @@ C
 
       logical, intent(in), optional :: dealloc_psi
       
-      external
-     .  diag2g, diag2k, diagsprl
+      external :: diag2g, diag2k, diag2kspiral
+#ifdef MPI
+      external :: diagkp, diag2kp, diag3kp
+      external :: diagkp_velocity
+      external :: diag2kp_velocity, diag3kp_velocity
+#endif
 #ifdef CDF
       external diagk_file
 #endif
 
-#ifdef MPI
-      external           :: diagkp
-#endif
       integer            :: io, iuo, naux, nhs, npsi, nuo
       real(dp),  pointer :: aux(:)
 C  ....................
@@ -175,28 +177,47 @@ C     Check internal dimensions ..........................................
        else
         nhs  = 2 * nuotot * nuo
         npsi = 2 * nuotot * nuo
-        naux = 2 * nuotot * 5            !!!! AG: Put factor 2 !!
+        naux = 2 * nuotot * 5
 #ifdef MPI
-        if (ParallelOverK) then
+        if ( ParallelOverK ) then
           nhs  = 2 * nuotot * nuotot
           npsi = 2 * nuotot * nuotot
+          if ( use_velocity_shift ) then
+            naux = 2 * nuotot * 2
+          end if
         endif
 #endif
        endif
       elseif ( spin%NCol .or. spin%SO ) then
         nhs  = 2 * (2*nuotot) * (2*nuo)
         npsi = 2 * (2*nuotot) * (2*nuo)
-        naux = (2*nuotot) * 5
+        naux = 2 * 2 * nuotot ! COMPLEX, also for SPIRAL
+#ifdef MPI
+        if ( ParallelOverK ) then
+          nhs  = 2 * 2 * nuotot * 2 * nuotot
+          npsi = 2 * 2 * nuotot * 2 * nuotot
+          if ( use_velocity_shift ) then
+            ! 2*nuotot * ( REAL[eig] + COMPLEX[OP|psi>] + 3 REAL[Spin] )
+            naux = 2 * nuotot * (1 + 2 + 3)
+          else
+            naux = 2 * nuotot   ! REAL
+          end if
+          if ( Spiral ) call die('diagon: ParallelOverK and Spiral &
+     &are not compatible.')
+        end if
+#endif
       else
          call die('diagon: ERROR: incorrect value of nspin')
       endif
 
       call allocDenseMatrix(nhs, nhs, npsi)
+      if ( use_velocity_shift .and. .not. ParallelOverK ) then
+        call die('diagon: Velocity-shift requires ParallelOverK')
+      end if
 
 C Allocate local arrays
       nullify(aux)
       call re_alloc( aux,  1, naux, 'aux',  'diagon' )
-
 
 C Call apropriate routine
       getD = .true.
@@ -213,27 +234,36 @@ C Call apropriate routine
        else
 #ifdef MPI
         if (ParallelOverK) then
-          call diagkp( spin%H, nuo, no, nspin, maxnh,
-     .              maxnd, maxo, numh,
-     .              listhptr, listh, H, S, getD, fixspin, qtot, qs,
-     .              temp, e1, e2, xij, indxuo, nk, kpoint, wk,
-     .              eo, qo, Dnew, Enew, ef, efs, Entropy,
-     .              Haux, Saux, psi, Haux, Saux, aux, 
-     .              nuotot, occtol, iscf, neigwanted )
+          if ( use_velocity_shift ) then
+            call diagkp_velocity( spin, maxuo, nuotot, no,
+     .          maxnh, numh, listhptr, listh, H, S, getD,
+     .          fixspin, qtot, qs, temp, e1, e2, xij,
+     .          nk, kpoint, wk,
+     .          eo, qo, Dnew, Enew, Ef, Efs, Entropy,
+     .          Haux, Saux, psi, aux, occtol, iscf, neigwanted)
+          else
+            call diagkp( spin%H, nuo, no, nspin, maxnh,
+     .          maxnd, maxo, numh,
+     .          listhptr, listh, H, S, getD, fixspin, qtot, qs,
+     .          temp, e1, e2, xij, indxuo, nk, kpoint, wk,
+     .          eo, qo, Dnew, Enew, ef, efs, Entropy,
+     .          Haux, Saux, psi, Haux, Saux, aux, 
+     .          nuotot, occtol, iscf, neigwanted )
+          end if
         else
 #endif
 #ifndef CDF
-           if (new_diagk) then
+           if ( diag_wfs_cache == 1 ) then
               if (Node == 0) then
                  write(6,"(a)")
      $           "** Cannot use new diagk without netCDF support"
                  write(6,"(a)")
      $           "** Falling back to standard diagk routine"
               endif
-              new_diagk = .false.
+              diag_wfs_cache = 0
            endif
 #endif
-           if (new_diagk) then
+           if ( diag_wfs_cache == 1 ) then
 #ifdef CDF
               ! Use new routine with file storage
               call diagk_file(spin%H, nuo, no, nspin,
@@ -242,7 +272,7 @@ C Call apropriate routine
      .              listd, H, S, getD, getPSI, fixspin, qtot, qs, temp, 
      .              e1, e2, xij, indxuo, nk, kpoint, wk,
      .              eo, qo, Dnew, Enew, ef, efs, Entropy,
-     .              Haux, Saux, psi, Haux, Saux, aux, 
+     .              Haux, Saux, psi, Haux, Saux,
      .              nuotot, occtol, iscf, neigwanted )
 #endif
            else
@@ -256,7 +286,6 @@ C Call apropriate routine
      .              nuotot, occtol, iscf, neigwanted )
 
            endif
-           call output_kpoint_occupation()
 #ifdef MPI
         endif
 #endif
@@ -266,43 +295,79 @@ C Call apropriate routine
        if (gamma) then
         call diag2g( nuo, no, maxnh, maxnd, maxo, numh,
      .               listhptr, listh, numd, listdptr, listd,
-     .               H, S, getD, qtot, temp, e1, e2, eo, qo, 
+     .               H, S, getD, getPSI, qtot, temp, e1, e2, eo, qo, 
      .               Dnew, Enew, ef, Entropy,
      .               Haux, Saux, psi, aux,
      .               nuotot, occtol, iscf, neigwanted )
-       elseif (Spiral) then
-        call diagsprl( nuo, no, maxnh, maxnd, maxo,
+      elseif ( Spiral ) then
+        call diag2kspiral( nuo, no, maxnh, maxnd, maxo,
      .               numh, listhptr, listh, numd, listdptr,
      .               listd, H, S, getD, qtot, temp, e1, e2,
      .               xij, indxuo, nk, kpoint, wk, eo, qo,
      .               Dnew, Enew, ef, Entropy, qspiral, Haux,
      .               Saux, psi, Haux, Saux, aux, nuotot, occtol,
-     .               iscf )
+     .               iscf, neigwanted)
+#ifdef MPI
+       else if ( ParallelOverK ) then
+         if ( use_velocity_shift ) then
+           call diag2kp_velocity( spin, maxuo, nuotot, no,
+     .         maxnh, numh, listhptr, listh, H, S, getD,
+     .         qtot, temp, e1, e2, xij,
+     .         nk, kpoint, wk,
+     .         eo, qo, Dnew, Enew, Ef, Entropy,
+     .         Haux, Saux, psi, aux, occtol, iscf, neigwanted)
+         else
+           call diag2kp( spin, maxuo, nuotot, no,
+     .         maxnh, numh, listhptr, listh, H, S, getD,
+     .         qtot, temp, e1, e2, xij,
+     .         nk, kpoint, wk,
+     .         eo, qo, Dnew, Enew, Ef, Entropy,
+     .         Haux, Saux, psi, aux, occtol, iscf, neigwanted)
+         end if
+#endif
        else
-        call diag2k( nuo, no, maxnh, maxnd, maxo, numh,
-     .               listhptr, listh, numd, listdptr, listd,
-     .               H, S, getD, qtot, temp, e1, e2, xij,
-     .               indxuo, nk, kpoint, wk, eo, qo, Dnew,
-     .               Enew, ef, Entropy, 
-     .               Haux, Saux, psi, Haux, Saux, aux,
-     .               nuotot, occtol, iscf, neigwanted )
+         call diag2k( nuo, no, maxnh, maxnd, maxo, numh,
+     .       listhptr, listh, numd, listdptr, listd,
+     .       H, S, getD, getPsi, qtot, temp, e1, e2, xij,
+     .       indxuo, nk, kpoint, wk, eo, qo, Dnew,
+     .       Enew, ef, Entropy,
+     .       Haux, Saux, psi, Haux, Saux, aux,
+     .       nuotot, occtol, iscf, neigwanted )
        endif
       elseif ( spin%SO ) then
         if (gamma) then
-          call diag3g( nuo, no, maxuo, maxnh, maxnd, maxo, numh,
+          call diag3g( nuo, no, maxnh, maxnd, maxo, numh,
      .                 listhptr, listh, numd, listdptr, listd,
      .                 H, S, getD, getPSI, qtot, temp, e1, e2, eo, qo,
      .                 Dnew, Enew, ef, Entropy, 
      .                 Haux, Saux, psi, aux,
      .                 nuotot, occtol, iscf, neigwanted )
+#ifdef MPI
+        else if ( ParallelOverK ) then
+          if ( use_velocity_shift ) then
+            call diag3kp_velocity( spin, maxuo, nuotot, no,
+     .          maxnh, numh, listhptr, listh, H, S, getD,
+     .          qtot, temp, e1, e2, xij,
+     .          nk, kpoint, wk,
+     .          eo, qo, Dnew, Enew, Ef, Entropy,
+     .          Haux, Saux, psi, aux, occtol, iscf, neigwanted)
+          else            
+            call diag3kp( spin, maxuo, nuotot, no,
+     .          maxnh, numh, listhptr, listh, H, S, getD,
+     .          qtot, temp, e1, e2, xij,
+     .          nk, kpoint, wk,
+     .          eo, qo, Dnew, Enew, Ef, Entropy,
+     .          Haux, Saux, psi, aux, occtol, iscf, neigwanted)
+        end if
+#endif
         else
           call diag3k( nuo, no, maxnh, maxnd, maxo, numh,
-     .                 listhptr, listh, numd, listdptr, listd,
-     .                 H, S, getD, getPSI, qtot, temp, e1, e2, xij,
-     .                 indxuo, nk, kpoint, wk, eo, qo, Dnew,
-     .                 Enew, ef, Entropy,
-     .                 Haux, Saux, psi, Haux, Saux, aux,
-     .                 nuotot, occtol, iscf, neigwanted )
+     .        listhptr, listh, numd, listdptr, listd,
+     .        H, S, getD, getPSI, qtot, temp, e1, e2, xij,
+     .        indxuo, nk, kpoint, wk, eo, qo, Dnew,
+     .        Enew, ef, Entropy,
+     .        Haux, Saux, psi, Haux, Saux, aux,
+     .        nuotot, occtol, iscf, neigwanted )
         endif
       endif      
 
@@ -314,44 +379,6 @@ C Free local arrays
 
 C Stop time counter
       call timer( 'diagon', 2 )
-
-      CONTAINS
-      
-      subroutine output_kpoint_occupation() ! CC RC It seems ok for osSO
-      !  Creates the OCCS file. This was formerly
-      !  done in diagk and diagk_file
-
-      ! Variables seen by host-association
-      
-      integer :: noccs, iu, ie, ik, ispin
-      real(dp) :: qe
-      external :: io_assign, io_close
-
-      if (Node .eq. 0) then
-         call io_assign(iu)
-         open(iu,file="OCCS",form="formatted",status="unknown",
-     $        action="write",position="rewind")
-      endif
-
-      do ik = 1, nk
-         do ispin = 1, nspin
-            noccs = 0
-            ie = nuotot
-            do while (ie.gt.0.and.noccs.eq.0)
-               qe = qo(ie,ispin,ik)
-               if (abs(qe).gt.occtol) noccs = ie
-               ie = ie - 1
-            enddo
-            if (Node .eq. 0) then
-               write(iu,"(i6,i3,f12.8,i8)")
-     $              ik, ispin, wk(ik), noccs
-            endif
-         enddo
-      enddo
-      if (Node .eq. 0) then
-         call io_close(iu)
-      endif
-      end subroutine output_kpoint_occupation
 
       end subroutine diagon
    

@@ -86,17 +86,17 @@ contains
 #endif
     use m_check_walltime
 
-    use m_energies, only: DE_NEGF
-    use m_ts_options, only : N_Elec
+    use m_ts_options, only : N_Elec, N_mu, mus
     use m_ts_method
-    use m_ts_global_vars,      only: TSmode, TSinit, TSrun
+    use m_ts_global_vars,      only: TSmode, TSinit, TSrun, onlyS
     use siesta_geom,           only: nsc, na_u, xa, ucell, isc_off
     use sparse_matrices,       only: sparse_pattern, block_dist
     use sparse_matrices,       only: Escf, S, maxnh
-    use m_ts_charge, only : ts_get_charges
-    use m_ts_charge,           only: TS_RHOCORR_METHOD
-    use m_ts_charge,           only: TS_RHOCORR_FERMI
-    use m_ts_charge,           only: TS_RHOCORR_FERMI_TOLERANCE
+    use ts_dq_m,               only: TS_DQ_METHOD
+    use ts_dq_m,               only: TS_DQ_METHOD_FERMI
+    use ts_dq_m,               only: TS_DQ_FERMI_TOLERANCE
+    use ts_dq_m,               only: TS_DQ_FERMI_SCALE
+    use ts_dq_m,               only: ts_dq
     use m_transiesta,          only: transiesta
     use kpoint_scf_m, only : gamma_scf
     use m_energies, only : Ef
@@ -111,6 +111,7 @@ contains
     real(dp) :: dHmax ! Max. change in H elements
     real(dp) :: dEmax ! Max. change in EDM elements
     real(dp) :: drhog ! Max. change in rho(G) (experimental)
+    real(dp) :: dQ ! Change in charge
     real(dp), target :: G2max ! actually used meshcutoff
     type(converger_t) ::  conv_harris, conv_freeE
     character(len=20) timer_str_scf
@@ -129,7 +130,7 @@ contains
 
     real(dp) :: Qcur
 #ifdef NCDF_4
-    type(dict) :: d_sav
+    type(dictionary_t) :: d_sav
 #endif
 #ifdef MPI
     integer :: MPIerror
@@ -140,6 +141,8 @@ contains
 #ifdef DEBUG
     call write_debug( '    PRE siesta_forces' )
 #endif
+
+    call timer('geom_init', 1)
 
 #ifdef SIESTA__PEXSI
     ! Broadcast relevant things for program logic
@@ -163,6 +166,15 @@ contains
        end if
        call bye("S only")
     end if
+    if ( onlyS ) then
+      call timer('geom_init', 2)
+      return
+    end if
+
+    if ( TS_DQ_METHOD == TS_DQ_METHOD_FERMI ) then
+      ! Initialize the charge correction
+      call ts_dq%initialize(N_mu, mus)
+    end if
 
     Qcur = Qtot
     
@@ -177,6 +189,7 @@ contains
     call dict_variable_add('SCF.dH',dHmax)
     call dict_variable_add('SCF.dE',dEmax)
     call dict_variable_add('SCF.drhoG',drhog)
+    call dict_variable_add('SCF.dQ',dQ)
     ! We have to set the meshcutoff here
     ! because the asked and required ones are not
     ! necessarily the same
@@ -236,6 +249,7 @@ contains
       dHmax = -1._dp
       dEmax = -1._dp
       drhog = -1._dp
+      dQ = 0._dp
 
       if ( SIESTA_worker ) then
         if ( converge_Eharr ) then
@@ -246,7 +260,24 @@ contains
           call reset(conv_FreeE)
           call set_tolerance(conv_FreeE,tolerance_FreeE)
         end if
+
+        if ( mixH ) then
+          ! Setting up the initial H is done outside the main SCF loop
+          ! This is to not consfuse the "timer" printout for the first SCF.
+          ! If this was done in the main loop the initial IterSCF timing
+          ! would include 2 setup_hamiltonian calls, contrary to all
+          ! subsequent SCF calls which only does 1.
+          if (fdf_get("Read-H-from-file",.false.)) then
+            call get_H_from_file()
+          else
+            ! first iscf call
+            call setup_hamiltonian( 1 )
+          end if
+        end if
+
       end if
+
+      call timer('geom_init', 2)
 
       ! The current structure of the loop tries to reproduce the
       ! historical Siesta usage. It should be made more clear.
@@ -310,14 +341,6 @@ contains
           
           if ( mixH ) then
              
-             if ( first_scf ) then
-                if (fdf_get("Read-H-from-file",.false.)) then
-                   call get_H_from_file()
-                else
-                   call setup_hamiltonian( iscf )
-                end if
-             end if
-             
              call compute_DM( iscf )
 
              ! Maybe set Dold to zero if reading charge or H...
@@ -340,7 +363,9 @@ contains
              
           end if
 
-          ! This iteration has completed calculating the new DM
+          ! Calculate current charge based on the density matrix
+          call dm_charge(spin, DM_2D, S_1D, Qcur)
+          dQ = Qcur - Qtot
 
           call compute_energies( iscf )
           if ( mix_charge ) then
@@ -357,7 +382,7 @@ contains
           !        dDmax=maxdiff(DM_out,DM_in)
           !        dHmax=maxdiff(H(DM_out),H_in)
           call scfconvergence_test( first_scf, iscf, &
-               dDmax, dHmax, dEmax, &
+               dDmax, dHmax, dEmax, dQ, &
                conv_harris, conv_freeE, &
                SCFconverged )
           
@@ -367,12 +392,32 @@ contains
           else
              prevDmax = dDmax
           end if
-
-          ! Calculate current charge based on the density matrix
-          call dm_charge(spin, DM_2D, S_1D, Qcur)
-
           
-          ! Check whether we should step to the next mixer
+          ! In case the user has requested a Fermi-level correction
+          ! Then we start by correcting the fermi-level
+          if ( TSrun .and. TS_DQ_METHOD == TS_DQ_METHOD_FERMI ) then
+            ! Signal for next SCF
+            ts_dq%run = .true.
+            if ( converge_DM ) &
+                ts_dq%run = ts_dq%run .and. &
+                dDtol * TS_DQ_FERMI_SCALE > dDmax
+            if ( converge_H ) &
+                ts_dq%run = ts_dq%run .and. &
+                dHtol * TS_DQ_FERMI_SCALE > dHmax
+            if ( converge_EDM ) &
+                ts_dq%run = ts_dq%run .and. &
+                tolerance_EDM * TS_DQ_FERMI_SCALE > dEmax
+            if ( abs(dQ) > TS_DQ_FERMI_TOLERANCE ) then
+              if ( IONode .and. SCFconverged ) then
+                write(6,"(2a)") "SCF cycle continued due ", &
+                    "to TranSiesta charge deviation"
+              end if
+              SCFconverged = .false.
+            end if
+          end if
+
+          ! Check whether we should step to the next mixer (if we do that
+          ! then we force it to not converge
           call mixing_scf_converged( SCFconverged )
 
           if ( SCFconverged .and. iscf < min_nscf ) then
@@ -383,28 +428,7 @@ contains
                      min_nscf
              end if
           end if
-          
-          ! In case the user has requested a Fermi-level correction
-          ! Then we start by correcting the fermi-level
-          if ( TSrun .and. SCFconverged .and. &
-               TS_RHOCORR_METHOD == TS_RHOCORR_FERMI ) then
 
-             if ( abs(Qcur - Qtot) > TS_RHOCORR_FERMI_TOLERANCE ) then
-
-                ! Call transiesta with fermi-correct
-                call transiesta(iscf,spin%H, &
-                     block_dist, sparse_pattern, Gamma_Scf, ucell, nsc, &
-                     isc_off, no_u, na_u, lasto, xa, maxnh, H, S, &
-                     Dscf, Escf, Ef, Qtot, .true., DE_NEGF)
-
-                ! We will not have not converged as we have just
-                ! changed the Fermi-level
-                SCFconverged = .false.
-
-             end if
-
-          end if
-          
           if ( monitor_forces_in_scf ) call compute_forces()
 
           ! Mix_after_convergence preserves the old behavior of
@@ -507,6 +531,9 @@ contains
     end if
 #endif
 
+    ! Clean up the charge correction object
+    call ts_dq%delete()
+
     if ( .not. SIESTA_worker ) return
 
     call end_of_cycle_save_operations(SCFconverged)
@@ -517,6 +544,11 @@ contains
                ' in maximum number of steps (required).')
           write(tmp_str,"(2(i5,tr1),f12.6)") istep, iscf, prevDmax
           call message(' (info)',"Geom step, scf iteration, dmax:"//trim(tmp_str))
+          if ( TSrun ) then
+            write(tmp_str,"(i5,1x,i5,f12.6)") istep, iscf, dQ
+            call message(' (info)',"Geom step, scf iteration, dq:"// &
+                trim(tmp_str))
+          end if
           call timer( 'all', 2 ) ! New call to close the tree
           call timer( 'all', 3 )
           call barrier()
@@ -526,6 +558,10 @@ contains
                'SCF_NOT_CONV: SCF did not converge  in maximum number of steps.')
           write(tmp_str,"(2(i5,tr1),f12.6)") istep, iscf, prevDmax
           call message(' (info)',"Geom step, scf iteration, dmax:"//trim(tmp_str))
+          if ( TSrun ) then
+            write(tmp_str,"(i5,1x,i5,f12.6)") istep, iscf, dQ
+            call message(' (info)',"Geom step, scf iteration, dq:"//trim(tmp_str))
+          end if
        end if
     end if
 
@@ -613,11 +649,14 @@ contains
          deallocate(Hsave)
       end if
       if (ionode) then
-         print *, "Max diff in force (eV/Ang): ", &
-              maxval(abs(fa-fa_old))*Ang/eV
-         call siesta_write_forces(-1)
-         call siesta_write_stress_pressure()
-      endif
+        write(6,'(a,f11.6)') "Max diff in force (eV/Ang): ", &
+            maxval(abs(fa-fa_old))*Ang/eV
+        call siesta_write_forces(-1)
+        if ( TSrun ) then
+          call transiesta_write_forces()
+        end if
+        call siesta_write_stress_pressure()
+      end if
       deallocate(fa_old)
 
     end subroutine compute_forces
@@ -715,13 +754,12 @@ contains
       use m_ts_global_vars,      only: ts_print_transiesta
       use m_ts_method
       use m_ts_options,          only: N_Elec, Elecs
-      use m_ts_options,          only: DM_bulk
       use m_ts_options,          only: val_swap
       use m_ts_options,          only: ts_Dtol, ts_Htol
       use m_ts_options,          only: ts_hist_keep
       use m_ts_options,          only: ts_siesta_stop
       use m_ts_options,          only: ts_scf_mixs
-      use m_ts_electype
+      use ts_electrode_m
 
       integer :: iEl, na_a
       integer, allocatable :: allowed_a(:)
@@ -735,17 +773,17 @@ contains
       ! whether we are in siesta initialization step
       TSinit = .false.
       ! whether transiesta is running
-      TSrun  = .true.
+      TSrun = .true.
 
       ! If transiesta should stop immediately
       if ( ts_siesta_stop ) then
-
-         if ( IONode ) then
-            write(*,'(a)') 'ts: Stopping transiesta (user option)!'
-         end if
-
-         return
-
+         
+        if ( IONode ) then
+          write(*,'(a)') 'ts: Stopping transiesta (user option)!'
+        end if
+        
+        return
+         
       end if
 
       ! Reduce memory requirements
@@ -782,9 +820,9 @@ contains
       scf_mix => ts_scf_mixs(1)
 #ifdef SIESTA__FLOOK
       if ( .not. mix_charge ) then
-         call dict_variable_add('SCF.Mixer.Weight',scf_mix%w)
-         call dict_variable_add('SCF.Mixer.Restart',scf_mix%restart)
-         call dict_variable_add('SCF.Mixer.Iterations',scf_mix%n_itt)
+        call dict_variable_add('SCF.Mixer.Weight',scf_mix%w)
+        call dict_variable_add('SCF.Mixer.Restart',scf_mix%restart)
+        call dict_variable_add('SCF.Mixer.Iterations',scf_mix%n_itt)
       end if
 #endif
 
@@ -794,64 +832,57 @@ contains
       ! In case we ask for initialization of the DM in bulk
       ! we read in the DM files from the electrodes and
       ! initialize the bulk to those values
-      if ( DM_bulk > 0 ) then
+      if ( any(Elecs(:)%DM_init > 0) ) then
 
-        if ( IONode ) then
+        if ( IONode ) &
             write(*,'(/,2a)') 'transiesta: ', &
-                 'Initializing bulk DM in electrodes.'
-        end if
-
-        ! The electrode EDM is aligned at Ef == 0
-        ! We need to align the energy matrix to Ef == 0, then we switch
-        ! it back later.
-        DM  => val(DM_2D)
-        EDM => val(EDM_2D)
-        iEl = size(DM)
-        call daxpy(iEl,-Ef,DM(1,1),1,EDM(1,1),1)
-         
-         na_a = 0
-         do iEl = 1 , na_u
-            if ( .not. a_isDev(iEl) ) na_a = na_a + 1
-         end do
-         allocate(allowed_a(na_a))
-         na_a = 0
-         do iEl = 1 , na_u
-            ! We allow the buffer atoms as well (this will even out the
-            ! potential around the back of the electrode)
-            if ( .not. a_isDev(iEl) ) then
-               na_a = na_a + 1
-               allowed_a(na_a) = iEl
-            end if
-         end do
-
-         do iEl = 1 , N_Elec
-
-            if ( IONode ) then
-               write(*,'(/,2a)') 'transiesta: ', &
-                    'Reading in electrode TSDE for '// &
-                    trim(Elecs(iEl)%Name)
-            end if
-
-            ! Copy over the DM in the lead
-            ! Notice that the EDM matrix that is copied over
-            ! will be equivalent at Ef == 0
-            call copy_DM(Elecs(iEl),na_u,xa,lasto,nsc,isc_off, &
-                 ucell, DM_2D, EDM_2D, na_a, allowed_a)
-
-         end do
-
-         ! Clean-up
-         deallocate(allowed_a)
-
-         if ( IONode ) then
-            write(*,*) ! new-line
-         end if
-
-         ! The electrode EDM is aligned at Ef == 0
-         ! We need to align the energy matrix
-         iEl = size(DM)
-         call daxpy(iEl,Ef,DM(1,1),1,EDM(1,1),1)
-
+            'Initializing bulk DM in electrodes.'
+        
+        na_a = 0
+        do iEl = 1 , na_u
+          if ( a_isBuffer(iEl) ) then
+            na_a = na_a + 1
+          else if ( a_isDev(iEl) ) then
+            ! do nothing, not allowed overwriting
+          else if ( Elecs(atom_type(iEl))%DM_init > 0 ) then
+            na_a = na_a + 1
+          end if
+        end do
+        allocate(allowed_a(na_a))
+        na_a = 0 
+        do iEl = 1 , na_u
+          if ( a_isBuffer(iEl) ) then
+            na_a = na_a + 1
+            allowed_a(na_a) = iEl
+          else if ( a_isDev(iEl) ) then
+            ! do nothing, not allowed overwriting
+          else if ( Elecs(atom_type(iEl))%DM_init > 0 ) then
+            na_a = na_a + 1
+            allowed_a(na_a) = iEl
+          end if
+        end do
+        
+        do iEl = 1 , N_Elec
+          if ( Elecs(iEl)%DM_init == 0 ) cycle
+          
+          if ( IONode ) then
+            write(*,'(/,3a)') 'transiesta: ', &
+                'Reading in electrode DM for ',trim(Elecs(iEl)%Name)
+          end if
+          
+          ! Copy over the DM in the lead
+          ! Notice that the EDM matrix that is copied over
+          ! will be equivalent at Ef == 0
+          call Elecs(iEl)%copy_DM(na_u,xa,lasto,nsc,isc_off, &
+              ucell, DM_2D, EDM_2D, na_a, allowed_a)
+           
+        end do
+        
+        ! Clean-up
+        deallocate(allowed_a)
+        
+        if ( IONode ) write(*,*) ! new-line
+        
       end if
 
     end subroutine transiesta_switch

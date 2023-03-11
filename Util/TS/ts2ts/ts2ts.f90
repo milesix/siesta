@@ -1,5 +1,5 @@
 ! ---
-! Copyright (C) 1996-2016       The SIESTA group
+! Copyright (C) 1996-2021       The SIESTA group
 !  This file is distributed under the terms of the
 !  GNU General Public License: see COPYING in the top directory
 !  or http://www.gnu.org/copyleft/gpl.txt .
@@ -18,7 +18,6 @@
 ! new defaults.
 program ts2ts
   
-  use f2kcli
   use fdf
   use units
   use precision, only : dp
@@ -310,9 +309,9 @@ program ts2ts
        c_TBTmin,c_TBTmax,cD=c_TBTdE,prefix='TBT')
 
   call nl
-  write(*,'(a)') '# It is adviced to define a device region of'
+  write(*,'(a)') '# It is advised to define a device region of'
   write(*,'(a)') '# particular interest'
-  write(0,'(a)') '# It is adviced to define a device region of'
+  write(0,'(a)') '# It is advised to define a device region of'
   write(0,'(a)') '# particular interest'
 
 contains

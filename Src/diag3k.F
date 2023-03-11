@@ -18,7 +18,9 @@
       use sys
       use parallel,      only : Node, Nodes, BlockSize
       use parallelsubs,  only : LocalToGlobalOrb
+      use writewave,     only : writew
       use m_fermid,      only : fermid, stepf
+      use iso_c_binding, only : c_f_pointer, c_loc
 #ifdef MPI
       use mpi_siesta
 #endif
@@ -114,12 +116,14 @@ C *********************************************************************
       integer :: neigwanted
       
       complex(dp), dimension(2,nuotot,2,nuo) :: Haux, Saux, Dk, Ek
-      complex(dp), dimension(2,nuotot,2*nuo) :: psi
-      complex(dp), dimension(2,nuotot) :: caux
-      logical               getD, getPSI
+      complex(dp), dimension(2,nuotot,2*nuo), target :: psi
+      complex(dp), dimension(2,nuotot), target :: caux
+      logical, intent(in) ::               getD, getPSI
       
-!     TEMPOS, INTERNAL VARIABLES etc.
-      
+
+      real(dp),    pointer :: aux(:)
+      real(dp), pointer  :: psi_real(:)
+
       integer  BNode, BTest, ie, ierror, iie, ik, ind, io, iio
       integer  iuo, j, jo, juo, neigneeded
       real(dp) ee, qe, t
@@ -175,6 +179,9 @@ C *********************************************************************
 !
 !
 
+      ! Jump point for bands and wfs output only
+      if (getPSI .and. (.not. GetD)) goto 10
+      
 !     Find eigenvalues at every k point
 
       do ik = 1,nk
@@ -214,15 +221,16 @@ C *********************************************************************
           call die('Terminating due to failed diagonalisation')
         endif
       enddo
-      
-!-----------------------------------------------------------------------
-!     Check if we are done
-!-----------------------------------------------------------------------
-      if (.not.getD) return
+
+      ! Check if we are done (i.e.: pure bands only)
+      if (.not.getD .and. .not. getPSI) then
+         RETURN
+      end if
 !-----------------------------------------------------------------------
       
 !     Find new Fermi energy and occupation weights
-      call fermid(2,2,nk,wk,maxo,neigwanted,eo,temp,qtot,qo,ef,Entropy)
+      call fermid(2,1,nk,wk,maxo*2,neigwanted*2,eo,
+     &    temp,qtot,qo,ef,Entropy)
       
 !     Find weights for local density of states
       if (e1 .lt. e2) then
@@ -230,7 +238,7 @@ C *********************************************************************
 *       e2 = e2 - ef
         t = max( temp, 1.d-6 )
         do ik = 1,nk
-          do io = 1,nuotot*2
+          do io = 1,neigwanted*2
             qo(io,ik) = wk(ik) * ( stepf( (eo(io,ik)-e2)/t ) -
      .                             stepf( (eo(io,ik)-e1)/t ) )
           enddo
@@ -240,16 +248,22 @@ C *********************************************************************
 !     New density and energy-density matrices of unit-cell orbitals
       Dnew(:,:) = 0.0_dp
       Enew(:,:) = 0.0_dp
+
+ 10   continue   ! ---- Start here for (getPsi and (not getDM))
       
-!     Find maximum eigenvector that is required for this k point 
       do ik = 1,nk
-        neigneeded = 0
-        ie = 2*nuotot  ! for mixed spins
-        do while (ie.gt.0.and.neigneeded.eq.0)
-          qe = qo(ie,ik)
-          if (abs(qe).gt.occtol) neigneeded = ie
-          ie = ie - 1
-        enddo
+         !  Find maximum eigenvector index that is required for this k point 
+         if (getPSI) then
+             ! We do not have info about occupation
+             neigneeded = neigwanted*2
+         else
+             neigneeded = 0
+             ie = 2*neigwanted ! for mixed spins
+             do while (ie.gt.0.and.neigneeded.eq.0)
+                if (abs(qo(ie,ik)).gt.occtol) neigneeded = ie
+                ie = ie - 1
+             enddo
+         endif
       
 !       Find eigenvectors 
         Saux = cmplx(0.0_dp,0.0_dp,dp)
@@ -314,6 +328,22 @@ C *********************************************************************
      .               neigneeded,iscf,ierror, 2*BlockSize)
         endif
       
+          if (getPSI) then
+             if (.not. getD) then
+                ! Fill in the missing eigenvalue information
+                ! This is useful if we are requesting WFS in a "bands" setting
+                call c_f_pointer(c_loc(caux),aux,[2*nuotot])
+                call dcopy(2*nuotot, aux(1), 1, eo(1,ik), 1)
+             endif
+             call c_f_pointer(c_loc(psi),psi_real,[2*size(psi)])
+             call writew(nuotot,nuo,ik,kpoint(1,ik),1,     ! last '1' is 'spin-block number'
+     .                   eo(1,ik),                         ! energies
+     .                   psi_real,gamma=.false.,non_coll=.true.,
+     $                   blocksize=2*BlockSize)
+          endif
+
+          if (.not. getD) CYCLE   ! process new k-point
+
 !***********************************************************************
 ! BUILD NEW DENSITY MATRIX
 !***********************************************************************
@@ -348,7 +378,7 @@ C *********************************************************************
           endif
       
           caux(:,:) = cmplx(0.0_dp,0.0_dp,dp)
-          if (qe.gt.occtol) then
+          if (abs(qe).gt.occtol) then
             if (Node.eq.BNode) then
               do j = 1,nuotot
                 caux(1,j)= psi(1,j,iie) ! c_{i,up}
@@ -429,8 +459,7 @@ C *********************************************************************
         enddo
       enddo
       
-!***********************************************************************      
-      return
       end subroutine diag3k
 !***********************************************************************      
+
       

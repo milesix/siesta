@@ -23,6 +23,7 @@ module m_tbt_tri_init
 
   public :: tbt_tri_init
   public :: tbt_tri_print_opti
+  public :: tbt_tri_reset
 
   type(tRgn), save, allocatable, target :: ElTri(:)
   type(tRgn), save :: DevTri
@@ -43,7 +44,7 @@ contains
 
     use m_ts_tri_common, only: ts_pivot_tri_sort_El
     use m_ts_rgn2trimat
-    use m_ts_electype
+    use ts_electrode_m
     use m_ts_method, only: TS_BTD_A_COLUMN, TS_BTD_A_PROPAGATION
 
 #ifdef MPI
@@ -76,7 +77,7 @@ contains
        call Sp_retain_region(dit,sp,r_oElpD(i),tmpSp2)
 
        ! Add the self-energy of the electrode (in its original position)
-       call rgn_range(tmp_roEl, Elecs(i)%idx_o, Elecs(i)%idx_o + TotUsedOrbs(Elecs(i)) - 1)
+       call rgn_range(tmp_roEl, Elecs(i)%idx_o, Elecs(i)%idx_o + Elecs(i)%device_orbitals() - 1)
        call crtSparsity_Union(dit,tmpSp2, tmp_roEl,tmpSp1)
        call delete(tmpSp2)
 
@@ -90,7 +91,7 @@ contains
        ! IF parts == 0 will create new partition
        call ts_rgn2TriMat(1, Elecs(i:i), .false., &
             dit, tmpSp1, r_oElpD(i), ElTri(i)%n, ElTri(i)%r, &
-            BTD_method, last_eq = Elecs(i)%o_inD%n , par = .false. )
+            BTD_method, last_block = Elecs(i)%o_inD%n , par = .false. )
        call delete(tmpSp1)
 
     end do
@@ -100,7 +101,7 @@ contains
 
     ! The i'th processor has the following electrodes
     do iEl = 1 , N_Elec
-                 
+
 #ifdef MPI
        ! The node having this electrode is
        i = mod(iEl-1,Nodes)
@@ -138,8 +139,8 @@ contains
 
     use m_ts_rgn2trimat
     use m_ts_tri_common, only : ts_pivot_tri_sort_El
-    use m_ts_tri_common, only : nnzs_tri_i8b, nnzs_tri_dp
-    use m_ts_electype
+    use m_ts_tri_common, only : nnzs_tri
+    use ts_electrode_m
 #ifdef TRANSIESTA_DEBUG
     use m_ts_debug
 #endif
@@ -152,8 +153,8 @@ contains
     type(Sparsity), intent(inout) :: sp
     real(dp), intent(in) :: cell(3,3)
     integer, intent(in) :: na_u
-    real(dp), intent(in) :: xa(3,na_u)
-    integer, intent(in) :: lasto(0:na_u)
+    real(dp), intent(in) :: xa(:,:)
+    integer, intent(in) :: lasto(0:)
     ! An array of additional projection regions
     ! which determines the projection of a molecule
     ! onto seperate regions
@@ -229,7 +230,7 @@ contains
     ! Create tri-diagonal parts for this one...
     call ts_rgn2TriMat(N_Elec, Elecs, .true., &
        dit, tmpSp2, r_oDev, DevTri%n, DevTri%r, &
-       BTD_method, last_eq = 0, par = .true. )
+       BTD_method, last_block = 0, par = .true. )
     call delete(tmpSp2) ! clean up
 
     i = nrows_g(sp)
@@ -288,21 +289,28 @@ contains
 
     if ( IONode ) then
        
-       ! Print out stuff
-       call rgn_print(DevTri, seq_max = 8 , repeat = .true.)
-       ! Print out memory estimate
-       els = nnzs_tri_i8b(DevTri%n,DevTri%r)
-       ! check if there are overflows
-       if ( els < int(nnzs_tri_dp(DevTri%n, DevTri%r), i8b) ) then
-          call die('tbt: Memory consumption is too large, try &
-               &another pivoting scheme.')
-       end if
-       write(*,'(a,i0)') 'tbt: Matrix elements in BTD: ', els
+      ! Print out stuff
+      call rgn_copy(DevTri, r_tmp)
+      call rgn_sort(r_tmp)
+      call rgn_print(r_tmp, seq_max = 10 , repeat = .true.)
+      ! Print out memory estimate
+      els = nnzs_tri(DevTri%n, DevTri%r)
+      ! check if there are overflows
+      if ( els > int(huge(1), i8b) ) then
+        write(*,'(a,i0)') 'Elements: ', els
+        write(*,'(a,i0)') 'Max: ', huge(1)
+        call die('tbt: Memory consumption is too large, try &
+            &another pivoting scheme.')
+      end if
 
-       write(*,'(/,a)') 'tbt: Electrodes tri-diagonal matrices'
-       do i = 1 , N_Elec
-          call rgn_print(ElTri(i), seq_max = 8 , repeat = .true.)
-       end do
+      write(*,'(/,a)') 'tbt: Electrodes tri-diagonal matrices'
+      do i = 1 , N_Elec
+        call rgn_copy(ElTri(i), r_tmp)
+        call rgn_sort(r_tmp)
+        call rgn_print(r_tmp, seq_max = 10 , repeat = .true.)
+      end do
+
+      call rgn_delete(r_tmp)
        
     end if
 
@@ -314,7 +322,7 @@ contains
     use parallel, only : IONode
     use m_region
     use m_verbosity, only : verbosity
-    integer, intent(in) :: na_u, lasto(0:na_u)
+    integer, intent(in) :: na_u, lasto(0:)
     type(tRgn), intent(in) :: r_oDev
     integer, intent(in) :: N_Elec
 
@@ -398,7 +406,7 @@ contains
   end subroutine tbt_tri_print_opti
 
   function fold_elements(N_tri,tri) result(elem)
-    integer, intent(in) :: N_tri, tri(N_tri)
+    integer, intent(in) :: N_tri, tri(:)
     integer :: elem, i, tmp
 
     elem = 0
@@ -417,7 +425,7 @@ contains
        cell, na_u, xa, lasto, r_pvt, method)
     
     use parallel, only : IONode
-    use fdf, only : fdf_get, leqi
+    use fdf, only : fdf_get, leqi, fdf_overwrite
 #ifdef MPI
     use mpi_siesta, only : MPI_Comm_Self
 #endif
@@ -430,7 +438,7 @@ contains
     use m_pivot
 
     use m_ts_pivot, only: crt_el_priority
-    use m_ts_electype
+    use ts_electrode_m
     use m_ts_sparse, only : ts_sp_calculation
 
     use m_ts_tri_common
@@ -443,11 +451,11 @@ contains
     type(OrbitalDistribution), intent(inout) :: dit
     type(Sparsity), intent(inout) :: sp ! the local sparse pattern
     integer, intent(in) :: N_Elec
-    type(Elec), intent(inout) :: Elecs(N_Elec)
+    type(electrode_t), intent(inout) :: Elecs(N_Elec)
     real(dp), intent(in) :: cell(3,3)
     integer, intent(in) :: na_u
-    real(dp), intent(in) :: xa(3,na_u)
-    integer, intent(in) :: lasto(0:na_u)
+    real(dp), intent(in) :: xa(:,:)
+    integer, intent(in) :: lasto(0:)
     type(tRgn), intent(inout) :: r_pvt
 
     ! The method used to partition the BTD format
@@ -478,19 +486,24 @@ contains
     ! Write out all pivoting etc. analysis steps
     if ( IONode ) write(*,'(/,a)') 'tbt: BTD analysis'
 
+    ! Ensure we do not overwrite TS.BTD.Output
+    ! This will be handled in the ts_rgn2trimat routine.
+    call fdf_overwrite('TS.BTD.Output ')
+
     ! Copy over the sparse matrix to tmpSp1
     tmpSp1 = sp
 
     min_mem = huge(1._dp)
+    min_mem_method = 'TOO LARGE'
 
-    call rgn_orb2atom(r_pvt, na_u, lasto, r_apvt)
+    call rgn_Orb2Atom(r_pvt, na_u, lasto, r_apvt)
 
     ! Attach the sparsity pattern of the orbitals
     ! later (tmpSp2) may be atom
     call attach(tmpSp1, n_col = ncol, list_ptr = l_ptr, &
          list_col = l_col , nrows_g = no , nnzs = n_nzs )
     ! Check whether we are dealing with a 1-orbital system
-    one_orb = no == lasto(na_u)
+    one_orb = no == na_u
 
     fmethod = 'orb+none'
     if ( IONode ) write(*,fmt) 'orb','none'
@@ -508,8 +521,8 @@ contains
        if ( one_orb ) then
           ! Same as 'atom'
           corb = 'atom'
-       else
-          if ( leqi(fdf_get('TBT.BTD.Analyze','atom'),'atom') ) cycle
+        else
+          if ( leqi(fdf_get('TBT.BTD.Analyze','atom'),'atom') ) cycle orb_atom_switch
        end if
 
        call rgn_copy(r_pvt,full)
@@ -553,7 +566,7 @@ contains
           call rgn_copy(Elecs(iEl)%o_inD, start)
        else
           ! transfer to atom
-          call rgn_orb2atom(Elecs(iEl)%o_inD,na_u,lasto,start)
+          call rgn_Orb2Atom(Elecs(iEl)%o_inD,na_u,lasto,start)
        end if
 
        fmethod = trim(corb)//'+'//trim(Elecs(iEl)%name)
@@ -702,7 +715,7 @@ contains
        call tri(r_El)
     end if
 
-
+#if defined(TS_PVT_GGPS) || defined(TBT_PVT_GGPS)
     fmethod = trim(corb)//'+GGPS'
     if ( IONode ) write(*,fmt) trim(corb),'GGPS'
     call sp_pvt(n,tmpSp2,r_tmp, PVT_GGPS, sub = full)
@@ -742,6 +755,7 @@ contains
        call rgn_atom2orb(r_tmp,na_u,lasto,r_El)
        call tri(r_El)
     end if
+#endif
 
     end do orb_atom_switch
 
@@ -756,12 +770,19 @@ contains
        write(*,'(a)') ' **********'
        write(*,'(a)') ' *  NOTE  *'
        write(*,'(a)') ' **********'
-       write(*,'(a)') ' This minimum memory pivoting scheme may not necessarily be the'
-       write(*,'(a)') ' best performing algorithm!'
-       write(*,'(a,/)') ' You should analyze the pivoting schemes!'
-       write(*,'(a)') ' Minimum memory required pivoting scheme:'
-       write(*,'(a,a)') '  TBT.BTD.Pivot.Device ', trim(min_mem_method)
-       write(*,'(a,en11.3,a)') '  Memory: ', min_mem, ' GB'
+       if ( trim(min_mem_method) == 'TOO LARGE' ) then
+         write(*,'(a)') ' All pivoting methods requires more elements than can be allocated'
+         write(*,'(a)') ' Therefore you cannot run your simulation using TBtrans'
+         write(*,'(a)') ' If you could reduce the device region [TBT.Atoms.Device] you'
+         write(*,'(a)') ' may be able to run this system.'
+       else
+         write(*,'(a)') ' This minimum memory pivoting scheme may not necessarily be the'
+         write(*,'(a)') ' best performing algorithm!'
+         write(*,'(a,/)') ' You should analyze the pivoting schemes!'
+         write(*,'(a)') ' Minimum memory required pivoting scheme:'
+         write(*,'(a,a)') '  TBT.BTD.Pivot.Device ', trim(min_mem_method)
+         write(*,'(a,en11.3,a)') '  Memory: ', min_mem / 1024._dp, ' GB'
+       end if
        write(*,*) ! new-line
     end if
     
@@ -772,22 +793,37 @@ contains
     ! Print out all relevant information for this
     ! pivoting scheme
     subroutine tri(r_pvt)
+      use m_ts_method, only: ts_A_method, TS_BTD_A_COLUMN
       use m_pivot_methods, only : bandwidth, profile
+      use byte_count_m, only: byte_count_t
+      use fdf, only: fdf_overwrite
+
       type(tRgn), intent(in) :: r_pvt
 
       type(tRgn) :: cur, cTri
 
-      integer :: bw
+      type(byte_count_t) :: mem
+      integer :: prof, bw
+      integer :: pad, work
       ! Possibly very large numbers
-      integer(i8b) :: prof, els
+      integer(i8b) :: els
+      logical :: is_suitable
+      character(len=132) :: fname, output
       real(dp) :: total
 
       call rgn_copy(r_pvt, cur)
 
+      ! Only if it is defined
+      fname = fdf_get('TBT.BTD.Output', ' ')
+      if ( len_trim(fname) > 0 ) then
+        write(output,'(4a)') 'TS.BTD.Output ', trim(fname), '.', trim(fmethod)
+        call fdf_overwrite(output)
+      end if
+
       ! Create a new tri-diagonal matrix, do it in parallel
       call ts_rgn2TriMat(N_Elec, Elecs, .true., &
-           dit, tmpSp1, cur, ctri%n, ctri%r, &
-           method, 0, par = .true. )
+          dit, tmpSp1, cur, ctri%n, ctri%r, &
+          method, 0, par = .true. )
       
       ! Sort the pivoting table for the electrodes
       ! such that we reduce the Gf.Gamma.Gf
@@ -796,19 +832,21 @@ contains
       ! in index, all-in-all, win-win!
       call ts_pivot_tri_sort_El(nrows_g(tmpSp1), cur, N_Elec, Elecs, ctri)
 
-      bw   = bandwidth(no,n_nzs,ncol,l_ptr,l_col,cur)
+      bw = bandwidth(no,n_nzs,ncol,l_ptr,l_col,cur)
       prof = profile(no,n_nzs,ncol,l_ptr,l_col,cur)
       if ( IONode ) then
-         write(*,'(tr3,a,t23,i10,/,tr3,a,t13,i20)') &
-              'Bandwidth: ',bw,'Profile: ',prof
+        write(*,'(tr3,a,t23,i10,/,tr3,a,t13,i20)') &
+            'Bandwidth: ',bw,'Profile: ',prof
       end if
 
       ! Calculate size of the tri-diagonal matrix
       els = nnzs_tri(ctri%n,ctri%r)
       ! check if there are overflows
-      if ( els < int(nnzs_tri_dp(ctri%n, ctri%r)) ) then
-        call die('transiesta: Memory consumption is too large, &
-            &try another pivoting scheme.')
+      is_suitable = els <= int(huge(1), i8b)
+      if ( .not. is_suitable ) then
+        write(*,'(tr3,a,i0,'' / '',i0)')'*** Number of elements exceeds integer limits [elements / max] ', &
+            els, huge(1)
+        write(*,'(tr3,a)')'*** Will not be able to use this pivoting scheme!'
       end if
 
       if ( IONode ) then
@@ -825,13 +863,25 @@ contains
             real(els,dp)/total * 100._dp
       end if
 
-      total = size2gb(els) * 2
-      if ( IONode ) then
-        write(*,'(tr3,a,t39,en11.3,a)') 'Rough estimation of MEMORY: ', &
-            total,' GB'
+      if ( ts_A_method == TS_BTD_A_COLUMN ) then
+        ! Get the padding for the array to hold the entire column
+        call GFGGF_needed_worksize(ctri%n, ctri%r, &
+            N_Elec, Elecs, pad, work)
+      else
+        pad = 0
+        work = 0
       end if
-      if ( total < min_mem ) then
-        min_mem = total
+
+      call mem%add_type(cmplx(0, 0, dp), els, 2_i8b)
+      call mem%add_type(cmplx(0, 0, dp), pad)
+      call mem%add_type(cmplx(0, 0, dp), work)
+
+      if ( IONode ) then
+        call mem%get_string(fname)
+        write(*,'(tr3,a,t39,a17)') 'BTD memory for inversion: ', trim(fname)
+      end if
+      if ( is_suitable .and. mem%MB < min_mem ) then
+        min_mem = mem%MB
         min_mem_method = fmethod
       end if
 
@@ -839,12 +889,19 @@ contains
       
     end subroutine tri
 
-    function size2gb(i) result(b)
-      integer(i8b) :: i
-      real(dp) :: b
-      b = real(i, dp) * 16._dp / 1024._dp ** 3
-    end function size2gb
-
   end subroutine tbt_tri_analyze
-  
+
+  subroutine tbt_tri_reset()
+    integer :: iEl
+
+    if ( allocated(ElTri) ) then
+      do iEl = 1, size(ElTri)
+        call rgn_delete(ElTri(iEl))
+      end do
+      deallocate(ElTri)
+    end if
+    call rgn_delete(DevTri)
+
+  end subroutine tbt_tri_reset
+
 end module m_tbt_tri_init

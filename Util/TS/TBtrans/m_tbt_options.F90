@@ -13,9 +13,11 @@ module m_tbt_options
 
   use precision, only : dp
 
+  use units, only: Ang
+
   use m_ts_tdir, only: ts_tidx
 
-  use m_ts_electype
+  use ts_electrode_m
   use m_ts_chem_pot
 
   use dictionary
@@ -38,7 +40,7 @@ module m_tbt_options
 
   ! Electrodes and different chemical potentials
   integer :: N_Elec = 0
-  type(Elec), allocatable, target :: Elecs(:)
+  type(electrode_t), allocatable, target :: Elecs(:)
   integer :: N_mu = 0
   type(ts_mu), allocatable, target :: mus(:)
 
@@ -53,7 +55,7 @@ module m_tbt_options
   ! if ( 'DOS-Gf' .in. save_DATA ) then
   !   calculate DOS of Gf
   ! end fi
-  type(dict) :: save_DATA
+  type(dictionary_t) :: save_DATA
 
   ! Number of eigenchannels to calculate
   integer :: N_eigen = 0
@@ -73,9 +75,9 @@ module m_tbt_options
 
 #ifdef NCDF_4
   ! Save file names for data files
-  character(len=250) :: cdf_fname = ' '
-  character(len=250) :: cdf_fname_sigma = ' '
-  character(len=250) :: cdf_fname_proj = ' '
+  character(len=256) :: cdf_fname = ' '
+  character(len=256) :: cdf_fname_sigma = ' '
+  character(len=256) :: cdf_fname_proj = ' '
 #endif
 
 
@@ -92,7 +94,6 @@ module m_tbt_options
   character(len=*), parameter, private :: f9 ='(''tbt: '',a,t53,''='',tr1,e9.3)'
   character(len=*), parameter, private :: f15='(''tbt: '',a,t53,''='',2(tr1,i0,'' x''),'' '',i0)'
 
-
 contains
 
   subroutine read_tbt_generic(na_u, lasto)
@@ -108,7 +109,7 @@ contains
     ! The number of atoms
     integer, intent(in) :: na_u
     ! A summated list of last orbitals on atoms.
-    integer, intent(in) :: lasto(0:na_u)
+    integer, intent(in) :: lasto(0:)
 
     ! Initialize the buffer regions
     if ( fdf_defined('TBT.Atoms.Buffer') ) then
@@ -230,9 +231,7 @@ contains
 
     use m_ts_chem_pot, only : copy, chem_pot_add_Elec
 
-    use m_ts_electype, only : fdf_nElec, fdf_Elec
-    use m_ts_electype, only : Name, TotUsedOrbs, TotUsedAtoms
-    use m_ts_electype, only : init_Elec_sim
+    use ts_electrode_m, only : fdf_nElec, fdf_Elec
 
     use m_ts_method, only : ts_init_electrodes, a_isBuffer
 
@@ -242,8 +241,8 @@ contains
     ! * INPUT variables *
     ! *******************
     real(dp), intent(in) :: cell(3,3)
-    integer,  intent(in) :: na_u, lasto(0:na_u)
-    real(dp), intent(in) :: xa(3,na_u)
+    integer,  intent(in) :: na_u, lasto(0:)
+    real(dp), intent(in) :: xa(:,:)
 
     ! *******************
     ! * LOCAL variables *
@@ -255,7 +254,7 @@ contains
     if ( N_mu == 0 ) call die('read_tbt_elecs: error in programming')
 
     ! To determine the same coordinate nature of the electrodes
-    Elecs_xa_EPS = fdf_get('TS.Elecs.Coord.Eps',1.e-4_dp,'Bohr')
+    Elecs_xa_EPS = fdf_get('TS.Elecs.Coord.Eps',0.001_dp*Ang, 'Bohr')
     Elecs_xa_EPS = fdf_get('TBT.Elecs.Coord.Eps',Elecs_xa_EPS,'Bohr')
 
     ! detect how many electrodes we have
@@ -338,7 +337,7 @@ contains
                name_prefix = name_prefix)
        end if
        if ( .not. err ) then
-          call die('Could not find electrode: '//trim(name(Elecs(i))))
+          call die('Could not find electrode: '//trim(Elecs(i)%name))
        end if
        if ( Elecs(i)%idx_a < 0 ) &
             Elecs(i)%idx_a = na_u + Elecs(i)%idx_a + 1
@@ -357,18 +356,18 @@ contains
              end do
              Elecs(i)%idx_a = j
           else
-             j = Elecs(i)%idx_a + TotUsedAtoms(Elecs(i)) - 1
+             j = Elecs(i)%idx_a + Elecs(i)%device_atoms() - 1
              do while ( a_isBuffer(j) )
                 j = j - 1
              end do
-             Elecs(i)%idx_a = j - TotUsedAtoms(Elecs(i)) + 1
+             Elecs(i)%idx_a = j - Elecs(i)%device_atoms() + 1
           end if
        end if
        ! set the placement in orbitals
        Elecs(i)%idx_o = lasto(Elecs(i)%idx_a-1)+1
 
        ! Initialize electrode parameters
-       call init_Elec_sim(Elecs(i),cell,na_u,xa)
+       call Elecs(i)%init_in_cell(cell, na_u, xa)
 
     end do
 
@@ -444,7 +443,7 @@ contains
             &All chemical potentials *MUST* be assigned an electrode')
     end if
 
-    if ( na_u <= sum(TotUsedAtoms(Elecs)) ) then
+    if ( na_u <= sum(Elecs(:)%device_atoms()) ) then
        write(*,'(a)') 'Please stop this madness. What where you thinking?'
        call die('Electrodes occupy the entire device!!!')
     end if
@@ -471,8 +470,8 @@ contains
     ! *******************
     integer, intent(in) :: nspin
     real(dp), intent(in) :: cell(3,3)
-    integer,  intent(in) :: na_u, lasto(0:na_u)
-    real(dp), intent(in) :: xa(3,na_u)
+    integer,  intent(in) :: na_u, lasto(0:)
+    real(dp), intent(in) :: xa(:,:)
     integer, intent(in) :: no_u
     integer,  intent(in) :: kscell(3,3)
     real(dp), intent(in) :: kdispl(3)
@@ -484,8 +483,8 @@ contains
     ! we must have read the electrodes first
     if ( N_Elec == 0 ) call die('read_tbt_options: Error in programming')
 
-    percent_tracker = fdf_get('TBT.Progress',5.)
-    percent_tracker = max(0., percent_tracker)
+    percent_tracker = fdf_get('TBT.Progress', 5.)
+    percent_tracker = max(0., percent_tracker) / 100.
     
     ! Reading the Transiesta solution method
     chars = fdf_get('TBT.SolutionMethod','BTD')
@@ -497,7 +496,7 @@ contains
 
     chars = fdf_get('TS.BTD.Optimize','speed')
     chars = fdf_get('TBT.BTD.Optimize',trim(chars))
-    if ( leqi(chars,'speed') ) then
+    if ( leqi(chars,'speed') .or. leqi(chars, 'performance') ) then
       BTD_method = 0
     else if ( leqi(chars,'memory') ) then
       BTD_method = 1
@@ -549,6 +548,7 @@ contains
     if ( ltmp ) then
       ! when calculating the DOS for the electrode
       ! we also get the bulk transmission.
+      call delete(save_DATA, key='DOS-Elecs')
       save_DATA = save_DATA // ('DOS-Elecs'.kv.1)
     end if
     
@@ -569,6 +569,7 @@ contains
     ! Should we calculate DOS of all spectral functions
     ltmp = fdf_get('TBT.DOS.A.All', N_Elec == 1)
     if ( ltmp ) then
+      call delete(save_DATA, key='DOS-A')
       save_DATA = save_DATA // ('DOS-A'.kv.1)
       save_DATA = save_DATA // ('DOS-A-all'.kv.1)
       only_T_Gf = .false.
@@ -577,6 +578,7 @@ contains
     ! Should we calculate orbital current
     ltmp = fdf_get('TBT.Current.Orb', .false. )
     if ( ltmp ) then
+      call delete(save_DATA, key='DOS-A')
       save_DATA = save_DATA // ('DOS-A'.kv.1)
       save_DATA = save_DATA // ('orb-current'.kv.1)
       only_T_Gf = .false.
@@ -585,12 +587,14 @@ contains
     ! Options for density-matrix calculations
     ltmp = fdf_get('TBT.DM.Gf', .false.)
     if ( ltmp ) then
+      call delete(save_DATA, key='DOS-Gf')
       save_DATA = save_DATA // ('DOS-Gf'.kv.1)
       save_DATA = save_DATA // ('DM-Gf'.kv.1)
     end if
 
     ltmp = fdf_get('TBT.DM.A', .false.)
     if ( ltmp ) then
+      call delete(save_DATA, key='DOS-A')
       save_DATA = save_DATA // ('DOS-A'.kv.1)
       save_DATA = save_DATA // ('DM-A'.kv.1)
     end if
@@ -601,24 +605,28 @@ contains
     ! bonding nature of the material.
     ltmp = fdf_get('TBT.COOP.Gf', .false.)
     if ( ltmp ) then
+      call delete(save_DATA, key='DOS-Gf')
       save_DATA = save_DATA // ('DOS-Gf'.kv.1)
       save_DATA = save_DATA // ('COOP-Gf'.kv.1)
     end if
 
     ltmp = fdf_get('TBT.COOP.A', .false. )
     if ( ltmp ) then
+      call delete(save_DATA, key='DOS-A')
       save_DATA = save_DATA // ('DOS-A'.kv.1)
       save_DATA = save_DATA // ('COOP-A'.kv.1)
     end if
 
     ltmp = fdf_get('TBT.COHP.Gf', .false. )
     if ( ltmp ) then
+      call delete(save_DATA, key='DOS-Gf')
       save_DATA = save_DATA // ('DOS-Gf'.kv.1)
       save_DATA = save_DATA // ('COHP-Gf'.kv.1)
     end if
 
     ltmp = fdf_get('TBT.COHP.A', .false. )
     if ( ltmp ) then
+      call delete(save_DATA, key='DOS-A')
       save_DATA = save_DATA // ('DOS-A'.kv.1)
       save_DATA = save_DATA // ('COHP-A'.kv.1)
     end if
@@ -650,6 +658,7 @@ contains
         ! we *must* calculate all transmissions
         ! to be able to get the actual transmissions
         ! using the diagonal Green function
+        call delete(save_DATA, key='T-all')
         save_DATA = save_DATA // ('T-all'.kv.1)
       end if
 
@@ -682,7 +691,7 @@ contains
     
     do i = 1 , N_Elec
       ! Initialize the electrode quantities for the stored values
-      call check_Elec_sim(Elecs(i), nspin, cell, na_u, xa, &
+      call Elecs(i)%check_in_cell(nspin, cell, na_u, xa, &
           Elecs_xa_EPS, lasto, Gamma3)
     end do
 
@@ -787,7 +796,7 @@ contains
 
     write(*,f11)'          >> Electrodes << '
     do i = 1 , size(Elecs)
-       call print_settings(Elecs(i),'tbt')
+       call Elecs(i)%print_settings('tbt')
     end do
     
     call print_contour_tbt_options( 'TBT' )
@@ -875,7 +884,7 @@ contains
        if ( IONode ) then
           write(*,'(a)') 'Chemical potentials [eV]:'
           do i = 1 , N_Elec
-             write(*,'(a,f10.5,a)') trim(Name(Elecs(i)))//' at ',Elecs(i)%mu%mu/eV,' eV'
+             write(*,'(a,f10.5,a)') trim(Elecs(i)%name)//' at ',Elecs(i)%mu%mu/eV,' eV'
           end do
           write(*,'(a)') 'The difference must satisfy: "max(ChemPots)-min(ChemPots) - abs(Volt) < 1e-8 eV"'
           write(*,'(a,f10.5,a)') 'max(ChemPots) at ', maxval(mus(:)%mu)/eV,' eV'
@@ -931,5 +940,23 @@ contains
     write(*,'(3a,/)') repeat('*',24),' End: TBT CHECKS AND WARNINGS ',repeat('*',26)
 
   end subroutine print_tbt_warnings
+
+
+  subroutine tbt_options_reset()
+
+    integer :: i
+
+    do i = 1, N_Elec
+      call Elecs(i)%delete(all=.true.)
+    end do
+    deallocate(Elecs)
+    do i = 1, N_mu
+      call delete(mus(i))
+    end do
+    deallocate(mus)
+
+    call delete(save_DATA)
+
+  end subroutine tbt_options_reset
 
 end module m_tbt_options

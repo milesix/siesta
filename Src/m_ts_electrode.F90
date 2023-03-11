@@ -1,5 +1,5 @@
 ! ---
-! Copyright (C) 1996-2016	The SIESTA group
+! Copyright (C) 1996-2021	The SIESTA group
 !  This file is distributed under the terms of the
 !  GNU General Public License: see COPYING in the top directory
 !  or http://www.gnu.org/copyleft/gpl.txt .
@@ -16,15 +16,19 @@ module m_ts_electrode
   implicit none
 
   public :: create_Green
-  public :: init_Electrode_HS
   public :: calc_next_GS_Elec
 
   private
 
   ! BLAS parameters
-  complex(dp), parameter :: z_1  = cmplx(1._dp,0._dp,dp)
+  complex(dp), parameter :: z_0 = cmplx(0._dp,0._dp,dp)
+  complex(dp), parameter :: z_1 = cmplx(1._dp,0._dp,dp)
   complex(dp), parameter :: z_m1 = cmplx(-1._dp,0._dp,dp)
-  complex(dp), parameter :: z_0  = cmplx(0._dp,0._dp,dp)
+#ifdef USE_GEMM3M
+# define GEMM zgemm3m
+#else
+# define GEMM zgemm
+#endif
 
   interface set_HS_transfer
      module procedure set_HS_Transfer_1d
@@ -66,8 +70,8 @@ contains
 ! ***********************
     integer,     intent(in) :: no
     complex(dp), intent(in) :: ZE 
-    complex(dp), intent(in) :: H00(no*no),S00(no*no)
-    complex(dp), intent(in) :: H01(no*no),S01(no*no)
+    complex(dp), intent(in) :: H00(:), S00(:)
+    complex(dp), intent(in) :: H01(:), S01(:)
     real(dp), intent(in) :: accu
 
     integer, intent(in) :: nwork
@@ -77,12 +81,12 @@ contains
 ! ***********************
 ! * OUTPUT variables    *
 ! ***********************
-    complex(dp), intent(out), target :: GS(no*no)
-    complex(dp), intent(inout), target :: zwork(nwork)
-    real(dp), intent(inout) :: DOS(no)
+    complex(dp), intent(inout), target :: GS(:)
+    complex(dp), intent(inout), target :: zwork(:)
+    real(dp), intent(inout) :: DOS(:)
     real(dp), intent(inout) :: T
 
-    integer, intent(out), optional :: iterations
+    integer, intent(inout), optional :: iterations
 
 ! ***********************
 ! * LOCAL variables     *
@@ -116,20 +120,20 @@ contains
     if ( nwork < 9 * nosq ) call die('SSR_sGreen_DOS: &
          &Not enough work space')
     i = 0
-    rh  => zwork(i+1:i+2*nosq) 
+    rh => zwork(i+1:i+2*nosq)
     i = i + 2*nosq
-    rh1 => zwork(i+1:i+2*nosq) 
+    rh1 => zwork(i+1:i+2*nosq)
     i = i + 2*nosq
-    alpha => zwork(i+1:i+nosq) 
+    alpha => zwork(i+1:i+nosq)
     i = i + nosq
-    beta => zwork(i+1:i+nosq) 
+    beta => zwork(i+1:i+nosq)
     i = i + nosq
     w => zwork(i+1:i+nosq)
     i = i + nosq
-    GB => zwork(i+1:i+nosq) 
+    GB => zwork(i+1:i+nosq)
     i = i + nosq
 
-    gsL => zwork(i+1:i+nosq) 
+    gsL => zwork(i+1:i+nosq)
     gsR => GS
 
 !$OMP parallel default(shared), private(i,j,ic,ic2)
@@ -179,108 +183,52 @@ contains
     as_first = .false.
     do while ( ro > accu ) 
 
-       ! Increment iterations
-       if ( present(iterations) ) &
-            iterations = iterations + 1
+      ! Increment iterations
+      if ( present(iterations) ) &
+          iterations = iterations + 1
 
-! rh = -(Z*S01-H01) ,j<no
-! rh = -(Z*S10-H10) ,j>no
-!$OMP parallel default(shared), private(i)
-       
-!$OMP do
-       do i = 1, nosq
-          rh(i)      = alpha(i)
-       end do
-!$OMP end do nowait
-!$OMP do
-       do i = 1, nosq
-          rh(nosq+i) = beta(i)
-       end do
-!$OMP end do nowait
-!$OMP do
-       do i = 1, nosq
-          ! w = Z*S00-H00
-          w(i) = GB(i)
-       end do
-!$OMP end do nowait
-       
-!$OMP end parallel
+      ! rh = -(Z*S01-H01) ,j<no
+      ! rh = -(Z*S10-H10) ,j>no
+      call zcopy(nosq*2, alpha(1), 1, rh(1), 1)
+      ! alpha and beta are always consecutive
+      ! so we can do with one call
+      !     call zcopy(nosq, alpha, 1, rh, 1)
+      !     call zcopy(nosq, beta, 1, rh(nosq+1), 1)
+      call zcopy(nosq, GB(1), 1, w(1), 1)
 
-! rh =  rh1^(-1)*rh
-! rh =  t0
-       call zgesv(no, no2, w, no, ipiv, rh, no, ierr)
-       if ( ierr /= 0 ) then
-          write(*,*) 'ERROR: SSR_sGreen_DOS 1 MATRIX INVERSION FAILED'
-          write(*,*) 'ERROR: LAPACK INFO = ',ierr
-       end if
+      ! rh =  rh1^(-1)*rh
+      ! rh =  t0
+      call zgesv(no, no2, w(1), no, ipiv, rh(1), no, ierr)
+      if ( ierr /= 0 ) then
+        write(*,*) 'ERROR: SSR_sGreen_DOS 1 MATRIX INVERSION FAILED'
+        write(*,*) 'ERROR: LAPACK INFO = ',ierr
+      end if
 
-       ! switch pointers instead of copying elements
-       call switch_alpha_beta_rh1(as_first)
+      ! switch pointers instead of copying elements
+      call switch_alpha_beta_rh1(as_first)
 
-! alpha = -(Z*S01-H01)*t0
-#ifdef USE_GEMM3M
-       call zgemm3m( &
-#else
-       call zgemm( &
-#endif
-            'N','N',no,no,no,z_1,rh1(1),no,rh(1),no,z_0,alpha,no)
-! beta  = -(Z*S10-H10)*t0 ??
-#ifdef USE_GEMM3M
-       call zgemm3m( &
-#else
-       call zgemm( &
-#endif
-            'N','N',no,no,no,z_1,rh1(nosq+1),no,rh(nosq+1),no,z_0,beta,no)
+      ! alpha = -(Z*S01-H01)*t0
+      call GEMM ('N','N',no,no,no,z_1,rh1(1),no,rh(1),no,z_0,alpha(1),no)
+      ! beta  = -(Z*S10-H10)*t0 ??
+      call GEMM ('N','N',no,no,no,z_1,rh1(nosq+1),no,rh(nosq+1),no,z_0,beta(1),no)
 
-! ba    = (Z*S10-H10)*t0b
-#ifdef USE_GEMM3M
-       call zgemm3m( &
-#else
-       call zgemm( &
-#endif
-            'N','N',no,no,no,z_m1,rh1(nosq+1),no,rh(1),no,z_0,w,no)
-!$OMP parallel default(shared), private(i)
+      ! ba    = (Z*S10-H10)*t0b
+      call GEMM ('N','N',no,no,no,z_m1,rh1(nosq+1),no,rh(1),no,z_0,w(1),no)
 
-!$OMP do
-       do i = 1 , nosq
-          GB(i)  = GB(i) + w(i)
-       end do
-!$OMP end do nowait
-!$OMP do 
-       do i = 1 , nosq
-          gsL(i) = gsL(i) + w(i)
-       end do
-!$OMP end do nowait
-       
-!$OMP end parallel
+      call zaxpy(nosq, z_1, w(1), 1, GB(1), 1)
+      call zaxpy(nosq, z_1, w(1), 1, gsL(1), 1)
 
-! ab    = (Z*S01-H01)*t0
-#ifdef USE_GEMM3M
-       call zgemm3m( &
-#else
-       call zgemm( &
-#endif
-            'N','N',no,no,no,z_m1,rh1(1),no,rh(nosq+1),no,z_0,w,no)
+      ! ab    = (Z*S01-H01)*t0
+      call GEMM ('N','N',no,no,no,z_m1,rh1(1),no,rh(nosq+1),no,z_0,w(1),no)
 
-       ro = -1._dp
-!$OMP parallel default(shared), private(i)
-!$OMP do
-       do i = 1 , nosq
-          GB(i)  = GB(i) + w(i)
-       end do
-!$OMP end do nowait
-!$OMP do
-       do i = 1 , nosq
-          gsR(i) = gsR(i) + w(i)
-       end do
-!$OMP end do nowait
-!$OMP do reduction(max:ro)
-       do i = 1 , nosq
-          ! update the criteria
-          ro = max(ro,abs(w(i)))
-       end do
-!$OMP end do nowait
-!$OMP end parallel
+      call zaxpy(nosq, z_1, w(1), 1, GB(1), 1)
+      call zaxpy(nosq, z_1, w(1), 1, gsR(1), 1)
+
+      ro = abs(w(1))
+      do i = 2 , nosq
+        ! update the criteria
+        ro = max(ro, abs(w(i)))
+      end do
        
     end do
 
@@ -298,47 +246,47 @@ contains
     ! to get the correct self-energy
 !$OMP parallel do default(shared), private(i,j,ic,ic2,zij,zji)
     do j = 1 , no
-       do i = 1 , j - 1
-          ic  = (j-1)*no+i
-          ic2 = (i-1)*no+j
-          
-          ! Calculate bulk Hamiltonian and overlap
-          zij = ZE*S00(ic ) - H00(ic )
-          zji = ZE*S00(ic2) - H00(ic2)
-          
-          ! left scattering states
-          alpha(ic)  = gsL(ic ) - conjg(gsL(ic2))
-          alpha(ic2) = gsL(ic2) - conjg(gsL(ic ))
-          
-          ! Correct for bulk self-energy + bulk Hamiltonian
-          gsL(ic ) = zij + gsL(ic )
-          gsL(ic2) = zji + gsL(ic2)
+      do i = 1 , j - 1
+        ic  = (j-1)*no+i
+        ic2 = (i-1)*no+j
 
-          ! right scattering states (transposed)
-          beta(ic2) = gsR(ic ) - conjg(gsR(ic2))
-          beta(ic ) = gsR(ic2) - conjg(gsR(ic ))
+        ! Calculate bulk Hamiltonian and overlap
+        zij = ZE*S00(ic ) - H00(ic )
+        zji = ZE*S00(ic2) - H00(ic2)
 
-          ! Correct for bulk self-energy + bulk Hamiltonian
-          gsR(ic ) = zij + gsR(ic )
-          gsR(ic2) = zji + gsR(ic2)
+        ! left scattering states
+        alpha(ic)  = gsL(ic ) - conjg(gsL(ic2))
+        alpha(ic2) = gsL(ic2) - conjg(gsL(ic ))
+
+        ! Correct for bulk self-energy + bulk Hamiltonian
+        gsL(ic ) = zij + gsL(ic )
+        gsL(ic2) = zji + gsL(ic2)
+
+        ! right scattering states (transposed)
+        beta(ic2) = gsR(ic ) - conjg(gsR(ic2))
+        beta(ic ) = gsR(ic2) - conjg(gsR(ic ))
+
+        ! Correct for bulk self-energy + bulk Hamiltonian
+        gsR(ic ) = zij + gsR(ic )
+        gsR(ic2) = zji + gsR(ic2)
           
-       end do
-       ic = (j-1)*no+j
+      end do
+      ic = (j-1)*no+j
        
-       ! Add bulk Hamiltonian and overlap
-       zij = ZE*S00(ic) - H00(ic)
+      ! Add bulk Hamiltonian and overlap
+      zij = ZE*S00(ic) - H00(ic)
        
-       ! left scattering state
-       alpha(ic) = gsL(ic) - conjg(gsL(ic))
+      ! left scattering state
+      alpha(ic) = gsL(ic) - conjg(gsL(ic))
        
-       ! Correct for bulk self-energy + bulk Hamiltonian
-       gsL(ic) = zij + gsL(ic)
+      ! Correct for bulk self-energy + bulk Hamiltonian
+      gsL(ic) = zij + gsL(ic)
        
-       ! right scattering state (transposed)
-       beta(ic) = gsR(ic) - conjg(gsR(ic))
+      ! right scattering state (transposed)
+      beta(ic) = gsR(ic) - conjg(gsR(ic))
        
-       ! Correct for bulk self-energy + bulk Hamiltonian
-       gsR(ic) = zij + gsR(ic)
+      ! Correct for bulk self-energy + bulk Hamiltonian
+      gsR(ic) = zij + gsR(ic)
        
     end do
 !$OMP end parallel do
@@ -349,60 +297,45 @@ contains
     ! inverted matrix, copy gsR to other
     ! work-array
     if ( present(final_invert) ) then
-       if ( .not. final_invert ) then
+      if ( .not. final_invert ) then
 
-          ! we return a non-inverted matrix
-          ! hence prohibit the inversion of the matrix
-          ! by moving data to another work-array
-!$OMP parallel do default(shared), private(i)
-          do i = 1 , nosq
-             rh1(i) = gsR(i)
-          end do
-!$OMP end parallel do
-          gsR => rh1(1:nosq)
+        ! we return a non-inverted matrix
+        ! hence prohibit the inversion of the matrix
+        ! by moving data to another work-array
+        call zcopy(nosq, gsR(1), 1, rh1(1), 1)
+        gsR => rh1(1:nosq)
 
-       end if
+      end if
     end if
-    
 
     ! Invert to get the Surface Green function (Left)
     call mat_invert(gsL,w,no,MI_IN_PLACE_LAPACK, ierr=ierr)
     if ( ierr /= 0 ) then
-       write(*,*) 'ERROR: SSR_sGreen_DOS GSL MATRIX INVERSION FAILED'
-       write(*,*) 'ERROR: LAPACK INFO = ',ierr
+      write(*,*) 'ERROR: SSR_sGreen_DOS GSL MATRIX INVERSION FAILED'
+      write(*,*) 'ERROR: LAPACK INFO = ',ierr
     end if
 
     ! Invert to get the Surface Green function (Right)
     call mat_invert(gsR,w,no,MI_IN_PLACE_LAPACK, ierr=ierr)
     if ( ierr /= 0 ) then
-       write(*,*) 'ERROR: SSR_sGreen_DOS GSR MATRIX INVERSION FAILED'
-       write(*,*) 'ERROR: LAPACK INFO = ',ierr
+      write(*,*) 'ERROR: SSR_sGreen_DOS GSR MATRIX INVERSION FAILED'
+      write(*,*) 'ERROR: LAPACK INFO = ',ierr
     end if
     
 
     ! Calculate bulk transmision
-#ifdef USE_GEMM3M
-    call zgemm3m( &
-#else
-    call zgemm( &
-#endif
-         'N','N',no,no,no,z_1,GB   ,no,alpha,no,z_0,w    ,no)
-#ifdef USE_GEMM3M
-    call zgemm3m( &
-#else
-    call zgemm( &
-#endif
-         'N','C',no,no,no,z_1,w   ,no,GB    ,no,z_0,alpha,no)
+    call GEMM ('N','N',no,no,no,z_1,GB(1),no,alpha(1),no,z_0,w(1),no)
+    call GEMM ('N','C',no,no,no,z_1,w(1),no,GB(1),no,z_0,alpha(1),no)
 
     ! Calculate bulk-transmission (same as matrix product + trace)
-    T = T - real(zdotu(nosq,alpha,1,beta,1),dp)
+    T = T - real(zdotu(nosq,alpha(1),1,beta(1),1),dp)
 
 
     ! We now calculate the density of states...
 !$OMP parallel default(shared), private(i) 
 !$OMP do
     do i = 1 , nosq
-       alpha(i) = H01(i) -        ZE  * S01(i)
+       alpha(i) = H01(i) - ZE * S01(i)
     end do
 !$OMP end do nowait
 !$OMP do
@@ -411,44 +344,26 @@ contains
        beta(i)  = H01(i) - conjg(ZE) * S01(i)
     end do
 !$OMP end do nowait
-!$OMP end parallel
 
     ! Transpose GB to make the latter dot product easier
     call transpose(no,GB)
+
+!$OMP end parallel
+
     i = 1
     j = nosq + 1 
     ! DOS = diag{ G_b * S00 + 
     !             G_l * (H01 - E * S01 ) * G_b * S10 +
     !             G_r * (H10 - E * S10 ) * G_b * S01   }
-#ifdef USE_GEMM3M
-    call zgemm3m( &
-#else
-    call zgemm( &
-#endif
-         'N','N',no,no,no,z_1,gsL  ,no,alpha,no,z_0,w    ,no)
+    call GEMM ('N','N',no,no,no,z_1,gsL(1),no,alpha(1),no,z_0,w(1),no)
     ! Note that GB is transposed, (so transpose back here)
-#ifdef USE_GEMM3M
-    call zgemm3m( &
-#else
-    call zgemm( &
-#endif
-         'N','T',no,no,no,z_1,w    ,no,GB   ,no,z_0,rh(i),no)
+    call GEMM ('N','T',no,no,no,z_1,w(1),no,GB(1),no,z_0,rh(i),no)
     ! Note that GB is transposed, (so transpose back here)
-#ifdef USE_GEMM3M
-    call zgemm3m( &
-#else
-    call zgemm( &
-#endif
-         'C','T',no,no,no,z_1,beta ,no,GB   ,no,z_0,rh(j),no)
+    call GEMM ('C','T',no,no,no,z_1,beta(1),no,GB(1),no,z_0,rh(j),no)
     ! Transpose the matrix product to align the following
     ! dot product (reduces the need to calculate the total
     ! matrix before we take the trace)
-#ifdef USE_GEMM3M
-    call zgemm3m( &
-#else
-    call zgemm( &
-#endif
-         'T','T',no,no,no,z_1,rh(j),no,gsR  ,no,z_0,w    ,no)
+    call GEMM ('T','T',no,no,no,z_1,rh(j),no,gsR(1),no,z_0,w(1),no)
 
     ! We resort to use the zdotu/zdotc to not calculate
     ! unnessary elements (for large systems this should
@@ -457,17 +372,17 @@ contains
     i = 1
     do j = 1 , no
        
-       ! Calculate for the bulk
-       ro =    aimag(zdotu(no,GB(i),1,S00(i),1))
-       ! For the left self-energy
-       ro = ro+aimag(zdotc(no,S01(i),1,rh(i),1))
-       ! For the right self-energy
-       ro = ro+aimag(zdotu(no,w(i),1,S01(i),1))
+      ! Calculate for the bulk
+      ro = aimag(zdotu(no,GB(i),1,S00(i),1))
+      ! For the left self-energy
+      ro = ro+aimag(zdotc(no,S01(i),1,rh(i),1))
+      ! For the right self-energy
+      ro = ro+aimag(zdotu(no,w(i),1,S01(i),1))
 
-       ! Calculate the total DOS
-       DOS(j) = DOS(j) - ro / Pi
+      ! Calculate the total DOS
+      DOS(j) = DOS(j) - ro / Pi
        
-       i = i + no
+      i = i + no
        
     end do
 
@@ -487,17 +402,17 @@ contains
       i = 2 * nosq
 
       if ( as_first ) then
-         rh1 => zwork(i+1:i+2*nosq) 
-         i = i + 2*nosq
-         alpha => zwork(i+1:i+nosq) 
-         i = i + nosq
-         beta => zwork(i+1:i+nosq) 
+        rh1 => zwork(i+1:i+2*nosq) 
+        i = i + 2*nosq
+        alpha => zwork(i+1:i+nosq) 
+        i = i + nosq
+        beta => zwork(i+1:i+nosq) 
       else
-         alpha => zwork(i+1:i+nosq) 
-         i = i + nosq
-         beta => zwork(i+1:i+nosq) 
-         i = i + nosq
-         rh1 => zwork(i+1:i+2*nosq) 
+        alpha => zwork(i+1:i+nosq) 
+        i = i + nosq
+        beta => zwork(i+1:i+nosq) 
+        i = i + nosq
+        rh1 => zwork(i+1:i+2*nosq) 
       end if
       as_first = .not. as_first
 
@@ -531,8 +446,8 @@ contains
 ! ***********************
     integer,     intent(in) :: no
     complex(dp), intent(in) :: ZE 
-    complex(dp), intent(in) :: H00(no*no),S00(no*no)
-    complex(dp), intent(in) :: H01(no*no),S01(no*no)
+    complex(dp), intent(in) :: H00(:),S00(:)
+    complex(dp), intent(in) :: H01(:),S01(:)
     real(dp), intent(in) :: accu
 
     integer,     intent(in) :: nwork
@@ -542,10 +457,10 @@ contains
 ! ***********************
 ! * OUTPUT variables    *
 ! ***********************
-    complex(dp), intent(out), target :: GS(no*no)
-    complex(dp), intent(inout), target :: zwork(nwork)
+    complex(dp), intent(inout), target :: GS(:)
+    complex(dp), intent(inout), target :: zwork(:)
 
-    integer, intent(out), optional :: iterations
+    integer, intent(inout), optional :: iterations
 
 ! ***********************
 ! * LOCAL variables     *
@@ -569,36 +484,36 @@ contains
 !    call timer('ts_GS',1)
 
     nom1 = no - 1
-    no2  = 2 * no
+    no2 = 2 * no
     nosq = no * no
 
     if ( nwork < 8 * nosq ) call die('SSR_sGreen_NoDOS: &
          &Not enough work space')
     i = 0
-    rh  => zwork(i+1:i+2*nosq) 
+    rh => zwork(i+1:i+2*nosq)
     i = i + 2*nosq
-    rh1 => zwork(i+1:i+2*nosq) 
+    rh1 => zwork(i+1:i+2*nosq)
     i = i + 2*nosq
-    alpha => zwork(i+1:i+nosq) 
+    alpha => zwork(i+1:i+nosq)
     i = i + nosq
-    beta => zwork(i+1:i+nosq) 
+    beta => zwork(i+1:i+nosq)
     i = i + nosq
     w => zwork(i+1:i+nosq)
     i = i + nosq
-    GB => zwork(i+1:i+nosq) 
+    GB => zwork(i+1:i+nosq)
 
 !$OMP parallel default(shared), private(i,j,ic,ic2)
 
 ! gb    =   Z*S00-H00
 !$OMP do 
     do i = 1 , nosq
-       GB(i)    = ZE * S00(i) - H00(i)
+       GB(i) = ZE * S00(i) - H00(i)
     end do
 !$OMP end do nowait
 ! gs  = gb
 !$OMP do 
     do i = 1 , nosq
-       GS(i)    = GB(i)
+       GS(i) = GB(i)
     end do
 !$OMP end do nowait
 ! alpha = -(Z*S01-H01)
@@ -625,107 +540,64 @@ contains
     as_first = .false.
     do while ( ro > accu ) 
 
-       ! Increment iterations
-       if ( present(iterations) ) &
-            iterations = iterations + 1
+      ! Increment iterations
+      if ( present(iterations) ) &
+          iterations = iterations + 1
 
+      ! rh = -(Z*S01-H01) ,j<no
+      ! rh = -(Z*S10-H10) ,j>no
+      call zcopy(nosq*2, alpha(1), 1, rh(1), 1)
+      ! alpha and beta are always consecutive
+      ! so we can do with one call
+      !     call zcopy(nosq, alpha, 1, rh, 1)
+      !     call zcopy(nosq, beta, 1, rh(nosq+1), 1)
+      ! w = Z*S00-H00
+      call zcopy(nosq, GB(1), 1, w(1), 1)
 
-!$OMP parallel default(shared), private(i)
-! rh = -(Z*S01-H01) ,j<no
-!$OMP do
-       do i = 1, nosq
-          rh(i)      = alpha(i)
-       end do
-!$OMP end do nowait
-! rh = -(Z*S10-H10) ,j>no
-!$OMP do
-       do i = 1, nosq
-          rh(nosq+i) = beta(i)
-       end do
-!$OMP end do nowait
-!$OMP do
-       do i = 1, nosq
-          ! w = Z*S00-H00
-          w(i)       = GB(i)
-       end do
-!$OMP end do nowait
-!$OMP end parallel
+      ! rh =  rh1^(-1)*rh
+      ! rh =  t0
+      call zgesv(no, no2, w(1), no, ipiv, rh(1), no, ierr)
 
-! rh =  rh1^(-1)*rh
-! rh =  t0
-       call zgesv(no, no2, w, no, ipiv, rh, no, ierr)
+      if ( ierr /= 0 ) then
+        write(*,*) 'ERROR: SSR_sGreen_NoDOS 1 MATRIX INVERSION FAILED'
+        write(*,*) 'ERROR: LAPACK INFO = ',ierr
+      end if
 
-       if ( ierr /= 0 ) then
-          write(*,*) 'ERROR: SSR_sGreen_NoDOS 1 MATRIX INVERSION FAILED'
-          write(*,*) 'ERROR: LAPACK INFO = ',ierr
-       end if
+      ! switch pointers instead of copying elements
+      call switch_alpha_beta_rh1(as_first)
 
-       ! switch pointers instead of copying elements
-       call switch_alpha_beta_rh1(as_first)
+      ! alpha = -(Z*S01-H01)*t0
+      call GEMM ('N','N',no,no,no,z_1,rh1(1),no,rh(1),no,z_0,alpha(1),no)
+      ! beta  = -(Z*S10-H10)*t0 ??
+      call GEMM ('N','N',no,no,no,z_1,rh1(nosq+1),no,rh(nosq+1),no,z_0,beta(1),no)
 
-! alpha = -(Z*S01-H01)*t0
-#ifdef USE_GEMM3M
-       call zgemm3m( &
-#else
-       call zgemm( &
-#endif
-            'N','N',no,no,no,z_1,rh1(1),no,rh(1),no,z_0,alpha,no)
-! beta  = -(Z*S10-H10)*t0 ??
-#ifdef USE_GEMM3M
-       call zgemm3m( &
-#else
-       call zgemm( &
-#endif
-            'N','N',no,no,no,z_1,rh1(nosq+1),no,rh(nosq+1),no,z_0,beta,no)
+      ! gb = gb + [ba    = (Z*S10-H10)*t0b]
+      call GEMM ('N','N',no,no,no,z_m1,rh1(nosq+1),no,rh(1),no,z_1,GB(1),no)
 
-! gb = gb + [ba    = (Z*S10-H10)*t0b]
-#ifdef USE_GEMM3M
-       call zgemm3m( &
-#else
-       call zgemm( &
-#endif
-            'N','N',no,no,no,z_m1,rh1(nosq+1),no,rh(1),no,z_1,GB,no)
+      ! ab    = (Z*S01-H01)*t0
+      call GEMM ('N','N',no,no,no,z_m1,rh1(1),no,rh(nosq+1),no,z_0,w(1),no)
 
-! ab    = (Z*S01-H01)*t0
-#ifdef USE_GEMM3M
-       call zgemm3m( &
-#else
-       call zgemm( &
-#endif
-            'N','N',no,no,no,z_m1,rh1(1),no,rh(nosq+1),no,z_0,w,no)
+      call zaxpy(nosq, z_1, w(1), 1, GB(1), 1)
+      call zaxpy(nosq, z_1, w(1), 1, GS(1), 1)
 
-       ro = -1._dp
-!$OMP parallel default(shared), private(i)
-!$OMP do
-       do i = 1 , nosq
-          GB(i) = GB(i) + w(i)
-       end do
-!$OMP end do nowait
-!$OMP do
-       do i = 1 , nosq
-          GS(i) = GS(i) + w(i)
-       end do
-!$OMP end do nowait
-!$OMP do reduction(max:ro)
-       do i = 1 , nosq
-          ! update the criteria
-          ro = max(ro,abs(w(i)))
-       end do
-!$OMP end do nowait
-!$OMP end parallel
+      ro = abs(w(1))
+      do i = 2 , nosq
+        ! update the criteria
+        ro = max(ro, abs(w(i)))
+      end do
 
     end do
 
     if ( present(final_invert) ) then
-       if ( final_invert ) then
-          ! Invert to get the Surface Green function
-          call mat_invert(GS,w,no,MI_IN_PLACE_LAPACK, ierr=ierr)
-       end if
+      if ( final_invert ) then
+        ! Invert to get the Surface Green function
+        call mat_invert(GS,w,no,MI_IN_PLACE_LAPACK, ierr=ierr)
+      end if
     end if
 
     if ( ierr /= 0 ) then
-       write(*,*) 'ERROR: SSR_sGreen_NoDOS GS MATRIX INVERSION FAILED'
-       write(*,*) 'ERROR: LAPACK INFO = ',ierr
+      write(*,*) 'ERROR: SSR_sGreen_NoDOS GS MATRIX INVERSION FAILED'
+      write(*,*) 'ERROR: LAPACK INFO = ',ierr
     end if
 
 !    call timer('ts_GS',2)
@@ -744,17 +616,17 @@ contains
       i = 2 * nosq
 
       if ( as_first ) then
-         rh1 => zwork(i+1:i+2*nosq) 
-         i = i + 2*nosq
-         alpha => zwork(i+1:i+nosq) 
-         i = i + nosq
-         beta => zwork(i+1:i+nosq) 
+        rh1 => zwork(i+1:i+2*nosq) 
+        i = i + 2*nosq
+        alpha => zwork(i+1:i+nosq) 
+        i = i + nosq
+        beta => zwork(i+1:i+nosq) 
       else
-         alpha => zwork(i+1:i+nosq) 
-         i = i + nosq
-         beta => zwork(i+1:i+nosq) 
-         i = i + nosq
-         rh1 => zwork(i+1:i+2*nosq) 
+        alpha => zwork(i+1:i+nosq) 
+        i = i + nosq
+        beta => zwork(i+1:i+nosq) 
+        i = i + nosq
+        rh1 => zwork(i+1:i+2*nosq) 
       end if
       as_first = .not. as_first
 
@@ -770,82 +642,54 @@ contains
     use precision,  only : dp
     use parallel, only: IONode
     use units,      only : eV
+    use byte_count_m, only: byte_count_t
 
-    use m_ts_electype
+    use ts_electrode_m
 
     ! Input variables
-    type(Elec), intent(in) :: El
+    type(electrode_t), intent(in) :: El
     ! Number of energy-points
     integer :: NE
     ! Number of k-points
     integer :: nkpt
 
     ! Local variables
-    integer :: i, j
-    real(dp) :: b
+    type(byte_count_t) :: mem
+    character(len=32) :: c_tmp
+    integer :: no
     ! Whether the electrode is pre-expanded...
     integer :: nq
-    logical :: pre_expand
 
     if ( .not. IONode ) return
 
-    nq = El%Bloch%size()
-    pre_expand = El%pre_expand > 0 .and. nq > 1
 
-    write(*,'(/,2a)') 'Calculating all surface Green functions for: ',trim(name(El))
-    write(*,'(a,f14.5,1x,a)') &
-         ' Fermi level shift in electrode (chemical potential) : ',El%mu%mu/eV,' eV'
-
-    ! Show the number of used atoms and orbitals
-    write(*,'(a,i6,'' / '',i6)') ' Atoms available    / used atoms   : ', &
-         El%na_u,El%na_used
-    write(*,'(a,i6,'' / '',i6)') ' Orbitals available / used orbitals: ', &
-         El%no_u,El%no_used
-
-    write(*,'(1x,a,i0)') 'Total self-energy calculations: ',nq*NE*nkpt
-
-    ! We show them in units of reciprocal lattice vectors
-    do i = 1 , 3
-       if ( El%Bloch%B(i) > 1 ) then
-          write(*,'(3(a,i0),a)') ' Bloch expansion k-points in A_',i, &
-               ' direction [b_',i,'] (w=1/',nq,'):'
-          if ( El%Bloch%B(i) <= 3 ) then
-             write(*,'(5x)',advance='no')
-             do j = 1 , El%Bloch%B(i) - 1
-                write(*,'(2(i0,a))',advance='no') j-1,'/',El%Bloch%B(i),', '
-             end do
-             write(*,'(i0,a,i0)') El%Bloch%B(i)-1,'/',El%Bloch%B(i)
-          else
-             write(*,'(5x,6(i0,a))') 0,'/',El%Bloch%B(i),', ',1,'/',El%Bloch%B(i),', ... , ', &
-                  El%Bloch%B(i)-1,'/',El%Bloch%B(i)
-          end if
-       end if
-    end do
-
+    write(*,'(/,2a)') 'Calculating surface Green functions for: ',trim(El%name)
     write(*,'(2a)') ' Saving surface Green functions in: ',trim(El%GFfile)
 
-    if ( pre_expand .and. El%pre_expand == 1 ) then
-       ! only the SSG is expanded
-       b = El%nspin * nkpt * ( 2 + NE * nq )
+    call mem%reset()
+
+    ! All this is basically nothing, but why not have it...
+    call mem%add(4, 12) ! basic integers
+    call mem%add(4, El%no_used + 1) ! lasto
+    call mem%add(8, 3 + El%na_used, 3) ! cell and coordinates
+    call mem%add(8, nkpt, 4) ! k + weight
+    call mem%add(16, NE) ! energy-points
+
+    nq = El%Bloch%size()
+    if ( El%pre_expand > 0 ) then
+      no = nq
     else
-       b = El%nspin * nkpt * ( 2 + NE ) * nq
+      no = 1
+    end if
+    if ( El%pre_expand == 1 ) then
+      ! only the SSG is expanded
+      call mem%add(16, El%no_used ** 2, El%nspin, nkpt, 2 + NE * nq, no)
+    else
+      call mem%add(16, El%no_used ** 2, El%nspin, nkpt, 2 + NE, nq, no)
     end if
 
-    ! Correct estimated file-size for fully expanded
-    if ( pre_expand ) b = b * nq
-
-    ! to complex double precision
-    b = b * El%no_used ** 2 * 16._dp
-
-    ! to MB
-    b = b / 1024._dp ** 2
-
-    if ( b > 2001._dp ) then
-       b = b / 1024._dp
-       write(*,'(a,f10.3,a)') ' Estimated file size: ',b,' GB'
-    else
-       write(*,'(a,f10.3,a)') ' Estimated file size: ',b,' MB'
-    end if
+    call mem%get_string(c_tmp)
+    write(*,'(2a)') ' Estimated file size: ', trim(c_tmp)
 
   end subroutine print_Elec_Green
 
@@ -875,10 +719,10 @@ contains
     use mpi_siesta, only : MPI_double_complex
     use mpi_siesta, only : MPI_double_precision
 #endif
-    use m_ts_electype
+    use ts_electrode_m
     use m_mat_invert
 
-    use m_ts_elec_se, only : update_UC_expansion_A
+    use m_ts_elec_se, only : update_UC_expansion_A1D
 
     use class_Sparsity
     use class_dSpData1D
@@ -889,7 +733,7 @@ contains
 ! ***********************
 ! * INPUT variables     *
 ! ***********************
-    type(Elec), intent(inout) :: El  ! The electrode 
+    type(electrode_t), intent(inout) :: El  ! The electrode
     integer,  intent(in)      :: nkpnt ! Number of k-points
     real(dp), intent(in)      :: kpoint(3,nkpnt) ! k-points
     real(dp), intent(in)      :: kweight(nkpnt) ! weights of kpoints
@@ -900,8 +744,8 @@ contains
 ! ***********************
 ! * OUTPUT variables    *
 ! ***********************
-    real(dp), intent(out), optional :: DOS(El%no_u,NEn,El%nspin)
-    real(dp), intent(out), optional :: T(NEn,El%nspin) 
+    real(dp), intent(inout), optional :: DOS(El%no_u,NEn,El%nspin)
+    real(dp), intent(inout), optional :: T(NEn,El%nspin)
 
 ! ***********************
 ! * LOCAL variables     *
@@ -991,7 +835,17 @@ contains
     ! Calculate offsets
     n_s = size(El%isc_off,dim=2)
     allocate(sc_off(3,n_s))
-    sc_off(:,:) = matmul(El%cell,El%isc_off)
+    do i = 1, n_s
+      sc_off(1,i) = El%cell(1,1) * El%isc_off(1,i) + &
+          El%cell(1,2) * El%isc_off(2,i) + &
+          El%cell(1,3) * El%isc_off(3,i)
+      sc_off(2,i) = El%cell(2,1) * El%isc_off(1,i) + &
+          El%cell(2,2) * El%isc_off(2,i) + &
+          El%cell(2,3) * El%isc_off(3,i)
+      sc_off(3,i) = El%cell(3,1) * El%isc_off(1,i) + &
+          El%cell(3,2) * El%isc_off(2,i) + &
+          El%cell(3,3) * El%isc_off(3,i)
+    end do
 
     ! Print information on file-size and electrode type.
     call print_Elec_Green(El, NEn, nkpnt)
@@ -1045,9 +899,7 @@ contains
     ! Reset bulk DOS
     if ( CalcDOS ) then
        allocate(lDOS(nuo_E))
-!$OMP parallel workshare default(shared)
        DOS(:,:,:) = 0._dp
-!$OMP end parallel workshare
     end if
     if ( CalcT ) then
        T = 0._dp
@@ -1106,13 +958,11 @@ contains
        
        if ( itt_stepped(it2,1) ) then
           ! Number of iterations
-!$OMP parallel workshare default(shared)
           iters(:,:,:,:) = 0
-!$OMP end parallel workshare
        end if
        
        ! Init kpoint, in reciprocal vector units ( from CONTACT ucell)
-       call Elec_kpt(El,ucell,kpoint(:,ikpt),bkpt, opt = 2)
+       call El%kpoint_convert(ucell,kpoint(:,ikpt),bkpt, opt = 2)
        ! We need to save the k-point for the "expanded" super-cell
        El%bkpt_cur = bkpt
        
@@ -1126,9 +976,9 @@ contains
           S01 => zHS((3*nq+iqpt-1)*nS+1:(3*nq+iqpt)*nS)
 
           ! init qpoint in reciprocal lattice vectors
-          kpt = bkpt(:) + q_exp(El,iqpt)
+          kpt(:) = bkpt(:) + El%unfold_k(iqpt)
           ! Convert to 1/Bohr
-          call kpoint_convert(rcell,kpt,kq,-2)
+          call kpoint_convert(rcell,kpt(1),kq(1),-2)
 
           ! Setup the transfer matrix and the intra cell at the k-point and q-point
           ! Calculate transfer matrices @Ef (including the chemical potential)
@@ -1251,7 +1101,7 @@ contains
 
              if ( pre_expand ) then
                 ! Expand this energy-point
-                call update_UC_expansion_A(nuou_E,no_X,El,nq, &
+                call update_UC_expansion_A1D(nuou_E,no_X,El,nq, &
                      El%na_used,El%lasto_used,Gq,X)
                 if ( reduce_size ) then
                    call mat_invert(X(1:n_X),zwork(1:n_X),&
@@ -1285,19 +1135,20 @@ contains
 #ifdef MPI
           call MPI_Reduce(iters(1,1,1,1), iters(1,1,1,2), nq*NEn*nkpnt, &
                MPI_Integer, MPI_Sum, 0, MPI_Comm_World, MPIerror)
+!$OMP parallel default(shared), private(j,i,iqpt)
 #else
-!$OMP parallel workshare
+!$OMP parallel default(shared), private(j,i,iqpt)
+
           iters(:,:,:,2) = iters(:,:,:,1)
-!$OMP end parallel workshare
 #endif
           if ( IONode ) then
-!$OMP parallel workshare default(shared)
              i_mean = sum(iters(:,:,:,2)) / real(nq*NEn*nkpnt,dp)
-!$OMP end parallel workshare
+
+!$OMP single
              i_std = 0._dp
-!$OMP parallel do default(shared), &
-!$OMP&private(j,i,iqpt), collapse(3), &
-!$OMP&reduction(+:i_std)
+!$OMP end single ! keep barrier
+
+!$OMP do reduction(+:i_std)
              do j = 1 , nkpnt
              do i = 1 , NEn
              do iqpt = 1 , nq
@@ -1305,15 +1156,19 @@ contains
              end do
              end do
              end do
-!$OMP end parallel do
+!$OMP end do
+
+!$OMP master
              i_std = sqrt(i_std/real(NEn*nq*nkpnt,dp))
              ! TODO if new surface-Green function scheme is implemented, fix here
              write(*,'(1x,a,f10.4,'' / '',f10.4)') 'Lopez Sancho, Lopez Sancho & Rubio: &
                   &Mean/std iterations: ', i_mean             , i_std
              write(*,'(1x,a,i10,'' / '',i10)')     'Lopez Sancho, Lopez Sancho & Rubio: &
                   &Min/Max iterations : ', minval(iters(:,:,:,2)) , maxval(iters(:,:,:,2))
+!$OMP end master
              
           end if
+!$OMP end parallel
        end if
 
     end do
@@ -1355,6 +1210,8 @@ contains
     deallocate(zwork)
     call memory('D','Z',size(zHS),'create_green')
     deallocate(zHS)
+
+    deallocate(sc_off)
 
     if ( CalcDOS ) deallocate(lDOS)
 
@@ -1441,7 +1298,7 @@ contains
       allocate(kE(3,nkpnt))
       do i = 1 , nkpnt
          ! Store the k-points in units of reciprocal lattice
-         call Elec_kpt(El,ucell,kpoint(:,i),kE(:,i), opt = 2)
+         call El%kpoint_convert(ucell,kpoint(:,i),kE(:,i), opt = 2)
       end do
       write(uGF) kE, kweight
       deallocate(kE)
@@ -1460,10 +1317,10 @@ contains
       write(uGF) ikpt, 1, ce(1) ! k-point and energy point
       if ( reduce_size ) then
          if ( pre_expand .and. El%pre_expand > 1 ) then
-            call update_UC_expansion_A(nuou_E,no_X,El,nq,&
+            call update_UC_expansion_A1D(nuou_E,no_X,El,nq,&
                  El%na_used,El%lasto_used,Hq,X)
             write(uGF) X
-            call update_UC_expansion_A(nuou_E,no_X,El,nq,&
+            call update_UC_expansion_A1D(nuou_E,no_X,El,nq,&
                  El%na_used,El%lasto_used,Sq,X)
             write(uGF) X
          else
@@ -1474,10 +1331,10 @@ contains
          H00 => zHS(      1:nq*nS  )
          S00 => zHS(nq*nS+1:nq*nS*2)
          if ( pre_expand .and. El%pre_expand > 1 ) then
-            call update_UC_expansion_A(nuo_E,no_X,El,nq, &
+            call update_UC_expansion_A1D(nuo_E,no_X,El,nq, &
                  El%na_used,El%lasto_used,H00,X)
             write(uGF) X
-            call update_UC_expansion_A(nuo_E,no_X,El,nq,&
+            call update_UC_expansion_A1D(nuo_E,no_X,El,nq,&
                  El%na_used,El%lasto_used,S00,X)
             write(uGF) X
          else
@@ -1523,80 +1380,18 @@ contains
   end subroutine create_Green
 
 
-  subroutine init_Electrode_HS(El)
-    use fdf, only: fdf_get
-#ifdef MPI
-    use mpi_siesta
-#endif
-    use class_Sparsity
-    use class_dSpData1D
-    use class_dSpData2D
-    use m_ts_electype
-
-    type(Elec), intent(inout) :: El
-#ifdef MPI
-    integer :: error
-#endif
-    logical :: neglect_conn
-    
-    ! Read-in and create the corresponding transfer-matrices
-    call delete(El) ! ensure clean electrode
-    call read_Elec(El,Bcast=.true.)
-
-    if ( .not. associated(El%isc_off) ) then
-       call die('An electrode file needs to be a non-Gamma calculation. &
-            &Ensure good periodicity in the T-direction.')
-    end if
-
-    ! Create the default sparsity patterns in the sub-spaces needed
-    ! for the self-energy calculations
-    ! This is also important to create before running
-    ! check_connectivity because of used-atoms possibly being set.
-    call create_sp2sp01(El)
-
-    ! print out the precision of the electrode (whether it extends
-    ! beyond first principal layer)
-    if ( check_connectivity(El) ) then
-       neglect_conn = .true.
-    else
-       neglect_conn = fdf_get('TS.Elecs.Neglect.Principal', .false.)
-#ifdef TBTRANS
-       neglect_conn = fdf_get('TBT.Elecs.Neglect.Principal', neglect_conn)
-#endif
-    end if
-    
-#ifdef MPI
-    call MPI_Barrier(MPI_Comm_World,error)
-#endif
-    if ( .not. neglect_conn ) then
-       call die('Electrode connectivity is not perfect, &
-            &refer to the manual for achieving a perfect electrode.')
-    end if
-    
-    ! Clean-up, we will not need these!
-    ! we should not be very memory hungry now, but just in case...
-    call delete(El%H)
-    call delete(El%S)
-   
-    ! We do not accept onlyS files
-    if ( .not. initialized(El%H00) ) then
-       call die('An electrode file must contain the Hamiltonian')
-    end if
-
-    call delete(El%sp)
-
-  end subroutine init_Electrode_HS
-
-
 !**********
 ! Create the Hamiltonian for the electrode as well
 ! as creating the transfer matrix.
 !**********
   subroutine set_HS_Transfer_1d(ispin,El,n_s,sc_off,kq, &
-       no,Hk,Sk,Hk_T,Sk_T)
+      no,Hk,Sk,Hk_T,Sk_T)
+
+    use iso_c_binding
+
     use sys, only : die
     use precision, only : dp
-    use m_ts_electype
+    use ts_electrode_m
     use geom_helper, only : ucorb
     use class_Sparsity
     use class_dSpData1D
@@ -1606,17 +1401,24 @@ contains
 ! * INPUT variables     *
 ! ***********************
     integer, intent(in)    :: ispin, no
-    type(Elec), intent(inout) :: El
+    type(electrode_t), intent(inout) :: El
     integer, intent(in) :: n_s
     real(dp), intent(in) :: sc_off(3,0:n_s-1)
     real(dp), intent(in) :: kq(3)   ! k + q-point in [1/Bohr]
 ! ***********************
 ! * OUTPUT variables    *
 ! ***********************
-    complex(dp), dimension(no**2) :: Hk,Sk,Hk_T,Sk_T
+    complex(dp), dimension(:), target, intent(inout) :: Hk,Sk,Hk_T,Sk_T
+
+    complex(dp), dimension(:,:), pointer :: Hk2D,Sk2D,Hk_T2D,Sk_T2D
+
+    call c_f_pointer(c_loc(Hk), Hk2D, [no, no])
+    call c_f_pointer(c_loc(Sk), Sk2D, [no, no])
+    call c_f_pointer(c_loc(Hk_T), Hk_T2D, [no, no])
+    call c_f_pointer(c_loc(Sk_T), Sk_T2D, [no, no])
 
     call set_HS_Transfer_2d(ispin,El,n_s,sc_off,kq, &
-         no,Hk,Sk,Hk_T,Sk_T)
+        no,Hk2D,Sk2D,Hk_T2D,Sk_T2D)
     
   end subroutine set_HS_Transfer_1d
   
@@ -1624,7 +1426,7 @@ contains
        no,Hk,Sk,Hk_T,Sk_T)
     use sys, only : die
     use precision, only : dp
-    use m_ts_electype
+    use ts_electrode_m
     use geom_helper, only : ucorb
     use class_Sparsity
     use class_dSpData1D
@@ -1634,14 +1436,14 @@ contains
 ! * INPUT variables     *
 ! ***********************
     integer, intent(in) :: ispin, no
-    type(Elec), intent(inout) :: El
+    type(electrode_t), intent(inout) :: El
     integer, intent(in) :: n_s
     real(dp), intent(in) :: sc_off(3,0:n_s-1)
-    real(dp), intent(in) :: kq(3)   ! k + q-point in [1/Bohr]
+    real(dp), intent(in) :: kq(3) ! k + q-point in [1/Bohr]
 ! ***********************
 ! * OUTPUT variables    *
 ! ***********************
-    complex(dp), dimension(no,no) :: Hk, Sk, Hk_T, Sk_T
+    complex(dp), dimension(:,:) :: Hk, Sk, Hk_T, Sk_T
 
 ! ***********************
 ! * LOCAL variables     *
@@ -1673,73 +1475,46 @@ contains
 
     ! The algorithm outside should take care of the
     ! nullification of the k-point in the semi-infinite direction
-    do i = 0 , n_s - 1
-       ph(i) = exp(cmplx(0._dp, sum(kq*sc_off(:,i)),kind=dp) )
+    ! While the Siesta convention matches xijg = R(j) - R(i)
+    ! and this means ij -> (i,j) we cannot simply take the negative phase here.
+    ! This is because the transfer matrix (H01) is not symmetric
+    ! and therefore we *must* setup the Hamiltonian in the
+    ! correct order (not relying on symmetries)
+    do is = 0 , n_s - 1
+       ph(is) = exp(cmplx(0._dp, -dot_product(kq,sc_off(:,is)),kind=dp))
     end do
 
-!$OMP parallel default(shared), private(i,j,io,jo,ind,is)
-
     ! Initialize arrays
-!$OMP workshare
-    Hk = z_0
-    Sk = z_0
-    Hk_T = z_0
-    Sk_T = z_0
-!$OMP end workshare
+    Hk(:,:) = z_0
+    Sk(:,:) = z_0
+    Hk_T(:,:) = z_0
+    Sk_T(:,:) = z_0
+
+!$OMP parallel default(shared), private(io,jo,ind,is)
 
     ! We will not have any data-race condition here
 !$OMP do 
     do io = 1 , no
 
        ! Create 00
-       do j = 1 , ncol00(io)
-          ind = l_ptr00(io) + j
+       do ind = l_ptr00(io) + 1 , l_ptr00(io) + ncol00(io)
           jo = ucorb(l_col00(ind),no)
           is = (l_col00(ind)-1) / no
           
-          Hk(io,jo) = Hk(io,jo) + H00(ind,ispin) * ph(is)
-          Sk(io,jo) = Sk(io,jo) + S00(ind)       * ph(is)
-       enddo
+          Hk(jo,io) = Hk(jo,io) + (H00(ind,ispin) - Ef * S00(ind)) * ph(is)
+          Sk(jo,io) = Sk(jo,io) + S00(ind) * ph(is)
+       end do
 
        ! Create 01
-       do j = 1 , ncol01(io)
-          ind = l_ptr01(io) + j
+       do ind = l_ptr01(io) + 1 , l_ptr01(io) + ncol01(io)
           jo = ucorb(l_col01(ind),no)
           is = (l_col01(ind)-1) / no
 
-          Hk_T(io,jo) = Hk_T(io,jo) + H01(ind,ispin) * ph(is)
-          Sk_T(io,jo) = Sk_T(io,jo) + S01(ind)       * ph(is)
+          Hk_T(jo,io) = Hk_T(jo,io) + (H01(ind,ispin) - Ef * S01(ind)) * ph(is)
+          Sk_T(jo,io) = Sk_T(jo,io) + S01(ind) * ph(is)
           
        end do
 
-    end do
-!$OMP end do
-
-    ! Symmetrize 00 and make EF the energy-zero
-    ! We will not have any data-race condition here
-!$OMP do
-    do io = 1 , no
-       do jo = 1 , io - 1
-
-          Sk(io,jo) = 0.5_dp*( Sk(io,jo) + conjg(Sk(jo,io)) )
-          Sk(jo,io) = conjg(Sk(io,jo))
-
-          Hk(io,jo) = 0.5_dp*( Hk(io,jo) + conjg(Hk(jo,io)) ) - &
-               Ef * Sk(io,jo)
-          Hk(jo,io) = conjg(Hk(io,jo))
-
-          ! Transfer matrix is not symmetric, so do not symmetrize
-          Hk_T(jo,io) = Hk_T(jo,io) - Ef * Sk_T(jo,io)
-          Hk_T(io,jo) = Hk_T(io,jo) - Ef * Sk_T(io,jo)
-
-       end do
-       
-       Sk(io,io) = real(Sk(io,io),dp)
-       Hk(io,io) = real(Hk(io,io),dp) - Ef * Sk(io,io)
-       
-       ! Transfer matrix
-       Hk_T(io,io) = Hk_T(io,io) - Ef * Sk_T(io,io)
-       
     end do
 !$OMP end do nowait
 
@@ -1752,9 +1527,10 @@ contains
   end subroutine set_HS_Transfer_2d
 
   subroutine calc_next_GS_Elec(El,ispin,bkpt,Z,nzwork,in_zwork,DOS,T)
+    use iso_c_binding
     use precision,  only : dp
 
-    use m_ts_electype
+    use ts_electrode_m
     use m_mat_invert
 
     use class_Sparsity
@@ -1766,7 +1542,7 @@ contains
     ! ***********************
     ! * INPUT variables     *
     ! ***********************
-    type(Elec), intent(inout) :: El
+    type(electrode_t), intent(inout) :: El
     integer, intent(in) :: ispin
     ! the k-point in reciprocal units of the electrode
     ! also with / Rep
@@ -1776,7 +1552,7 @@ contains
     complex(dp), intent(inout), target :: in_zwork(nzwork)
     ! Possibly the bulk density of states from the electrode
     ! If the DOS, also BULK transmission
-    real(dp), intent(out), optional :: DOS(:), T
+    real(dp), intent(inout), optional :: DOS(:), T
 
     ! ***********************
     ! * LOCAL variables     *
@@ -1790,6 +1566,7 @@ contains
 
     ! Electrode transfer and hamiltonian matrix
     complex(dp), pointer :: H00(:), H01(:), S00(:), S01(:)
+
     complex(dp), pointer :: zwork(:)
     complex(dp), pointer :: zHS(:) => null()
     real(dp), allocatable :: sc_off(:,:)
@@ -1817,14 +1594,14 @@ contains
     ! constants for this electrode
     nuo_E  = El%no_u
     nS     = nuo_E ** 2
-    nuou_E = El%no_used
+    nuou_E = El%used_orbitals()
     nuS    = nuou_E ** 2
     ! create expansion k-points
     nq     = El%Bloch%size()
     ! We also need to invert to get the contribution in the
     ! reduced region
     reduce_size = nuo_E /= nuou_E
-    nuouT_E = TotUsedOrbs(El)
+    nuouT_E = El%device_orbitals()
 
     if ( calc_DOS ) then
        if ( nuo_E > size(DOS) ) &
@@ -1836,7 +1613,17 @@ contains
 
     n_s = size(El%isc_off,dim=2)
     allocate(sc_off(3,n_s))
-    sc_off(:,:) = matmul(El%cell,El%isc_off)
+    do i = 1, n_s
+      sc_off(1,i) = El%cell(1,1) * El%isc_off(1,i) + &
+          El%cell(1,2) * El%isc_off(2,i) + &
+          El%cell(1,3) * El%isc_off(3,i)
+      sc_off(2,i) = El%cell(2,1) * El%isc_off(1,i) + &
+          El%cell(2,2) * El%isc_off(2,i) + &
+          El%cell(2,3) * El%isc_off(3,i)
+      sc_off(3,i) = El%cell(3,1) * El%isc_off(1,i) + &
+          El%cell(3,2) * El%isc_off(2,i) + &
+          El%cell(3,3) * El%isc_off(3,i)
+    end do
     
     ! whether we already have the H and S set correctly, 
     ! update accordingly, it will save a bit of time, but not much
@@ -1947,21 +1734,27 @@ contains
     q_loop: do iq = 1 , nq
 
        ! init qpoint in reciprocal lattice vectors
-       kpt(:) = bkpt(:) + q_exp(El,iq)
+       kpt(:) = bkpt(:) + El%unfold_k(iq)
       
        ! Convert to 1/Bohr
-       call kpoint_convert(rcell,kpt,kq,-2)
+       call kpoint_convert(rcell,kpt(1),kq(1),-2)
 
        ! Calculate transfer matrices @Ef (including the chemical potential)
        call set_HS_Transfer(ispin, El, n_s,sc_off, kq, &
             nuo_E, H00,S00,H01,S01)
        
        if ( .not. same_k ) then
-          ! we only need to copy over the data if we don't already have it calculated
+         if ( reduce_size ) then
+           ! we only need to copy over the data if we don't already have it calculated
 !$OMP parallel default(shared)
-          call copy_over(is_left,nuo_E,H00,nuou_E,El%HA(:,:,iq),off)
-          call copy_over(is_left,nuo_E,S00,nuou_E,El%SA(:,:,iq),off)
+           call copy_over(is_left,nuo_E,H00,nuou_E,El%HA(:,:,iq),off)
+           call copy_over(is_left,nuo_E,S00,nuou_E,El%SA(:,:,iq),off)
 !$OMP end parallel
+         else
+           ! means that it is the full thing
+           call zcopy(nuS, H00(1), 1, El%HA(1,1,iq), 1)
+           call zcopy(nuS, S00(1), 1, El%SA(1,1,iq), 1)
+         end if
        end if
 
        if ( .not. reduce_size ) then
@@ -2024,14 +1817,14 @@ contains
       logical, intent(in) :: is_left
       integer, intent(in) :: fS, tS, off
       complex(dp), intent(in) :: from(fS,fS)
-      complex(dp), intent(out) :: to(tS,tS)
+      complex(dp), intent(inout) :: to(tS,tS)
 
       integer :: i, j, ioff
 
       if ( is_left ) then
          ! Left, we use the last orbitals
          ioff = 1 - off ! ioff is private in OMP orphaned routines
-!$OMP do private(j,i), collapse(2)
+!$OMP do private(j,i)
          do j = off , fS
             do i = off , fS
                to(ioff+i,ioff+j) = from(i,j)
@@ -2040,7 +1833,7 @@ contains
 !$OMP end do nowait
       else
          ! Right, the first orbitals
-!$OMP do private(j,i), collapse(2)
+!$OMP do private(j,i)
          do j = 1 , tS
             do i = 1 , tS
                to(i,j) = from(i,j)
@@ -2052,5 +1845,7 @@ contains
     end subroutine copy_over
 
   end subroutine calc_next_GS_Elec
+
+#undef GEMM
 
 end module m_ts_electrode

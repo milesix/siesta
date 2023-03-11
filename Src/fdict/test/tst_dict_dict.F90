@@ -6,15 +6,15 @@ program tests
 
   real(dp) :: va(400,400) ! roughly 1.22 MB
   real(dp) :: vb(400,400) ! roughly 1.22 MB
-  type(dict) :: dic1, dic2, dic_va
-  type(var) :: av
+  type(dictionary_t) :: dic1, dic2, dic_va
+  type(variable_t) :: av
 
   ! Create dictionary
   va = 1._dp
 
   ! Copying values
   dic_va = ('va'.kv.va)
-  
+
   ! Create dict of dict
   ! Insert dictionary reference into dict
   dic1 = ('dict'.kvp.dic_va)

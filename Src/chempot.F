@@ -17,7 +17,7 @@
         ! Formerly in numbvect
         integer   p, nb
         real(dp)    qtot
-        real(dp), dimension(:), pointer ::   c(:), rr(:,:)
+        real(dp), pointer ::   c(:), rr(:,:)
 
 
         ! Formerly in common

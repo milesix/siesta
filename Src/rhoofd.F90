@@ -72,7 +72,7 @@ subroutine rhoofd( no, np, maxnd, numd, listdptr, listd, nspin, &
        isa(*), listdptr(nuo), listd(maxnd)
   real(dp), intent(in) :: Dscf(:,:)
   real(grid_p), intent(out) :: rhoscf(nsp,np,nspin)
-  external                  :: memory, timer
+  external                  :: timer
 !     Internal variables and arrays
   integer, parameter :: minloc = 1000 ! Min buffer size for local copy of Dscf
   integer, parameter :: maxoa  = 100  ! Max # of orbitals per atom
@@ -294,7 +294,7 @@ subroutine rhoofd( no, np, maxnd, numd, listdptr, listd, nspin, &
                  r2sp = sum(dxsp**2)
                  if ( r2sp < r2cut(is) ) then
 !$OMP critical
-                    call all_phi( is, +1, dxsp, nphiloc, phia(:,isp) )
+                    call all_phi( is, +1, dxsp, maxoa, nphiloc, phia(:,isp) )
 !$OMP end critical
                  else
                     phia(:,isp) = 0.0_dp

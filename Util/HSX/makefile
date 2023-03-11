@@ -11,16 +11,17 @@
 .SUFFIXES: 
 .SUFFIXES: .f .F .o .a  .f90 .F90
 #
-VPATH:=$(shell pwd)/../../Src
-OBJDIR=Obj
-#
-all: hsx2hs hs2hsx
-#
-include ../../$(OBJDIR)/arch.make
-#
-# This is needed on some systems to avoid loading the parallel libraries, which
-# sometimes force running on queuing systems
-#
+TOPDIR=.
+MAIN_OBJDIR=.
+
+PROGS:= hsx2hs hs2hsx
+all: $(PROGS)
+
+VPATH=$(TOPDIR)/Util/HSX
+
+include $(MAIN_OBJDIR)/arch.make
+include $(MAIN_OBJDIR)/check_for_build_mk.mk
+
 FC_DEFAULT:=$(FC)
 FC_SERIAL?=$(FC_DEFAULT)
 FC:=$(FC_SERIAL)         # Make it non-recursive
@@ -38,12 +39,10 @@ hs2hsx: hsx_m.o hs2hsx.o
 clean: 
 	rm -f *.o hsx2hs hs2hsx *.o *.*d
 #
-
-
-
-
-
-
+install: $(PROGS)
+	cp -p $(PROGS) $(SIESTA_INSTALL_DIRECTORY)/bin
+	cp -p hsx_m.mod $(SIESTA_INSTALL_DIRECTORY)/include
+	cp -p hsx_m.o $(SIESTA_INSTALL_DIRECTORY)/lib
 
 
 

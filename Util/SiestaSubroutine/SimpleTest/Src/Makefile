@@ -10,16 +10,14 @@
 #
 # JM Soler, A Garcia, E Anglada
 #
-WORK_DIR=$(shell pwd)
-SIESTA_DIR=$(WORK_DIR)/../../../..
-SRC_DIR=$(SIESTA_DIR)/Src
-OBJDIR=Obj
-OBJ_DIR=$(SIESTA_DIR)/$(OBJDIR)
+#  FIXME: Pending appropriate treament of libfdict and libncdf
+#
+TOPDIR=.
+MAIN_OBJDIR=.
 #
 .SUFFIXES:
 .SUFFIXES: .c .f .F .o .a .f90 .F90
 #
-VPATH=$(SRC_DIR)
 #
 #  simple_pipes_serial     : Simple serial test with pipes version
 #  simple_pipes_parallel   : Simple parallel test with pipes version
@@ -28,15 +26,22 @@ VPATH=$(SRC_DIR)
 #  simple_mpi_serial       : Simple serial test with MPI version
 #  simple_mpi_parallel     : Simple parallel test with MPI version
 #
-# default: simple_pipes_serial simple_sockets_serial clean
-
+#  Do not move default list from here, or else a default target from arch.make can
+#  interfere
 all: default
-default: simple_pipes_serial simple_pipes_parallel \
-	simple_sockets_serial simple_sockets_parallel \
-	simple_mpi_serial simple_mpi_parallel
-
-ARCH_MAKE=$(OBJ_DIR)/arch.make
+#
+ARCH_MAKE=$(MAIN_OBJDIR)/arch.make
 include $(ARCH_MAKE)
+include $(MAIN_OBJDIR)/check_for_build_mk.mk
+#
+VPATH:=$(TOPDIR)/Util/SiestaSubroutine/SimpleTest/Src:$(TOPDIR)/Src
+#
+PROGS:= simple_pipes_serial simple_sockets_serial simple_mpi_serial
+ifeq ($(WITH_MPI),1)
+  PROGS+= simple_pipes_parallel simple_sockets_parallel simple_mpi_parallel
+  PROGS+= phonons
+endif
+default: $(PROGS)
 #
 # Uncomment the following line for debugging support
 #
@@ -49,20 +54,22 @@ FSIESTA_SOCKETS= posix_calls.o fsockets.o sockets.o fsiesta_sockets.o
 #
 # Siesta libraries used by MPI version
 #
-SIESTA_LIB=libSiestaForces.a
-FDF=libfdf.a
-XMLPARSER=libxmlparser.a
-WXML=libwxml.a
-XC=libSiestaXC.a
-MS=MatrixSwitch.a
-ALL_LIBS= $(SIESTA_LIB) $(FDF) $(WXML) $(XMLPARSER) $(MS) $(XC) \
-	$(MPI_INTERFACE) $(COMP_LIBS) $(LIBS)
+SIESTA_LIB=$(MAIN_OBJDIR)/Src/libSiestaForces.a
+
+XMLPARSER=$(XMLF90_LIBS)
+XC=$(GRIDXC_LIBS)
+PSML=$(PSML_LIBS)
 #
-libs_collected:
-	(cd $(OBJ_DIR) ; \
-	make libSiestaForces.a ; \
-	cp -f *.a *.mod $(WORK_DIR) )
-	touch libs_collected
+INCFLAGS+=$(NETCDF_INCFLAGS) $(FDF_INCFLAGS) $(MS_INCFLAGS) \
+          $(NCPS_INCFLAGS) $(PSOP_INCFLAGS) $(PSML_INCFLAGS) \
+          $(XMLF90_INCFLAGS) $(GRIDXC_INCFLAGS)
+INCFLAGS+= $(MPI_WRAPPERS_INCFLAGS)
+INCFLAGS+= $(DFTD3_INCFLAGS)
+INCFLAGS+= $(SIESTA_LIB_INCFLAGS)
+#
+ALL_LIBS= $(SIESTA_LIB) $(FDF_LIBS) $(XC) \
+	$(NCPS) $(PSML) $(XMLF90_LIBS) $(PSOP) $(MS) \
+	$(MPI_INTERFACE) $(COMP_LIBS) $(DFTD3_LIBS) $(LIBS)
 #
 # Pipes version
 #
@@ -85,20 +92,20 @@ simple_sockets_parallel: $(FSIESTA_SOCKETS) simple_parallel.o
 #
 # MPI version
 #
-phonons: libs_collected phonons.o 
-	$(FC) $(LDFLAGS) -o phonons phonons.o $(ALL_LIBS)
+phonons: $(SIESTA_LIB) phonons.o handlers.o
+	$(FC) $(LDFLAGS) -o phonons phonons.o handlers.o $(ALL_LIBS)
 #
-simple_mpi_serial: libs_collected simple_serial.o 
-	$(FC) $(LDFLAGS) -o simple_mpi_serial simple_serial.o $(ALL_LIBS)
+simple_mpi_serial: $(SIESTA_LIB) simple_serial.o  handlers.o
+	$(FC) $(LDFLAGS) -o simple_mpi_serial simple_serial.o handlers.o $(ALL_LIBS)
 #
-simple_mpi_parallel: libs_collected simple_mpi_parallel.o 
+simple_mpi_parallel: $(SIESTA_LIB) simple_mpi_parallel.o handlers.o
 	$(FC) $(LDFLAGS) -o simple_mpi_parallel \
-	      simple_mpi_parallel.o $(ALL_LIBS)
+	      simple_mpi_parallel.o handlers.o $(ALL_LIBS)
 #
 intermediate: 
 	@echo "==> Cleaning intermediate files ONLY"
 	@echo "==> Use make clean to remove executable files"
-	rm -f *.a *.o *.mod libs_collected
+	rm -f *.a *.o *.mod 
 #
 pristine: clean
 clean: 
@@ -107,5 +114,8 @@ clean:
 	rm -f simple_sockets_serial simple_sockets_parallel 
 	rm -f simple_mpi_serial simple_mpi_parallel
 	rm -f phonons
-	rm -f *.a *.o *.mod libs_collected
+	rm -f *.a *.o *.mod
+
+install: $(PROGS)
+	cp -p $(PROGS) $(SIESTA_INSTALL_DIRECTORY)/bin
 

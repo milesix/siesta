@@ -11,26 +11,28 @@
       CONTAINS
 
       subroutine final_H_f_stress( istep, iscf , SCFconverged )
-      use units, only: eV
+      use units, only: eV, Ang
 
       use files,        only : slabel
 #ifdef NCDF_4
       use siesta_options, only: write_cdf
 #endif
       use siesta_options, only: fixspin
-      use siesta_options, only: g2cut, savehs, temp, nmove
+      use siesta_options, only: savehs, write_coop
+      use siesta_options, only: g2cut, temp, nmove
       use siesta_options, only: recompute_H_after_scf
+      use siesta_options, only: want_dftd3_dispersion
       use sparse_matrices, only: numh, listh, listhptr
       use sparse_matrices, only: H, S, Dscf, Escf, maxnh, xijo
-      use sparse_matrices, only: H_ldau_2D, H_so_off_2D
+      use sparse_matrices, only: H_dftu_2D, H_so_off_2D, H_dftu_so_2D
       use class_dSpData1D, only: val
       use class_dSpData2D, only: val
       use class_zSpData2D, only: val
 
       use siesta_geom
-      use atomlist, only: no_u, iaorb, iphkb, qtot, indxuo, datm, 
+      use atomlist, only: no_u, iaorb, iphkb, qtot, indxuo, datm,
      &                    lastkb, no_s, rmaxv, indxua, iphorb, lasto,
-     &                    rmaxo, no_l
+     &                    rmaxo, no_l, iza
       use metaforce, only: lMetaForce, meta
       use molecularmechanics, only : twobody
       use m_nlefsm,     only: nlefsm, nlefsm_SO_off
@@ -39,12 +41,13 @@
       use m_naefs,      only: naefs
       use m_dnaefs,     only: dnaefs
       use m_grdsam,     only: grdsam
-      use ldau_specs,   only: switch_ldau     ! This variable determines whether
+      use dftu_specs,   only: switch_dftu     ! This variable determines whether
                                               !   the subroutine to compute the
                                               !   Hubbard terms should be called
                                               !   or not
-      use m_ldau,       only: hubbard_term    ! Subroutine that compute the
+      use m_dftu,       only: hubbard_term    ! Subroutine that compute the
                                               !   Hubbard terms
+      use m_dftu_so, only: dftu_so_hamil
       use m_stress
       use m_energies
       use m_ntm
@@ -53,7 +56,7 @@
       use m_dipol
       use m_forces,          only: fa
       use alloc, only: re_alloc, de_alloc
-      use m_hsx, only: write_hsx
+      use io_hsx_m, only: write_hsx
       use sys, only: die
       use fdf
 #ifdef MPI
@@ -67,16 +70,19 @@
 #endif
 #endif
       use siesta_options, only : idyn, ia1, write_tshs_history
-      use sparse_matrices, only: H_2D, S_1D
+      use sparse_matrices, only: H_2D, S_1D, xij_2D
       use files,        only : label_length
       use m_ts_options, only : TS_HS_save
       use ts_kpoint_scf_m, only: ts_kpoint_scf, ts_gamma_scf
       use m_ts_io,      only : ts_write_TSHS,fname_TSHS, FC_index
+#ifdef SIESTA__DFTD3
+      use grimme_dispersion_m, only : dftd3_energy_forces
+#endif
 
 #ifdef FINAL_CHECK_HS
       use m_compute_max_diff, only: compute_max_diff
 #endif
-      
+
       implicit none
 
       ! MD-step, SCF-step
@@ -89,9 +95,10 @@
       real(dp)              :: g2max
       ! To avoid overwriting the current Hamiltonian and S
       real(dp), pointer :: H_tmp(:,:) => null()
-      real(dp), pointer :: H_ldau(:,:), S_tmp(:)
+      real(dp), pointer :: S_tmp(:) => null()
       complex(dp), pointer  :: H_so_off(:,:)
-
+      real(dp), pointer :: H_dftu(:,:)
+      complex(dp), pointer  :: H_dftu_so(:,:)
 #ifdef FINAL_CHECK_HS
       real(dp) :: diff_H
 #endif
@@ -99,14 +106,14 @@
       real(dp)              :: stresstmp(3,3)
       real(dp), pointer     :: fatmp(:,:)
       real(dp)              :: buffer1
-      integer               :: MPIerror 
+      integer               :: MPIerror
 #endif
       character(len=label_length+13) :: fname
       integer :: io_istep, io_ia1
       logical :: not_using_auxcell, dummy_logical
 #ifdef CDF
 #ifdef NCDF_4
-      type(dict) :: dic_save
+      type(dictionary_t) :: dic_save
 #endif
 #endif
 
@@ -114,32 +121,22 @@
 !------------------------------------------------------------------------- BEGIN
 
       not_using_auxcell = (no_s == no_u)
-      
+
 !     Initialize Hamiltonian ........................................
       call re_alloc(H_tmp, 1,maxnh, 1, spin%H,
      $             'H_tmp','final_H_f_stress')
 
-!$OMP parallel default(shared)
+      H_tmp(:,:) = 0.0_dp
 
-!$OMP workshare
-      H_tmp = 0.0_dp
-!$OMP end workshare nowait
-
-!$OMP single
 !     Initialize forces and stress ...................
       nullify(fal)
       call re_alloc( fal, 1, 3, 1, na_u, 'fal', 'final_H_f_stress' )
-!$OMP end single
-      
-!$OMP workshare
+
       fa(1:3,1:na_u)   = 0.0_dp
       fal(1:3,1:na_u)  = 0.0_dp
       stress(1:3,1:3)  = 0.0_dp
       stressl(1:3,1:3) = 0.0_dp
-!$OMP end workshare nowait
 
-!$OMP end parallel
-      
 
 ! Neutral-atom: energy, forces and stress ............................
       ! These routines parallelize fa and stress over atoms
@@ -152,10 +149,10 @@
 !     Kinetic: energy, forces, stress and matrix elements .................
       ! Forces and stresses parallelized over orbitals
       call kinefsm( na_u, na_s, no_s, scell, xa, indxua, rmaxo,
-     &              maxnh, maxnh, lasto, iphorb, isa, 
-     &              numh, listhptr, listh, numh, listhptr, listh, 
+     &              maxnh, maxnh, lasto, iphorb, isa,
+     &              numh, listhptr, listh, numh, listhptr, listh,
      &              spin%spinor, Dscf, Ekin, fal, stressl, H_tmp,
-     &              matrix_elements_only=.false. ) 
+     &              matrix_elements_only=.false. )
 #ifdef MPI
 ! Global reduction of energy terms
       call globalize_sum(Ekin,buffer1)
@@ -166,14 +163,14 @@
 ! Non-local-pseudop: energy, forces, stress and matrix elements .......
 
       Eso = 0.0_dp
-      
+
       if ( .not.spin%SO_offsite ) then
       ! Forces and stresses parallelized over orbitals
-       call nlefsm( scell, na_u, na_s, isa, xa, indxua, 
-     &              maxnh, maxnh, lasto, lastkb, iphorb, iphKB, 
-     &              numh, listhptr, listh, numh, listhptr, listh, 
+       call nlefsm( scell, na_u, na_s, isa, xa, indxua,
+     &              maxnh, maxnh, lasto, lastkb, iphorb, iphKB,
+     &              numh, listhptr, listh, numh, listhptr, listh,
      &              spin%spinor, Dscf, Enl, fal, stressl, H_tmp,
-     &              matrix_elements_only=.false. ) 
+     &              matrix_elements_only=.false. )
 
 #ifdef MPI
 ! Global reduction of energy terms
@@ -204,34 +201,48 @@
          call spinorb(no_u,no_l,iaorb,iphorb,isa,indxuo,
      &        maxnh,numh,listhptr,listh,Dscf,H_tmp(:,3:),Eso)
       endif
-      
+
 !     Non-SCF part of total energy
       call update_E0()
 
 ! Hubbard term for LDA+U: energy, forces, stress and matrix elements ....
-      if( switch_ldau ) then
-         H_ldau => val(H_ldau_2D)
-         ! Forces and stresses parallelized over orbitals
-         call hubbard_term(scell, na_u, na_s, isa, xa, indxua,
-     .        maxnh, maxnh, lasto, iphorb, no_u, no_l, 
-     .        numh, listhptr, listh, numh, listhptr, listh,
-     .        spin%spinor, Dscf, Eldau, DEldau, H_ldau, 
-     .        fal, stressl, H_tmp, iscf,
-     .        matrix_elements_only=.false.)
+      if( switch_dftu ) then
+        if ( spin%SO ) then
+          H_dftu_so => val(H_dftu_so_2D)
+          ! Forces and stresses parallelized over orbitals
+          call dftu_so_hamil( H_dftu_so, fal, stressl )
 #ifdef MPI
-         ! Global reduction of energy terms
-         call globalize_sum(Eldau,buffer1)
-         Eldau = buffer1
-         ! DEldau should not be globalized as it 
-         ! is based on globalized occupations
+          ! Global reduction of energy terms
+          call globalize_sum(E_dftu_so,buffer1)
+          E_dftu_so = buffer1
+          ! Global reduction of E_correc_dc
+          call globalize_sum(E_correc_dc,buffer1)
+          E_correc_dc = buffer1
 #endif
-         Eldau = Eldau + DEldau
+        else
+          H_dftu => val(H_dftu_2D)
+          ! Forces and stresses parallelized over orbitals
+          call hubbard_term(scell, na_u, na_s, isa, xa, indxua,
+     .         maxnh, maxnh, lasto, iphorb, no_u, no_l,
+     .         numh, listhptr, listh, numh, listhptr, listh,
+     .         spin%spinor, Dscf, Edftu, DEdftu, H_dftu,
+     .         fal, stressl, H_tmp, iscf,
+     .         matrix_elements_only=.false.)
+#ifdef MPI
+          ! Global reduction of energy terms
+          call globalize_sum(Edftu,buffer1)
+          Edftu = buffer1
+          ! DEdftu should not be globalized as it
+          ! is based on globalized occupations
+#endif
+          Edftu = Edftu + DEdftu
+        endif
       endif
 ! ..................
 
 
 !     Non-local-pseudop: energy, forces, stress and matrix elements
-!     Add SCF contribution to energy and matrix elements 
+!     Add SCF contribution to energy and matrix elements
       g2max = g2cut
 !     Last call to dhscf and grid-cell sampling if requested
       ifa  = 1
@@ -240,7 +251,7 @@
       ! This will call dhscf with the final DM coming out of
       ! the scf cycle
 
-      call grdsam( spin%Grid, no_s, iaorb, iphorb, 
+      call grdsam( spin%Grid, no_s, iaorb, iphorb,
      &             no_l, no_u, na_u, na_s, isa, xa, indxua,
      &             ucell, ntm, ifa, istr, maxnh,
      &             maxnh, numh, listhptr, listh, Dscf, Datm, H_tmp,
@@ -250,7 +261,7 @@
       ! Orthonormalization forces
       call overfsm( na_u, na_s, no_l, no_s, scell, xa, indxua, rmaxo,
      &              lasto, iphorb, isa, maxnh, numh, listhptr, listh,
-     &              spin, Escf, fal, stressl ) 
+     &              spin, Escf, fal, stressl )
 
 !     Metadynamics forces
       if (lMetaForce) then
@@ -261,22 +272,38 @@
       call twobody( na_u, xa, isa, ucell, Emm,
      &              ifa=1, fa=fa, istr=1, stress=stress )
 
+      Evdw_d3 = 0.0_dp
+#ifdef SIESTA__DFTD3
+!     Add D3 corrections to forces and energy (if required) Note that
+!     only the master node does the computations.  Its 'fal' and
+!     'stressl' will be updated. The rest of the nodes will not add
+!     anything to these arrays.
+
+      if (want_dftd3_dispersion) then
+         if (IOnode) then
+            call dftd3_energy_forces( na_u, xa, iza, isa, ucell,
+     &                            Evdw_d3, fal, stressl )
+         endif
+#ifdef MPI
+         ! Global reduction of D3 energy terms
+         call globalize_sum( Evdw_d3, buffer1 )
+         Evdw_d3 = buffer1
+#endif
+      endif
+#endif
+
 #ifdef MPI
 !     Global reduction of forces and stresses
       nullify(fatmp)
       call re_alloc( fatmp, 1, 3, 1, na_u, 'fatmp', 'final_H_f_stress' )
       call globalize_sum(stressl(1:3,1:3),stresstmp(1:3,1:3))
       call globalize_sum( fal(1:3,1:na_u), fatmp(1:3,1:na_u) )
-!$OMP parallel workshare default(shared)
       stress(1:3,1:3) = stress(1:3,1:3) + stresstmp(1:3,1:3)
       fa(1:3,1:na_u) = fa(1:3,1:na_u) + fatmp(1:3,1:na_u)
-!$OMP end parallel workshare
       call de_alloc( fatmp, 'fatmp', 'final_H_f_stress' )
 #else
-!$OMP parallel workshare default(shared)
       stress(1:3,1:3) = stress(1:3,1:3) + stressl(1:3,1:3)
       fa(1:3,1:na_u) = fa(1:3,1:na_u) + fal(1:3,1:na_u)
-!$OMP end parallel workshare
 #endif
 
       ! If backward compatibility is requested, recover
@@ -318,10 +345,21 @@
 ! not the one computed (from DM_out) in this routine.
 ! This call could be moved to a more appropriate place
 !
-      if (savehs) then
-         call write_hsx( no_u, no_s, spin%H, indxuo,
-     &        maxnh, numh, listhptr, listh, H, S, Qtot,
-     &        Temp, xijo)
+      if ( savehs .or. write_coop ) then
+        if ( fixspin ) then
+! For fixed spin calculations we shift the Hamiltonian according
+! to the first spin such that we have a "common" E_F, after writing
+! we shift back again.
+          H_tmp => val(H_2D)
+          S_tmp => val(S_1D)
+          call daxpy(size(S_tmp),Efs(1)-Efs(2),S_tmp(1),1,H_tmp(1,2),1)
+          Ef = Efs(1)
+        end if
+        call write_hsx(H_2D, S_1D, Ef, Qtot, Temp)
+        if ( fixspin ) then
+          ! revert
+          call daxpy(size(S_tmp),Efs(2)-Efs(1),S_tmp(1),1,H_tmp(1,2),1)
+         end if
       endif
 #ifdef CDF
 #ifdef NCDF_4
@@ -329,7 +367,8 @@
         if ( idyn == 6 ) then
           call cdf_save_fc(trim(slabel)//'.nc', istep)
           if ( istep == 0 ) then
-            dic_save = ('fa'.kv.1)//('stress'.kv.1)
+            dic_save = ('fa'.kv.1)//('stress'.kv.1)//('Ef'.kv.1)
+            dic_save = dic_save//('NEGF_Vha'.kv.1)
             if ( savehs .or. TS_HS_save )
      &          dic_save = dic_save//('H'.kv.1)
             call cdf_save_state(trim(slabel)//'.nc',dic_save)
@@ -338,7 +377,8 @@
         else if ( idyn /=0 .or. nmove /= 0 ) then
           !call cdf_save_md(trim(slabel)//'.nc')
         else
-          dic_save = ('fa'.kv.1)//('stress'.kv.1)
+          dic_save = ('fa'.kv.1)//('stress'.kv.1)//('Ef'.kv.1)
+          dic_save = dic_save//('NEGF_Vha'.kv.1)
           if ( savehs .or. TS_HS_save ) dic_save = dic_save //('H'.kv.1)
           call cdf_save_state(trim(slabel)//'.nc',dic_save)
           call delete(dic_save)
@@ -356,22 +396,22 @@
         call daxpy(size(S_tmp),Efs(1)-Efs(2),S_tmp(1),1,H_tmp(1,2),1)
         Ef = Efs(1)
       end if
-      
+
       if ( write_tshs_history ) then
          ! This is "pure" MD and we only write consecutive numbers
          ! Together with this you cannot also save FC
          fname = fname_TSHS(slabel, istep = istep )
          call ts_write_tshs(fname, .false., not_using_auxcell,
      &        ts_Gamma_scf,
-     &        ucell, nsc, isc_off, na_u, no_s, spin%H, 
+     &        ucell, nsc, isc_off, na_u, no_s, spin%H,
      &        ts_kpoint_scf%k_cell, ts_kpoint_scf%k_displ,
-     &        xa, lasto, 
+     &        xa, lasto,
      &        H_2D, S_1D, indxuo,
      &        Ef, Qtot, Temp, istep, 0)
       else if ( TS_HS_save ) then
          if ( idyn == 6 ) then
-            ! Correct the FC indices such that 
-            ! the TSHS format contains, atom displaced, index of 
+            ! Correct the FC indices such that
+            ! the TSHS format contains, atom displaced, index of
             ! displacement:
             !  1 = -x
             !  2 = +x
@@ -383,9 +423,9 @@
             fname = fname_TSHS(slabel,istep = io_istep, ia1 = io_ia1)
             call ts_write_tshs(fname, .false.,
      &           not_using_auxcell, ts_Gamma_scf,
-     &           ucell, nsc, isc_off, na_u, no_s, spin%H, 
+     &           ucell, nsc, isc_off, na_u, no_s, spin%H,
      &           ts_kpoint_scf%k_cell, ts_kpoint_scf%k_displ,
-     &           xa, lasto, 
+     &           xa, lasto,
      &           H_2D, S_1D, indxuo,
      &           Ef, Qtot, Temp, io_istep, io_ia1)
          else

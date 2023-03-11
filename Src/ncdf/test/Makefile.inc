@@ -6,6 +6,7 @@ TEST_COMMON = tst_ncdf_utils.o
 
 TEST_EXE_  = tst_ncdf_3 tst_ncdf_4 tst_ncdf_att
 TEST_EXE_ += tst_ncdf_crt
+TEST_EXE_ += tst_ncdf_var_fill
 
 TEST ?= $(TEST_EXE_)
 
@@ -57,6 +58,13 @@ ifeq ($(MPI),1)
 	mpirun -np 2 ./$@
 endif
 
+tst_ncdf_var_fill: tst_ncdf_var_fill.o
+	$(FC) -o $@ $(FFLAGS) $(INCLUDES) $^ $(LIBS) $(LDFLAGS)
+	./$@
+ifeq ($(MPI),1)
+	mpirun -np 2 ./$@
+endif
+
 
 tst_ncdf_att: tst_ncdf_att.o
 	$(FC) -o $@ $(FFLAGS) $(INCLUDES) $^ $(LIBS) $(LDFLAGS)
@@ -74,7 +82,7 @@ tst_ncdf_crt: tst_ncdf_crt.o
 
 .PHONY: clean-test
 clean-test:
-	-rm -f $(TEST) $(LIB_TEST) $(TEST_COMMON) *.o *.mod *.nc
+	-$(RM) $(RM_FLAG_FORCE) $(TEST) $(LIB_TEST) $(TEST_COMMON) *.o *.mod *.nc
 
 clean: clean-test
 

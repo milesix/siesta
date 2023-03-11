@@ -27,11 +27,14 @@ subroutine read_options( na, ns, nspin )
   use units,     only : eV, Ang, Kelvin
   use siesta_cml
   use m_target_stress, only: set_target_stress
-  use m_spin, only: print_spin_options, spin
+  use m_spin, only: spin
+  use spin_subs_m, only: print_spin_options
 
   use m_charge_add, only : read_charge_add
   use m_hartree_add, only : read_hartree_add
-  
+
+  use velocity_shift_m, only : read_velocity_shift
+
   use m_mixing_scf, only: mixers_scf_init
   use m_mixing_scf, only: mixers_scf_print, mixers_scf_print_block
 
@@ -416,8 +419,14 @@ subroutine read_options( na, ns, nspin )
   mix_scf_first = fdf_get('DM.MixSCF1', &
        .not. compat_pre_v4_DM_H)
   mix_scf_first = fdf_get('SCF.Mix.First', mix_scf_first)
+  mix_scf_first_force = fdf_get('SCF.Mix.First.Force', .false.)
+  if ( mix_scf_first_force ) then
+    ! Also set this, to note the user of mixing first SCF regardless
+    ! of flag.
+    mix_scf_first = .true.
+  end if
   if (ionode) then
-     write(6,1) 'redata: Mix DM in first SCF step',mix_scf_first
+    write(6,1) 'redata: Mix DM in first SCF step',mix_scf_first
   endif
 
   if (cml_p) then
@@ -442,9 +451,9 @@ subroutine read_options( na, ns, nspin )
 
   ! Density Matrix Mixing  (proportion of output DM in new input DM)
   wmix = fdf_get('DM.MixingWeight',0.25_dp)
-  if (ionode) then
-     write(6,6) 'redata: New DM Mixing Weight',wmix
-  endif
+!!$  if (ionode) then
+!!$     write(6,6) 'redata: New DM Mixing Weight',wmix
+!!$  endif
 
   if (cml_p) then
      call cmlAddParameter( xf=mainXML,name='DM.MixingWeight', &
@@ -631,6 +640,26 @@ subroutine read_options( na, ns, nspin )
      end if
   end if
 
+  !------------------------
+  ! DFTD3
+  !
+  want_dftd3_dispersion = fdf_get('DFTD3',.false.)
+#ifdef SIESTA__DFTD3  
+  if (ionode) then
+     write(6,1) 'redata: Using DFT-D3 dispersion', want_dftd3_dispersion
+  endif
+  if (cml_p) then
+     call cmlAddParameter( xf=mainXML, name='DFTD3',   &
+          value=want_dftd3_dispersion, dictRef='siesta:dftd3')
+  end if
+#else
+  if (want_dftd3_dispersion) then
+     call die("Need to compile with DFTD3 support")
+  endif
+#endif
+
+  !------------------------
+  
   ! Use Saved Data
   usesaveddata = fdf_get('UseSaveData',.false.)
   if (ionode) then
@@ -858,7 +887,8 @@ subroutine read_options( na, ns, nspin )
   ! For SOC calculations: If .false., Enl will contain
   ! the SO part of the energy.
   if (spin%SO) then
-     split_sr_so = fdf_get('SOC.Split.SR.SO',.true.)
+     ! Avoid splitting if we are using the 'offsite' flavor of SOC
+     split_sr_so = fdf_get('SOC.Split.SR.SO',(.not. spin%SO_offsite))
      if (ionode) then
         write(6,1) 'redata: Split SR and SO contributions', split_sr_so
      endif
@@ -1380,11 +1410,13 @@ subroutine read_options( na, ns, nspin )
 
   ! Target Temperature and Pressure
   tt = fdf_get('MD.TargetTemperature',0.0_dp,'K')
-  tp = fdf_get('MD.TargetPressure',0.0_dp,'Ry/Bohr**3')
-  !
-  ! Used for now for the call of the PR md routine if quenching
-  if (idyn == 3 .AND. iquench > 0) call set_target_stress()
 
+  call fdf_deprecated("MD.TargetPressure", "Target.Pressure")
+  tp = fdf_get('MD.TargetPressure',0.0_dp,'Ry/Bohr**3')
+  tp = fdf_get('Target.Pressure',tp,'Ry/Bohr**3')
+
+  ! Used for now for the call of the PR md routine if quenching
+  if (idyn == 3 .AND. iquench > 0) call set_target_stress(tp)
 
   ! Mass of Nose variable
   mn = fdf_get('MD.NoseMass',100._dp,'Ry*fs**2')
@@ -1394,10 +1426,10 @@ subroutine read_options( na, ns, nspin )
 
   if (idyn==2 .or. idyn==4) then
      if (ionode) then
-        write(6,6) 'redata: Nose mass',mn/eV,' eV/fs**2'
+        write(6,6) 'redata: Nose mass',mn/eV,' eV*fs**2'
      endif
      if (cml_p) then
-        call cmlAddParameter( xf    = mainXML,              &
+        call cmlAddParameter( xf    = mainXML,&
              name  = 'MD.NoseMass',        &
              value = mn,                   &
              units = 'siestaUnits:Ry_fs__2')
@@ -1406,12 +1438,12 @@ subroutine read_options( na, ns, nspin )
 
   if (idyn==3 .or. idyn==4) then
      if (ionode) then
-        write(6,6) 'redata: Parrinello-Rahman mass',mpr/eV,' eV/fs**2'
+        write(6,6) 'redata: Parrinello-Rahman mass',mpr/eV,' eV*fs**2'
      endif
      if (cml_p) then
         call cmlAddParameter( xf    = mainXML,                   &
              name  = 'MD.ParrinelloRahmanMass', &
-             value = mn,                        &
+             value = mpr, &
              units = 'siestaUnits:Ry_fs__2' )
      endif
   endif
@@ -1585,6 +1617,9 @@ subroutine read_options( na, ns, nspin )
   ! We read in the relevant data for HartreeGeometries block
   call read_hartree_add( )
 
+  ! Read in the bulk-bias options
+  call read_velocity_shift()
+
   ! Harris Forces?. Then DM.UseSaveDM should be false (use always
   ! Harris density in the first SCF step of each MD step), and
   ! MaxSCFIter should be  2, in the second one the Harris 
@@ -1653,7 +1688,20 @@ subroutine read_options( na, ns, nspin )
   analyze_charge_density_only = fdf_get(    &
        'AnalyzeChargeDensityOnly' , .false.)
 
-  new_diagk              = fdf_get( 'UseNewDiagk', .false. )
+  tBool = fdf_get( 'UseNewDiagk', .false. )
+  if ( tBool ) then
+    ctmp = fdf_get('Diag.WFS.Cache', 'CDF')
+  else
+    ctmp = fdf_get('Diag.WFS.Cache', 'none')
+  end if
+  if ( leqi(ctmp, 'none') ) then
+    diag_wfs_cache = 0
+  else if ( leqi(ctmp, 'cdf') ) then
+    diag_wfs_cache = 1
+  else
+    call die('redata: ERROR: Diag.WFS.Cache must be one of none|cdf')
+  end if
+
   writb                  = fdf_get( 'WriteBands', outlng )
   writbk                 = fdf_get( 'WriteKbands', outlng )
   writeig                = fdf_get('WriteEigenvalues', outlng )

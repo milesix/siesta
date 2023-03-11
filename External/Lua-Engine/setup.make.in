@@ -1,0 +1,15 @@
+##LUA_DIR = /usr/local
+###INC += -I$(LUA_DIR)/include
+#
+PLATFORM=@FLOOK_PLATFORM@
+CC = @CMAKE_C_COMPILER@
+FC = @CMAKE_Fortran_COMPILER@
+CFLAGS = @CMAKE_C_FLAGS@
+FFLAGS = @CMAKE_Fortran_FLAGS@
+#
+.f90.o:
+	$(FC) -c $(FFLAGS) $(INC) $<
+.F90.o:
+	$(FC) -c $(FFLAGS) $(INC) $<
+.c.o:
+	$(CC) -c $(CFLAGS) $(INC) $<

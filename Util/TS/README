@@ -20,8 +20,15 @@ by:
   TSHS files output from TranSIESTA.
 
   It also reads NetCDF4 files created by the community utility:
-    github.com/zerothi/sids
 
+    www.github.com/zerothi/sisl
+
+
+- tscontour
+  Create contours from an fdf file.
+  This may be handy if you want to use the contours in external
+  programs, or simply check them before running the full calculation.
+  It reads only the chemical potential and contour blocks.
 
 - ts2ts
   A small utility which takes an old input file for TranSIESTA
@@ -48,7 +55,5 @@ by:
 - Tight-binding
   To use tight-binding parameters compatible with TBtrans
   you can use the utility created here:
-     github.com/zerothi/sisl
 
-  For an older implementation (roughly equivalent, see TB
-  directory).
+     www.github.com/zerothi/sisl

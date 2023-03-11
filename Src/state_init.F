@@ -31,7 +31,7 @@
       use sparse_matrices, only: gradS_2D
 
       use sparse_matrices, only: H_kin_1D, H_vkb_1D
-      use sparse_matrices, only: H_ldau_2D
+      use sparse_matrices, only: H_dftu_2D, H_dftu_so_2D
       use sparse_matrices, only: H_so_on_2D, H_so_off_2D
 
       use sparse_matrices, only: sparse_pattern
@@ -46,10 +46,10 @@
 
       use siesta_geom
       use atomlist,          only: iphorb, iphkb, indxua, iaorb,
-     &                             rmaxo, rmaxkb, rmaxv, rmaxldau,
+     &                             rmaxo, rmaxkb, rmaxv, rmaxdftu,
      &                             lastkb, lasto, superc, indxuo,
      &                             no_u, no_s, no_l, iza, qtots
-      use alloc,             only: re_alloc, de_alloc, alloc_report
+      use alloc,             only: re_alloc, de_alloc
       use m_hsparse,         only: hsparse
       use m_overlap,         only: overlap
       use m_supercell,       only: exact_sc_ag
@@ -70,23 +70,24 @@
       use m_mixing_scf,      only: scf_mixs, scf_mix
 
       use m_normalize_dm, only: normalize_dm
+      use intrinsic_missing, only: VNORM
 
       use m_eo
       use files,             only: slabel
       use m_mpi_utils,       only: globalize_or
       use m_mpi_utils,       only: globalize_sum
       use domain_decom,      only: domainDecom, use_dd, use_dd_perm
-      use ldau_specs,        only: switch_ldau, ldau_init
+      use dftu_specs,        only: switch_dftu, dftu_init
       use fdf,               only: fdf_get
       use sys,               only: message, die, bye
       use m_sparse, only : xij_offset
 
       use ts_kpoint_scf_m, only: setup_ts_kpoint_scf, ts_kpoint_scf
-      use m_ts_charge, only : TS_RHOCORR_METHOD, TS_RHOCORR_FERMI
+      use ts_dq_m, only : TS_DQ_METHOD, TS_DQ_METHOD_FERMI
       use m_ts_options, only : BTD_method
       use m_ts_options, only : TS_Analyze
       use m_ts_options, only : N_Elec, Elecs, IsVolt
-      use m_ts_electype
+      use ts_electrode_m
       use m_ts_global_vars, only: TSrun, TSmode, onlyS
       use m_ts_io, only : fname_TSHS, ts_write_tshs
       use m_ts_sparse, only : ts_sparse_init
@@ -99,9 +100,8 @@
       use iodm_netcdf, only: setup_dm_netcdf_file
       use iodmhs_netcdf, only: setup_dmhs_netcdf_file
 #endif
-      use overlap_gradient_m, only: overlap_gradient
 #ifdef NCDF_4
-      use dictionary
+      use dictionary, dict_first => first
       use m_ncdf_siesta, only : cdf_init_file, cdf_save_settings
       use m_ncdf_siesta, only : cdf_save_state, cdf_save_basis
 #ifdef MPI
@@ -144,6 +144,9 @@
       external           ::  madelung, timer
       real(dp), external :: volcel
 
+      integer :: nbcell
+      real(dp):: bcell(3,3), vcross(3)
+
       integer                       :: ts_kscell_file(3,3) = 0
       real(dp)                      :: ts_kdispl_file(3) = 0.0
       logical                       :: ts_Gamma_file = .true.
@@ -157,12 +160,12 @@
 #endif
       type(Sparsity) :: g_Sp
 #ifdef NCDF_4
-      type(dict) :: d_sav
+      type(dictionary_t) :: d_sav
 #ifdef MPI
       integer :: MPIerror
 #endif
 #endif
-      
+      real(dp), pointer :: gradS(:,:)
       character(len=256)            :: oname
 
       type(dData2D) :: tmp_2D
@@ -173,7 +176,6 @@
 
       real(dp) :: dummy_qspin(8)
 !------------------------------------------------------------------- BEGIN
-      call timer( 'IterGeom', 1 )
 
       call timer( 'state_init', 1 )
 
@@ -254,6 +256,27 @@
       end select
       
       write(6,'(t22,a)') repeat('=',36)
+
+      ! Figure out the shape of the system and initialize the periodic
+      ! directions
+      call shaper( ucell, na_u, isa, xa, shape, nbcell, bcell )
+      select case ( nbcell )
+      case ( 3 )
+        ! All directions are periodic
+        cell_periodic(:) = .true.
+      case ( 2 )
+        ! We have a single vacuum region
+        call cross(bcell(:,1), bcell(:,2), vcross)
+        vcross(:) = vcross(:) / VNORM(vcross)
+        cell_periodic(:) = .true.
+        cell_periodic(maxloc( abs(matmul(vcross, ucell)), 1)) = .false.
+      case ( 1 )
+        cell_periodic(:) = .false.
+        bcell(:,1) = bcell(:,1) / VNORM(bcell(:,1))
+        cell_periodic(maxloc( abs(matmul(bcell(:,1), ucell)), 1)) =
+     &      .true.
+      end select
+
       
 !     Print atomic coordinates
       call outcoor( ucell, xa, na_u, ' ', writec )
@@ -350,9 +373,9 @@
 !     Use largest possible range in program, except hsparse...
 !     2 * rmaxv: Vna overlap
 !     rmaxo + rmaxkb: Non-local KB action
-!     2 * (rmaxo + rmaxldau): Interaction through LDAU projector
+!     2 * (rmaxo + rmaxdftu): Interaction through DFTU projector
 !     2.0_dp * (rmaxo+rmaxkb) : Orbital interaction through KB projectors
-      rmax = max( 2._dp*rmaxv, 2._dp*(rmaxo+rmaxldau), rmaxo+rmaxkb)
+      rmax = max( 2._dp*rmaxv, 2._dp*(rmaxo+rmaxdftu), rmaxo+rmaxkb)
 
       if ( .not. negl ) then
         rmax = max(rmax, 2.0_dp * (rmaxo+rmaxkb) )
@@ -535,8 +558,8 @@
       call newdData2D(tmp_2D,xijo,'xijo')
       deallocate(xijo)
       write(oname,"(a,i0)") "xijo at geom step ", istep
-      call newdSpData2D(sparse_pattern,tmp_2D,block_dist,xij_2D, 
-     &     name=oname)
+      call newdSpData2D(sparse_pattern,tmp_2D,block_dist,xij_2D,
+     &    name=oname, sparsity_dim=2)
       call delete(tmp_2D) ! decrement container...
       xijo => val(xij_2D)
 
@@ -608,22 +631,31 @@
       call newdSpData1D(sparse_pattern,block_dist,H_kin_1D,name=oname)
       !if (ionode) call print_type(H_kin_1D)
 
-      if ( switch_ldau ) then
-         write(oname,"(a,i0)") "H_ldau at geom step ", istep
-         call newdSpData2D(sparse_pattern,spin%spinor,
-     &        block_dist,H_ldau_2D,name=oname)
+      if ( switch_dftu ) then
+         if( .not. spin%SO_onsite .and. .not. spin%SO_offsite) then
+         write(oname,"(a,i0)") "H_dftu at geom step ", istep
+           call newdSpData2D(sparse_pattern,spin%spinor,
+     &        block_dist,H_dftu_2D,name=oname)
          
-         ! Initialize to 0, LDA+U may re-calculate
-         !   this matrix sporadically doing the SCF.
-         ! Hence initialization MUST be performed upon
-         ! re-allocation.
-         call init_val(H_ldau_2D)
-         if ( inicoor /= istep ) then
-            ! Force initialization of the LDA+U
-            ! when changing geometry
-            ! For the first geometry this is controlled
-            ! by the user via an fdf-key
-            ldau_init = .true.
+           ! Initialize to 0, LDA+U may re-calculate
+           !   this matrix sporadically doing the SCF.
+           ! Hence initialization MUST be performed upon
+           ! re-allocation.
+         call init_val(H_dftu_2D)
+           if ( inicoor /= istep ) then
+              ! Force initialization of the LDA+U
+              ! when changing geometry
+              ! For the first geometry this is controlled
+              ! by the user via an fdf-key
+            dftu_init = .true.
+           end if
+         else if( spin%SO_offsite ) then  ! If LDA+U and SO
+           write(oname,"(a,i0)") "H_dftu at geom step ", istep
+           call newzSpData2D(sparse_pattern,4,
+     &        block_dist,H_dftu_so_2D,name=oname)
+           call init_val(H_dftu_so_2D)
+         else 
+           call die('LDA+U and on-site spin orbit not implemented')  
          end if
       end if
       
@@ -670,12 +702,17 @@
       call init_matel_main_tables( )
 
 !     Find overlap matrix 
-      call overlap( na_u, na_s, no_s, scell, xa, indxua, rmaxo, maxnh,
-     &    lasto, iphorb, isa, numh, listhptr, listh, S )
-
       if ( fdf_get('Save.Overlap.Gradient', .false.) ) then
-        call newdSpData2D(sparse_pattern,3,block_dist,gradS_2D)
-        call overlap_gradient(na_U, lasto, isa, maxnh, xijo, gradS_2D)
+        write(oname,"(a,i0)") "gradS at geom step ", istep
+        call newdSpData2D(sparse_pattern,3,block_dist,gradS_2D,
+     &      name=oname, sparsity_dim=2)
+        gradS => val(gradS_2D)
+        
+        call overlap( na_u, na_s, no_s, scell, xa, indxua, rmaxo, maxnh,
+     &      lasto, iphorb, isa, numh, listhptr, listh, S, gradS )
+      else
+        call overlap( na_u, na_s, no_s, scell, xa, indxua, rmaxo, maxnh,
+     &      lasto, iphorb, isa, numh, listhptr, listh, S )
       end if
 
 #ifdef NCDF_4
@@ -734,9 +771,7 @@
       ! a continuation run gives bad forces.
       if ( .not. TSrun ) then
          call normalize_DM( first= .true. )
-!$OMP parallel workshare default(shared)
          Escf(:,:) = 0.0_dp
-!$OMP end parallel workshare
       end if
 
 #ifdef TEST_IO
@@ -756,7 +791,6 @@
         end if
       end if
       
-!     If onlyS, Save overlap matrix and exit
       if ( onlyS ) then
          fname = fname_TSHS(slabel, onlyS = .true. )
          ! We include H as S, well-knowing that we only write one of
@@ -768,24 +802,10 @@
      &        xa, lasto, 
      &        H_2D, S_1D, indxuo, 
      &        dummyEf, dummyQtot, Temp,0,0)
-         call bye( 'Save overlap matrix and exit' ) ! Exit siesta
-         
+         call timer( 'state_init', 2 )
+         return
       endif 
 
-      ! In case the user is requesting a Fermi-correction
-      ! we need to delete the TS_FERMI file after each iteration
-      if ( TSmode .and. TS_RHOCORR_METHOD == TS_RHOCORR_FERMI
-     &     .and. IONode ) then
-          ! Delete the TS_FERMI file (enables
-          ! reading it in and improve on the convergence)
-          if ( file_exist('TS_FERMI') ) then
-             i = 23455 ! this should just not be used any were...
-             ! Delete the file...
-             open(unit=i,file='TS_FERMI')
-             close(i,status='delete')
-          end if
-       end if
-      
 #ifdef CDF
       if (writedm_cdf) then
          call setup_dm_netcdf_file( maxnh, no_l, spin%H,

@@ -65,14 +65,14 @@
       
       integer           :: num_orb  ! Number of different orbitals
       integer           :: num_kb  ! Number of different KB projectors
-      integer           :: num_ldau ! Number of different LDA+U functions
+      integer           :: num_dftu ! Number of different DFT+U functions
       integer           :: num_va  ! Number of different Vna functions
       integer           :: num_wannier_projs  ! Number of different Wannier trial orbitals
 
       !> k-space spherical-harmonic decomposition of registered
       !> functions and composite functions (such as x*Orb, y*KB, etc)
       
-      type(spher_harm_t), target :: ylmk_val_all   ! orbs, kb, ldauprojs, vna
+      type(spher_harm_t), target :: ylmk_val_all   ! orbs, kb, dftuprojs, vna
       type(spher_harm_t), target :: ylmk_x_orbs
       type(spher_harm_t), target :: ylmk_y_orbs
       type(spher_harm_t), target :: ylmk_z_orbs
@@ -85,7 +85,7 @@
       !> There are different tables, each appropriate to a given operation and kind of function.
       !> The indexing is a bit cumbersome due to the one-dimensional nature of the matel_registry,
       !> in which all functions are stored in the same section: first orbitals, then KB projectors,
-      !> then LDA+U projectors, and finally Vna.
+      !> then DFT+U projectors, and finally Vna.
       !> In addition, when using the Wannier interface, "trial orbitals" (called also "projectors"
       !> in the code (numproj of them) need to be dealt with.
 
@@ -93,7 +93,7 @@
       !> no support for "coexisting qualities" or "on-the-fly" changes (such as could conceivably be
       !> done one day via the Lua interface)
       
-      !> Overlaps of PAOs, KBs, or LDAUprojs with PAOs
+      !> Overlaps of PAOs, KBs, or DFTUprojs with PAOs
       TYPE(MATEL) :: tab_S           ! Unity (overlap). 
       !> Laplacian among PAOs
       TYPE(MATEL) :: tab_T           ! -Laplacian.      
@@ -141,16 +141,16 @@
 
       CALL RESET_RADFFT( )
 
-      ! Get the number of orbitals, KB projs, LDAU projs and Neutral-atom potentials
+      ! Get the number of orbitals, KB projs, DFTU projs and Neutral-atom potentials
 
       NUM_ORB = 0
       NUM_KB = 0
-      NUM_LDAU = 0
+      NUM_DFTU = 0
       NUM_VA = 0
       do is= 1, nspecies
         NUM_ORB  = NUM_ORB  + species(is)%norbs
         NUM_KB   = NUM_KB   + species(is)%nprojs
-        NUM_LDAU = NUM_LDAU + species(is)%nprojsldau
+        NUM_DFTU = NUM_DFTU + species(is)%nprojsdftu
         if (species(is)%z > 0) then ! Not a floating orbital
            NUM_VA = NUM_VA + 1
         endif
@@ -160,11 +160,11 @@
       ! Fourier transform of all the registry objects
       ! except the wannier trial functions
 
-      top = num_orb + num_kb + num_ldau 
+      top = num_orb + num_kb + num_dftu 
       top_vna = top + num_va
       call ylmk_val_all%compute_spha(1, top_vna, EVALUATE, 0)
 
-      ! Overlap table from PAOs, KBs, and LDAU projs to PAOs.
+      ! Overlap table from PAOs, KBs, and DFTU projs to PAOs.
       call tab_S%init(MODE_S, ylmk_val_all, 1, top,
      $                    ylmk_val_all, 1, num_orb)
 
@@ -291,7 +291,7 @@
       ! pool after every other function
 
       num_wannier_projs = numproj ! set module variable
-      top_vna = num_orb + num_kb + num_ldau + num_va
+      top_vna = num_orb + num_kb + num_dftu + num_va
 
       call ylmk_val_wannier_projs%compute_spha(top_vna+1,
      $                           top_vna+numproj, EVALUATE, 0)
@@ -366,7 +366,7 @@ C If |R12| > RCUT(IS1,IO1) + RCUT(IS2,IO2), returns exactly zero.
 
       integer :: top
       
-      top = num_orb + num_kb + num_ldau 
+      top = num_orb + num_kb + num_dftu 
 
       select case (operat)
       case ( 'S' )
@@ -454,7 +454,7 @@ C If |R12| > RCUT(IS1,IO1) + RCUT(IS2,IO2), returns exactly zero.
 
       integer :: top
 
-      top = num_orb + num_kb + num_ldau 
+      top = num_orb + num_kb + num_dftu 
       res = ( ig > top .and. ig <= (top + num_va))
       end function is_vna
 
@@ -464,7 +464,7 @@ C If |R12| > RCUT(IS1,IO1) + RCUT(IS2,IO2), returns exactly zero.
 
       integer :: top_vna
 
-      top_vna = num_orb + num_kb + num_ldau + num_va
+      top_vna = num_orb + num_kb + num_dftu + num_va
       
       res = ( ig > top_vna .and. ig <= (top_vna + num_wannier_projs))
       end function is_wannier_proj

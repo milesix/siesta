@@ -13,7 +13,8 @@
 
       subroutine siesta_end( )
       use fdf,             only : fdf_shutdown
-      use alloc,           only : alloc_report
+      use memory_log,      only : memory_report
+      use precision,       only : dp
       use siesta_cml,      only : cml_p, mainXML, cmlEndModule
       use siesta_cmlsubs,  only : siesta_cml_exit
       use siesta_master,   only : siesta_subroutine  ! Is siesta a subroutine?
@@ -45,13 +46,21 @@
       use kpoint_ldos_m, only: reset_kpoint_ldos
       use ts_kpoint_scf_m, only: reset_ts_kpoint_scf
 
+      use m_ts_method, only: ts_method_reset
+      use m_ts_contour_eq, only: ts_contour_eq_reset
+      use m_ts_contour_neq, only: ts_contour_neq_reset
+      use m_ts_options, only: ts_options_reset
+      use m_ts_sparse, only: ts_sparse_reset
+
 #ifdef SIESTA__CHESS
       use m_chess, only: CheSS_finalize
 #endif
 
 #ifdef SIESTA__FLOOK
+      use flook_siesta,    only : slua_call, LUA_FINALIZE
       use flook_siesta,    only : slua_close
       use siesta_options,  only : LUA
+      use siesta_dicts,  only : dict_clean
 #endif
 
       use m_diag, only: diag_exit
@@ -60,9 +69,16 @@
       use extrae_eventllist, only : writeList, deleteList, eventlist
 #endif
       use m_io,            only : io_assign, io_close
+      use m_io_yaml,       only : siesta_write_yaml
+      use m_cite,          only : announce_citations
+      use version_info,    only : version_str
+      use atomlist,        only : reset_atomlists
+!!    use matel_mod,       only : Some_Routine_to_Release_Memory FIXME
+      use listsc_module,   only : LISTSC_RESET
 
       implicit none
 
+      real(dp) :: R12(3), S12, DSDR(3)
       integer :: iu
 #ifdef MPI
       integer MPIerror
@@ -70,12 +86,26 @@
 !------------------------------------------------------------------------- BEGIN
       if (SIESTA_worker) then
 
+      if (ionode) then
+        call siesta_write_yaml()
+        call announce_citations(version_str)
+      end if
+
 #ifdef SIESTA__FLOOK
+      ! Final call for the end-user
+      call slua_call(LUA,LUA_FINALIZE)
       ! Clean up the lua environment
       call slua_close(LUA)
+      call dict_clean()
 #endif
 
 !     Free allocated memory
+      ! Reset matrix element tables
+      ! ToDO
+      R12 = 0._dp
+      !!! call new_MATEL('S', 0, 0, R12, S12, DSDR)
+      call LISTSC_reset()
+      call reset_atomlists()
       call resetSparseMatrices( )
       call resetMeshDistr( )
       call resetdscfComm( )
@@ -97,6 +127,13 @@
       call reset_ts_kpoint_scf()
       call reset_kpoint_scf()
 
+      ! Clean transiesta stuff
+      call ts_contour_eq_reset()
+      call ts_contour_neq_reset()
+      call ts_sparse_reset()
+      call ts_method_reset()
+      call ts_options_reset()
+
       ! Clean diagonalization
       call diag_exit()
 
@@ -110,7 +147,7 @@
 !!      call printmemory( 6, 1 )
 
 !     Print allocation report
-      call alloc_report( printNow=.true. , shutdown=.true.)
+      call memory_report( printNow=.true. , shutdown=.true.)
 
 #ifdef DEBUG_XC
 ! Close debug outup file

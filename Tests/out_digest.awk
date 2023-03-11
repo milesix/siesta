@@ -16,6 +16,10 @@
 # basic params
 #
 /k-grid: Cutoff / {printf "%-20s %20.4f\n", "kgrid-cutoff", $6}
+# New outputs use a different string for this. Note that they may also contain
+# a prefix, so the number of columns in these lines varies, and we need to
+# identify the numerical value by counting columns starting from the last one.
+/k-cutoff \(effective\)/ {printf "%-20s %20.4f\n", "kgrid-cutoff", $(NF-1)}
 /Internal auxiliary supercell/ {print}
 /and projectors:/ {print}
 #
@@ -30,7 +34,7 @@
 /siesta: Eions /  {printf "%-20s %20.4f\n", "Eions", $4}
 /siesta: Ena   /  {printf "%-20s %20.4f\n", "Ena", $4}
 /siesta: Ekin  /  {printf "%-20s %20.4f\n", "Ekin", $4}
-/siesta: Eldau /  {printf "%-20s %20.4f\n", "Eldau", $4}
+/siesta: Edftu /  {printf "%-20s %20.4f\n", "Edftu", $4}
 /siesta: Eso   /  {printf "%-20s %20.4f\n", "Eso", $4}
 /siesta: Enl   / {printf "%-20s %20.4f\n", "Enl", $4}
 /siesta: Eharris / {printf "%-20s %20.4f\n", "Eharris", $4}

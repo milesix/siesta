@@ -9,8 +9,8 @@ program tst_dict
   real :: a, b(2),c(2,2)
   real, pointer :: d => null()
   integer :: i
-  type(var) :: v
-  type(dict) :: dic, tmp
+  type(variable_t) :: v
+  type(dictionary_t) :: dic, tmp
 
   a = 1.
   b = 2.
@@ -21,14 +21,21 @@ program tst_dict
 
   ! fill dictionary
   dic = &
-       ('a'.kv.a)//('b'.kv.b)//('c'.kv.c)//('d'.kvp.d)// &
-       ('string'.kv."Hello world")
+      ('a'.kv.a)//('b'.kv.b)//('c'.kv.c)//('d'.kvp.d)// &
+      ('string'.kv."Hello world")
   if ( len(dic) /= 5 ) stop 9
+  if ( llen(dic) /= 5 ) stop 9
 
   call extend(dic, &
-       ('aa'.kv.a)//('bb'.kv.b)//('cc'.kv.c)//('dd'.kvp.d)// &
-       ('stringa'.kv."Hello world"))
+      ('aa'.kv.a)//('bb'.kv.b)//('cc'.kv.c)//('dd'.kvp.d)// &
+      ('stringa'.kv."Hello world"))
   if ( len(dic) /= 10 ) stop 9
+  if ( llen(dic) /= 10 ) stop 9
+
+  call extend(dic, &
+      ('a'.kv.a)//('stringa'.kv."Hello world"))
+  if ( len(dic) /= 10 ) stop 9
+  if ( llen(dic) /= 10 ) stop 9
 
   ! print all the values
   call print(dic)
@@ -36,9 +43,9 @@ program tst_dict
   tmp = .first. dic
   i = 0
   do while ( .not. .empty. tmp )
-     call assign(v,.val.tmp)
-     tmp = .next. tmp
-     i = i + 1
+    v = .val. tmp
+    tmp = .next. tmp
+    i = i + 1
   end do
   if ( i /= 10 ) stop 9
 

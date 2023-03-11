@@ -101,8 +101,8 @@ module m_region
 
   ! Regions which has to do with atoms/orbitals
   public :: rgn_correct_atom
-  public :: rgn_atom2orb
-  public :: rgn_orb2atom
+  public :: rgn_Atom2Orb
+  public :: rgn_Orb2Atom
 
   interface sum
      module procedure rgn_sum
@@ -382,7 +382,7 @@ contains
   subroutine rgn_assoc_list(lhs,n,r, dealloc)
     type(tRgn), intent(inout) :: lhs
     integer, intent(in) :: n
-    integer, intent(in), target :: r(n)
+    integer, intent(in), target :: r(:)
     ! whether a pre-deallocation of the lhs should occur
     logical, intent(in), optional :: dealloc
     if ( present(dealloc) ) then
@@ -402,7 +402,7 @@ contains
   subroutine rgn_remove_list(r,n,list,rout)
     type(tRgn), intent(in) :: r
     type(tRgn), intent(inout) :: rout
-    integer, intent(in) :: n, list(n)
+    integer, intent(in) :: n, list(:)
 
     type(tRgn) :: rr
 
@@ -543,8 +543,6 @@ contains
 
     integer :: i
 
-    if ( vr%n == 0 ) return
-
     ! Insert all elements
     do i = 1, vr%n
       call rgn_consecutive_insert(r, vr%r(i))
@@ -581,8 +579,6 @@ contains
     type(tRgn), intent(in) :: vr
 
     integer :: i
-
-    if ( vr%n == 0 ) return
 
     do i = 1, vr%n
        call rgn_consecutive_remove(r, vr%r(i))
@@ -631,6 +627,7 @@ contains
   !      the connections, one could easily imagine 2 orbitals where
   !      one is connecting out, the other does not, in that case would
   !      'connect_from' only contain one orbital.
+  !      In case of a parallel run, this region contains the local index.
   ! NOTE: It DOES work in parallel
   subroutine rgn_sp_connect(r,dit,sp,cr,except, connect_from, follow)
 
@@ -875,7 +872,7 @@ contains
     ! the region we wish to find the connections to
     type(tRgn), intent(inout) :: r
     ! The sparsity pattern
-    integer, intent(in) :: n, nnzs, n_col(n), l_ptr(n), l_col(nnzs)
+    integer, intent(in) :: n, nnzs, n_col(:), l_ptr(:), l_col(:)
     ! the sorting region (i.e. the orbitals that are allowed to be pivoted)
     type(tRgn), intent(in) :: sr
     ! The method used for sorting
@@ -1296,7 +1293,7 @@ contains
 
   subroutine rgn_insert_list(r,n,list,rout,idx)
     type(tRgn), intent(in) :: r
-    integer, intent(in), target :: n, list(n)
+    integer, intent(in), target :: n, list(:)
     type(tRgn), intent(inout) :: rout
     ! The place of insertion
     integer, intent(in) :: idx
@@ -1524,7 +1521,7 @@ contains
     ! Region to put list in
     type(tRgn), intent(inout) :: r
     ! list to copy over
-    integer, intent(in) :: n, list(n)
+    integer, intent(in) :: n, list(:)
     character(len=*), intent(in), optional :: name
     integer :: i
 
@@ -1595,7 +1592,7 @@ contains
     ! that it already overlaps
     type(tRgn), intent(inout) :: r
     ! The last orbitals of each atom
-    integer, intent(in) :: na_u, lasto(0:na_u)
+    integer, intent(in) :: na_u, lasto(0:)
 
     ! ** local variables
     logical :: r_sorted
@@ -1655,7 +1652,7 @@ contains
     ! that it already overlaps
     type(tRgn), intent(in) :: ar
     ! The last orbitals of each atom
-    integer, intent(in) :: na_u, lasto(0:na_u)
+    integer, intent(in) :: na_u, lasto(0:)
     type(tRgn), intent(inout) :: or
 
     ! ** local variables
@@ -1706,7 +1703,7 @@ contains
     ! region
     type(tRgn), intent(in) :: or
     ! The last orbitals of each atom
-    integer, intent(in) :: na_u, lasto(0:na_u)
+    integer, intent(in) :: na_u, lasto(0:)
     type(tRgn), intent(inout) :: ar
 
     ! ** local variables
@@ -1755,6 +1752,8 @@ contains
     name_tmp = ar%name
     call rgn_copy(tmp, ar)
     ar%name = name_tmp
+    ! Clean-up
+    call rgn_delete(tmp)
 
   end subroutine rgn_Orb2Atom
 
@@ -1866,7 +1865,7 @@ contains
           if ( k == 1 ) then
              write(*,'(tr1,i0,a)',advance='no') c,','
           else
-             write(*,'(tr1,2(a,i0),a)',advance='no') '[',c,'] * ',k,','
+             write(*,'(tr1,2(a,i0),a)',advance='no') '[',c,']*',k,','
           end if
           
           ! Reset
@@ -1882,7 +1881,7 @@ contains
        if ( k == 1 ) then
           write(*,'(tr1,i0,a)') c,' ]'
        else
-          write(*,'(tr1,2(a,i0),a)') '[',c,'] * ',k,' ]'
+          write(*,'(tr1,2(a,i0),a)') '[',c,']*',k,' ]'
        end if
 
        return
@@ -2018,7 +2017,7 @@ contains
   function rgn_push_list(r,n,val,sorted) result(good)
     type(tRgn), intent(inout) :: r
     integer, intent(in) :: n
-    integer, intent(in), target :: val(n)
+    integer, intent(in), target :: val(:)
     logical, intent(in), optional :: sorted
     type(tRgn) :: tmp
     logical :: good
@@ -2163,12 +2162,13 @@ contains
     use mpi_siesta, only : MPI_Bcast
     use mpi_siesta, only : MPI_Recv, MPI_Send, MPI_STATUS_SIZE
     use mpi_siesta, only : MPI_Get_Count
+    use intrinsic_missing, only: sort_quick
 
     type(OrbitalDistribution), intent(in) :: dit
     type(tRgn), intent(inout) :: r
     
     ! Our temporary region
-    integer :: i, nt, ct, iN, it
+    integer :: nt, ct, iN, it
     integer, allocatable :: rd(:)
     character(len=R_NAME_LEN) :: tmp
     integer :: comm
@@ -2189,29 +2189,35 @@ contains
     ! the data, then we b-cast it...
     if ( dist_node(dit) == 0 ) then
        if ( r%n > 0 ) then
-          do i = 1 , r%n
-             rd(i) = r%r(i)
+          do it = 1 , r%n
+             rd(it) = r%r(it)
           end do
        end if
-       ct = r%n + 1
+       ct = r%n
        do iN = 1 , dist_nodes(dit) - 1
-          call MPI_Recv(rd(ct),nt-ct+1,MPI_Integer, &
-               iN, 0, comm, MPIstatus, MPIerror)
-          call MPI_Get_Count(MPIstatus, MPI_Integer, it, MPIerror)
-          ct = ct + it
+         call MPI_Recv(rd(ct+1),nt-ct,MPI_Integer, &
+             iN, 0, comm, MPIstatus, MPIerror)
+         call MPI_Get_Count(MPIstatus, MPI_Integer, it, MPIerror)
+         ct = ct + it
        end do
+       ! Total number of elements recieved
+       nt = ct
        ! Count the actual number of unique entries
-       nt = uniqc(rd(1:nt-1))
-       ! Sort them...
-       ct = 1
-       it = 1
-       do while ( ct < nt )
-          it = it + 1
-          if ( all(rd(it) /= rd(1:ct)) ) then
-             ct = ct + 1
-             rd(ct) = rd(it)
-          end if
+       call sort_quick(nt, rd)
+       ! Remove all with same values
+       ct = 0
+       do it = 1, nt - 1
+         if ( rd(it) /= rd(it + 1) ) then
+           ct = ct + 1
+           rd(ct) = rd(it)
+         end if
        end do
+       if ( nt > 0 ) then
+         ct = ct + 1
+         rd(ct) = rd(nt)
+       end if
+       ! Update counter
+       nt = ct
     else
        if ( r%n == 0 ) then
           call MPI_Send(rd(1),0,MPI_Integer, &

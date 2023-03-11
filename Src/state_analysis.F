@@ -21,7 +21,7 @@
       use zmatrix,       only : lUseZmatrix, iofaZmat,
      &                          CartesianForce_to_ZmatForce
       use atomlist,      only : iaorb, iphorb, amass, no_u, lasto
-      use atomlist,      only : indxuo
+      use atomlist,      only : indxuo, Qtot
       use m_spin,        only : spin
       use m_fixed,       only : fixed
       use sparse_matrices
@@ -37,6 +37,9 @@
       use m_energies, only: update_FreeE, update_FreeEHarris
       use m_intramol_pressure, only: remove_intramol_pressure
       use matel_mod, only: init_matel_orb_XYZ_orb
+      use m_ts_global_vars, only: TSrun
+      use m_ts_options, only: N_elec, Elecs
+      use ts_charge_m, only: ts_charge_print, TS_Q_INFO_FULL
       
 #ifdef SIESTA__FLOOK
       use flook_siesta, only : slua_call, LUA_FORCES
@@ -48,7 +51,7 @@
       integer  :: ia, jx, ix
       real(dp) :: volume
       logical  :: eggbox_block=.true. ! Read eggbox info from data file?
-      real(dp) :: qspin
+      real(dp) :: qspin(spin%Grid)
       
       external :: eggbox, mulliken, moments
       real(dp), external :: volcel
@@ -163,6 +166,9 @@
 !     Force output 
       if (IOnode) then
         call siesta_write_forces(istep)
+        if ( TSrun ) then
+          call transiesta_write_forces()
+        end if
         call siesta_write_stress_pressure()
         call wallclock('--- end of geometry step')
       endif
@@ -177,6 +183,14 @@
       call mulliken( mullipop, na_u, no_u, maxnh,
      &               numh, listhptr, listh, S, Dscf, isa,
      &               lasto, iaorb, iphorb )
+
+      ! Also write TS charges
+      if ( TSrun ) then
+        call ts_charge_print(N_Elec,Elecs, Qtot,
+     &      block_dist, sparse_pattern,
+     &      spin%DM, maxnh, Dscf, S, TS_Q_INFO_FULL)
+      end if
+
 !
 !     Call the born effective charge routine only in those steps (even) 
 !     in which the dx  is positive.

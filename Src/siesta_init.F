@@ -1,5 +1,5 @@
 ! ---
-! Copyright (C) 1996-2016	The SIESTA group
+! Copyright (C) 1996-2021	The SIESTA group
 !  This file is distributed under the terms of the
 !  GNU General Public License: see COPYING in the top directory
 !  or http://www.gnu.org/copyleft/gpl.txt .
@@ -23,19 +23,23 @@
       use units,              only: Kelvin
       use siesta_options
       use timer_options,      only: use_tree_timer, use_parallel_timer
-      use sparse_matrices
+      use timer_options,      only: time_mpi_calls
+      use timer_options,      only: use_walltime
+      use sparse_matrices,    only: dm_history
       use class_Fstack_Pair_Geometry_dSpData2D, only: new, max_size
       use siesta_geom
       use atomlist,           only: no_u, rmaxkb, amass, lasto, qtot,
      &                              qtots,
      &                              iza, rmaxo, zvaltot, superc,
-     &                              initatomlists, no_l, rmaxldau
+     &                              initatomlists, no_l, rmaxdftu
       use fdf
       use sys,                only: die, bye
+      use gridxc,             only: gridxc_init
       use molecularmechanics, only: inittwobody
       use metaforce,          only: initmeta
       use m_mpi_utils,        only: broadcast
-      use alloc,              only: re_alloc, alloc_report
+      use alloc,              only: re_alloc
+      use memory_log,         only: memory_report
       use parallelsubs,       only: getnodeorbs
       use m_iostruct,         only: write_struct, read_struct
       use zmatrix,            only: lUseZmatrix
@@ -50,10 +54,10 @@
       use parallel,           only: SIESTA_Group, SIESTA_Comm
       use m_energies
       use m_steps
-      use m_spin,             only: init_spin, spin
-      use m_spin,             only: init_spiral
+      use m_spin,             only: spin
+      use spin_subs_m,        only: init_spin, init_spiral
       use m_rmaxh
-      use m_forces 
+      use m_forces
       use m_eo
       use m_fixed,            only: init_fixed, print_fixed
       use m_ioxv,             only: xv_file_read
@@ -63,6 +67,9 @@
      &                              setup_wf_kpoints
       use m_new_dm,           only: get_allowed_history_depth
       use m_object_debug,     only: set_object_debug_level
+      use siesta_cml
+      use gridXC,  only : getXC=>gridxc_getXC   ! Returns the XC functional to be used
+
 #ifdef DEBUG_XC
       USE siestaXC, only: setDebugOutputUnit
 #endif /* DEBUG_XC */
@@ -76,7 +83,10 @@
       use m_ts_init, only : ts_init
 
       use m_diag_option, only: read_diag, print_diag
-      
+      use m_diag_option, only: diag_recognizes_neigwanted
+#ifdef SIESTA__DFTD3
+      use grimme_dispersion_m, only : dftd3_initialize
+#endif
 #ifdef SIESTA__FLOOK
       use siesta_dicts, only : dict_populate
       use flook_siesta, only : slua_init, slua_call, LUA_INITIALIZE
@@ -85,28 +95,10 @@
 #ifdef NCDF_4
       use netcdf_ncdf
 #endif
-#ifdef _OPENMP
-      use omp_lib, only : omp_get_num_threads
-      use omp_lib, only : omp_get_nested, omp_set_nested
-      use omp_lib, only : omp_get_max_active_levels
-      use omp_lib, only : omp_get_schedule, omp_set_schedule
-#if _OPENMP >= 201307
-      ! The above value should correspond to OMP-4.0
-      use omp_lib, only : omp_get_proc_bind
-      use omp_lib, only : OMP_PROC_BIND_FALSE, OMP_PROC_BIND_TRUE
-      use omp_lib, only : OMP_PROC_BIND_MASTER
-      use omp_lib, only : OMP_PROC_BIND_CLOSE, OMP_PROC_BIND_SPREAD
-#endif
-      use omp_lib, only : OMP_SCHED_STATIC, OMP_SCHED_DYNAMIC
-      use omp_lib, only : OMP_SCHED_GUIDED, OMP_SCHED_AUTO
-#else
-!$    use omp_lib, only : omp_get_num_threads
-!$    use omp_lib, only : omp_get_nested, omp_get_max_active_levels
-!$    use omp_lib, only : omp_get_max_active_levels
-!$    use omp_lib, only : omp_get_schedule, omp_set_schedule
-!$    use omp_lib, only : OMP_SCHED_STATIC, OMP_SCHED_DYNAMIC
-!$    use omp_lib, only : OMP_SCHED_GUIDED, OMP_SCHED_AUTO
-#endif
+
+      use reinit_m, only: reinit, parse_command_line
+      use runinfo_m, only: runinfo
+      use version_info, only: prversion
 
       implicit none
 
@@ -120,14 +112,22 @@
       integer :: ns           ! Number of species
       logical :: not_using_auxcell
       real(dp) :: walltime_m, walltime_s
-
+      integer :: nstates_spin(2)  ! dummy intermediate variable
       integer :: World_Group
       integer :: npSIESTA
       external :: read_options
       external :: reset_messages_file
 
+      integer :: nf, nXCfunc
+      integer, parameter :: MaxFunc = 10
+      character(len=20) :: XCauth(MaxFunc)
+      character(len=20) :: XCfunc(MaxFunc)
+      real(dp) :: XCweightX(MaxFunc)
+      real(dp) :: XCweightC(MaxFunc)
+      character(len=2) :: idx_string
+
 !---------------------------------------------------------------------- BEGIN
-! Initialise MPI unless siesta is running as a subroutine 
+! Initialise MPI unless siesta is running as a subroutine
 ! of a driver program that may have initialized MPI already
 
 #ifdef MPI
@@ -149,23 +149,23 @@ C     Initialise MPI and set processor number
         call MPItrace_shutdown( )
 #endif
       endif ! (.not.initialized)
-      
+
       call MPI_Comm_Rank( MPI_Comm_World, Node, MPIerror )
+#endif
+
+      ! As soon as each node knows its rank,
+      ! deal with info command options
+      call parse_command_line(info=.true.)
+
+#ifdef MPI
       call MPI_Comm_Size( MPI_Comm_World, Nodes, MPIerror )
-      
+
       ! Keeper for PEXSI-runs..
       PEXSINodes = Nodes
-
-      call reset_messages_file()
-      
-
-      if (.not. fdf_parallel()) then
-        call die('siesta_init: ERROR: FDF module ' //
-     &           'doesn''t have parallel support')
-      endif
-#else
-      call reset_messages_file()
 #endif
+
+      call reset_messages_file()
+
       if (Node==0) then
          ! Make sure we delete this sentinel file
          open(unit=1,file="0_NORMAL_EXIT",status="unknown")
@@ -182,85 +182,21 @@ C     Initialise MPI and set processor number
       call setDebugOutputUnit()
 #endif /* DEBUG_XC */
 
-      ! We have to immediately write out the options used to compile SIESTA
+      ! We have to immediately write out the options used
+      ! to compile and run SIESTA
       if ( Node == 0 ) then
-         ! Print version information
-         call prversion()
-#ifdef MPI
-         ! Sadly PEXSI workers can only be determined after
-         ! fdf has been opened, so we can't print-out that information
-         ! (for now)
-         if ( Nodes > 1 ) then
-            write(6,'(/,a,i0,a)')
-     &           '* Running on ', Nodes, ' nodes in parallel'
-         else
-            write(6,'(/,a)') '* Running in serial mode with MPI'
-         endif
-#else
-         write(6,'(/,a)') '* Running in serial mode'
-#endif
-!$OMP parallel default(shared)
-!$OMP master
-!$    i = omp_get_num_threads()
-!$    write(*,'(a,i0,a)') '* Running ',i,' OpenMP threads.'
-!$    write(*,'(a,i0,a)') '* Running ',Nodes*i,' processes.'
-#ifdef _OPENMP
-!$    write(*,'(a,i0)') '* OpenMP version ', _OPENMP
-#endif
-#if _OPENMP >= 201307
-!$    i = omp_get_proc_bind()
-!$    select case ( i )
-!$    case ( OMP_PROC_BIND_FALSE ) 
-!$    write(*,'(a)') '* OpenMP NOT bound (please bind threads!)'
-!$    case ( OMP_PROC_BIND_TRUE ) 
-!$    write(*,'(a)') '* OpenMP bound'
-!$    case ( OMP_PROC_BIND_MASTER ) 
-!$    write(*,'(a)') '* OpenMP bound (master)'
-!$    case ( OMP_PROC_BIND_CLOSE ) 
-!$    write(*,'(a)') '* OpenMP bound (close)'
-!$    case ( OMP_PROC_BIND_SPREAD ) 
-!$    write(*,'(a)') '* OpenMP bound (spread)'
-!$    case default
-!$    write(*,'(a)') '* OpenMP bound (unknown)'
-!$    end select
-#endif
-!$    call omp_get_schedule(i,is)
-!$    select case ( i )
-!$    case ( OMP_SCHED_STATIC ) 
-!$    write(*,'(a,i0)') '* OpenMP runtime schedule STATIC, chunks ',is
-!$    case ( OMP_SCHED_DYNAMIC ) 
-!$    write(*,'(a,i0)') '* OpenMP runtime schedule DYNAMIC, chunks ',is
-!$    if ( is == 1 ) then
-!$     ! this is the default scheduling, probably the user
-!$     ! have not set the value, predefine it to 16
-!$     is = 16
-!$     write(*,'(a,i0)')'** OpenMP runtime schedule DYNAMIC, chunks ',is
-!$    end if
-!$    case ( OMP_SCHED_GUIDED ) 
-!$    write(*,'(a,i0)') '* OpenMP runtime schedule GUIDED, chunks ',is
-!$    case ( OMP_SCHED_AUTO ) 
-!$    write(*,'(a,i0)') '* OpenMP runtime schedule AUTO, chunks ',is
-!$    case default
-!$    write(*,'(a,i0)') '* OpenMP runtime schedule UNKNOWN, chunks ',is
-!$    end select
-!     Now write out about nested levels
-!$    if ( omp_get_nested() ) then
-!$       ns = omp_get_max_active_levels()
-!$    else
-!$       write(*,'(a)') '** OpenMP (trying to FORCE nesting)'
-!$       call omp_set_nested(.true.)
-!$       ns = omp_get_max_active_levels()
-!$    end if
-!$    write(*,'(a,i0,a)') '* OpenMP allows ',ns,' nested levels.'
-!$OMP end master
-!$OMP end parallel
-!$    call omp_set_schedule(i,is)
+
+         ! Print version and other compilation information.
+         call prversion
+
+         ! Print parallelisation runtime information.
+         call runinfo
 
          ! Write time-stamp at the top of the output
          call timestamp('Start of run')
       end if
-      
-      ! Initialise input/output...........................................
+
+      ! Initialise input
       call reinit( sname )
 
 #ifdef MPI
@@ -278,7 +214,7 @@ C     Initialise MPI and set processor number
 
       ! Swap communicator
       ! This is needed since MPI_COMM_WORLD is used implicitly by
-      ! Siesta for all operations. 
+      ! Siesta for all operations.
       MPI_COMM_WORLD = SIESTA_Comm
       if (SIESTA_worker) then
          call MPI_Comm_Rank( MPI_Comm_World, Node, MPIerror )
@@ -291,6 +227,12 @@ C     Initialise MPI and set processor number
       PEXSINodes = 1
 #endif
       IOnode = SIESTA_worker .and. (Node .eq. 0)
+
+      if ( IONode ) then
+        ! Add citations
+        call init_citation(trim(slabel))
+        call add_citation("10.1088/0953-8984/14/11/302")
+      end if
 
       ! Be sure to initialize the spin-configuration data
       ! for all processors.
@@ -308,7 +250,6 @@ C     Initialise MPI and set processor number
       call ncdf_IONode( IONode )
 #endif
 
-!     Print version information
       if ( IOnode ) then
 #ifdef MPI
          if ( PEXSINodes /= Nodes ) then
@@ -321,19 +262,11 @@ C     Initialise MPI and set processor number
          call wallclock('Start of run')
       end if
 
-!
-!     Nullify arrays
-      nullify(Dscf,Dold,Escf)
-      nullify(listh)
-      nullify(H,S)
-      nullify(xijo)
-
 !     Initialize some variables
       call init_Energies()
-      
-!
+
+
 !     Set object debugging level
-!
       call set_object_debug_level(0)
       i = fdf_get('DebugObjects.Node',0)
       if (Node==i) then
@@ -341,14 +274,13 @@ C     Initialise MPI and set processor number
             call set_object_debug_level(1)
          endif
       endif
-         
+
 !     Initialize CML (relies on reinit)
       call siesta_cml_init( )
 
 ! Set timer report file and threshold .................................
-      threshold = fdf_get('timer_report_threshold', 0._dp)
-      call timer_report( file=trim(slabel)//'.times', 
-     .                   threshold=threshold )
+      call timer_report( file=trim(slabel)//'.times',
+     .        threshold=fdf_get('timer_report_threshold', 0._dp))
       ! Note that the parallel timer might be inefficient for reports
       ! when large numbers of processors are used
       if ( PEXSINodes /= Nodes ) then
@@ -357,11 +289,13 @@ C     Initialise MPI and set processor number
       else
          use_parallel_timer = fdf_get('UseParallelTimer', .true.)
          use_tree_timer = fdf_get('UseTreeTimer', .false.)
+
       end if
       ! Enable tree-timer for this case
       if (fdf_get("timing-split-scf-steps",.false.)) then
          use_tree_timer = fdf_get('UseTreeTimer', .true.)
       endif
+      use_walltime = fdf_get('use-walltime', use_tree_timer)
 
 !     Start time counter
 !     Note new placement of this first use, so that
@@ -372,26 +306,46 @@ C     Initialise MPI and set processor number
       call timer( 'Setup', 1 )
 
 ! Set allocation report level .........................................
-! variables level and threshold imported from module siesta_options
-      level = fdf_get('alloc_report_level', 0)
-      threshold = fdf_get('alloc_report_threshold', 0._dp)
-      call alloc_report( level=level, file=trim(slabel)//'.alloc',
-     .                   threshold=threshold,
-     &                   printNow=.false. )
-      
-      if ( IONode ) then
-         ! Add citations
-         call init_citation(trim(slabel))
-         call add_citation("10.1088/0953-8984/14/11/302")
-      end if
+      call memory_report( level=fdf_get('alloc_report_level',0),
+     $           file=trim(slabel)//'.alloc',
+     .           threshold=fdf_get('alloc_report_threshold', 0._dp),
+     &           printNow=.false. )
 
 
 !     Initialise exchange-correlation functional information
       call read_xc_info()
+#ifdef MPI
+      call gridxc_init(comm=MPI_Comm_World)
+#else
+      call gridxc_init()
+#endif
+
+!     Write exchange-correlation functional to .cml file
+      call getXC( nXCfunc, XCfunc, XCauth, XCweightX, XCweightC )
+
+      if ( cml_p ) then
+        call cmlStartPropertyList(xf=mainXML, title='XC.Mix',
+     .                              dictRef='siesta:xc')
+        do nf = 1,nXCfunc
+          write(idx_string, "(I0.2)") nf
+          call cmlStartPropertyList(mainXML, id=idx_string)
+          call cmlAddProperty(xf=mainXML, dictRef='siesta:xc_func',
+     .                    title='Functional', value=trim(XCfunc(nf)))
+          call cmlAddProperty(xf=mainXML, dictRef='siesta:xc_auth',
+     .                    title='Authors', value=trim(XCauth(nf)))
+          call cmlAddProperty(xf=mainXML, dictRef='siesta:weight_ex',
+     .                    title='Weight(Ex)', value=XCweightX(nf))
+          call cmlAddProperty(xf=mainXML, dictRef='siesta:weight_ec',
+     .                    title='Weight(Ec)', value=XCweightC(nf))
+          call cmlEndPropertyList(xf=mainXML)
+        enddo
+        call cmlEndPropertyList(xf=mainXML)
+      endif
 
 !     Initialise force field component
       call inittwobody( )
 
+      
 !     Initialize pseudopotentials and atomic orbitals
       if (IOnode) call initatom( ns )
       call broadcast( ns )
@@ -408,7 +362,7 @@ C     Initialise MPI and set processor number
 
       ! Initialize the spin-spiral settings
       call init_spiral( ucell )
-      
+
 !     Initialize atom lists
       call initatomlists( )    ! Sets iza
 
@@ -466,6 +420,15 @@ C     Initialise MPI and set processor number
 !     Read simulation data
       call read_options( na_u, ns, spin%H )
 
+#ifdef SIESTA__DFTD3
+      if (want_dftd3_dispersion) then
+         !     Initialise D3 corrections module.
+         if (IOnode) then
+            call dftd3_initialize( )
+         endif
+      endif
+#endif
+
       call get_allowed_history_depth(n_dm_items)
       call new(DM_history,n_dm_items,"(DM history stack)")
       if (ionode) print "(a,i0)", "Size of DM history Fstack: ",
@@ -498,17 +461,71 @@ C     Initialise MPI and set processor number
      &              ' for collinear spin polarized calculations.' )
         qtots(1) = (qtot + total_spin) / 2.0_dp
         qtots(2) = (qtot - total_spin) / 2.0_dp
+        if (IOnode) then
+          write(6,"(a,f12.6)") 'Total number of UP electrons: ',
+     &        qtots(1)
+          write(6,"(a,f12.6)") 'Total number of DOWN electrons: ',
+     &        qtots(2)
+        end if
       else
-        do ispin = 1,spin%spinor
-           qtots(ispin) = qtot/spin%spinor
-        end do
+        ! Distribute electrons equally per spin
+        ! (For spin%spinor = 1, qtots(2) should not be referenced)
+        qtots(:) = qtot / spin%spinor
       end if
+
+      ! Get number of eigenstates that need to be calculated This
+      ! generally needs to be set to half the number of charges plus a
+      ! few extra states (such that the temperature tail can be found).
+      ! When states are spinors (for collinear or non-collinear spin,
+      ! i.e., for spin%spinor=2), to be occupied by a single electron
+      ! each, this number refers to half the number of spinors.
+      neigwanted = fdf_get('NumberOfEigenStates',no_u)
+
+      ! This is the rough number of states to be occupied (per spin channel)
+      ! For spin%spinor=1, this is half the number of electrons
+      nstates_spin(1:2) = ceiling ( (qtots(1:2)/2.0_dp) *  spin%spinor )
+
+      ! Calculate the number of eigenstates
+      ! dependent on the # of spin-components.
+      neigmin = 0
+      do is = 1 , spin%spinor
+        neigmin = max(neigmin, nstates_spin(is))
+      end do
+
+      ! Always at least have one additional state per 200 K.  This
+      ! choice is rather arbitrary. If the system is large it is likely
+      ! to have many states "close" to the Fermi level, and then the
+      ! number of extra states should be higher. See below
+
+      neigmin = neigmin + ceiling((temp / Kelvin) / 200._dp)
+
+      ! Correct the number of calculated eigenstates
+      if ( neigwanted < 0 ) then
+
+         ! If this number is negative it corresponds to the number of
+         ! states ABOVE the charge neutrality point to be included.  For
+         ! normal temperatures and small/medium systems, a number such
+         ! as 10 might be enough, but for very high temperatures and/or
+         ! large systems, this number might need to be increased significantly.
+
+         ! Add the user requested states.
+         neigwanted = neigmin + abs(neigwanted)
+
+      end if
+
+      ! Check number of eigenstates - cannot be larger than number of
+      ! basis functions or smaller than number of occupied states + 1
+      ! so that the Fermi level can be estimated
+      neigwanted = max(neigwanted, neigmin)
+      ! Truncate value to number of basis orbitals
+      neigwanted = min(neigwanted,no_u)
+
 
 !     Find maximum interaction range
       if ( negl ) then
-        rmaxh = 2.0_dp*(rmaxo + rmaxldau)
+        rmaxh = 2.0_dp*(rmaxo + rmaxdftu)
       else
-        rmaxh = 2.0_dp*(rmaxo + max(rmaxkb,rmaxldau))
+        rmaxh = 2.0_dp*(rmaxo + max(rmaxkb,rmaxdftu))
       endif
 
 !     Madelung correction for charged systems
@@ -523,75 +540,21 @@ C     Initialise MPI and set processor number
 !     Find number of locally stored orbitals and allocated related arrays
       call GetNodeOrbs(no_u,Node,Nodes,no_l)
 
-!     Initialise arrays
-      nullify( listhptr, numh )
-      call re_alloc( listhptr, 1, max(1,no_l), 'listhptr', 'sparseMat' )
-      call re_alloc( numh,     1, max(1,no_l), 'numh',     'sparseMat' )
-      listhptr    = 0
-      numh        = 0
-
-      ! Get number of eigenstates that need to be calculated
-      ! This generally needs to be set to halve the number of
-      ! charges plus some few states (such that the temperature
-      ! tail can be found).
-      neigwanted = fdf_get('NumberOfEigenStates',no_u)
-
-      ! Calculate the number of eigenstates
-      ! dependent on the # of spin-components.
-      neigmin = 0
-      do is = 1 , spin%spinor
-        neigmin = max(neigmin, ceiling(qtots(is)))
-      end do
-      
-      if ( spin%spinor == 1 ) then
-        ! Only take halve the number of states because the filling
-        ! is doubled. Otherwise the number of states is
-        ! correct. For NC and SOC the diag[23]* routines
-        ! intrinsically doubles neigwanted.
-        neigmin = neigmin / 2
-      end if
-      ! Always at least have one additional state per 100 K.
-      ! This choice is rather arbitrary.
-      neigmin = neigmin + ceiling((temp / Kelvin) / 100._dp)
-
-      ! Correct the number of calculated eigenstates
-      if ( neigwanted < 0 ) then
-         
-         ! If this number is negative it corresponds to the
-         ! number of orbitals ABOVE the charge neutrality point
-         ! to be included.
-         ! For very high temperatures this may be difficult to 
-         ! choose, however, for moderate temperatures this
-         ! need not be somewhat more than say 10.
-
-         ! Add the user requested states.
-         neigwanted = neigmin - neigwanted
-
-      end if
-
-      ! Check number of eigenstates - cannot be larger than number of
-      ! basis functions or smaller than number of occupied states + 1
-      ! so that the Fermi level can be estimated
-      neigwanted = max(neigwanted, neigmin)
-
-      ! Truncate value
-      neigwanted = min(neigwanted,no_u)
-      
-!     Find k-grid for Brillouin zone integration 
+!     Find k-grid for Brillouin zone integration
 !     NOTE: We need to know whether gamma is .true. or
-!     not early, in order to decide whether to use an 
+!     not early, in order to decide whether to use an
 !     auxiliary supercell for the calculation of matrix elements.
       call setup_kpoint_scf( ucell )
       not_using_auxcell = gamma_scf
 
-!     Call initialisation of PDOS here since we need to check if 
+!     Call initialisation of PDOS here since we need to check if
 !     the auxiliary supercell is needed for a non-gamma calculation
       call init_projected_DOS( ucell )
       if ( do_pdos ) then
         not_using_auxcell = not_using_auxcell.and. gamma_pdos
       endif
 
-!     Call initialisation of LDOS here since we need to check if 
+!     Call initialisation of LDOS here since we need to check if
 !     the auxiliary supercell is needed for a non-gamma calculation
       call init_local_DOS( ucell )
       if ( do_ldos ) then
@@ -605,10 +568,19 @@ C     Initialise MPI and set processor number
       call read_diag(Gamma_scf, spin%H)
       call print_diag()
 
+      if ( diag_recognizes_neigwanted() ) then
+        if ( IONode .and. neigwanted /= no_u )
+     &      write(6,"(a,t53,'= ',i0,' / ',i0)")
+     &      'diag: Number of calculated states [no_calc / no_u]',
+     &      neigwanted, no_u
+      else
+        neigwanted = no_u
+      end if
+
       nullify(eo,qo)
-      call re_alloc(eo, 1, no_u, 1, spin%spinor, 1, kpoint_scf%N, 'eo', 
+      call re_alloc(eo, 1, no_u, 1, spin%spinor, 1, kpoint_scf%N, 'eo',
      &              'siesta_init')
-      call re_alloc(qo, 1, no_u, 1, spin%spinor, 1, kpoint_scf%N, 'qo', 
+      call re_alloc(qo, 1, no_u, 1, spin%spinor, 1, kpoint_scf%N, 'qo',
      &              'siesta_init')
 
       call setup_bands( )
@@ -635,7 +607,7 @@ C     Initialise MPI and set processor number
         nsc(1:3) = 1
       else
         ! Determine the tightest auxiliary supercell using
-        ! also the atomic positions 
+        ! also the atomic positions
         call exact_sc_ag(negl,ucell,na_u,isa,xa,nsc)
       end if
 
@@ -688,17 +660,17 @@ C     Initialise MPI and set processor number
         call die( 'siesta: wrong idyn' )
       endif
 
-      ! initialize the fixed positions (we need to check whether the 
+      ! initialize the fixed positions (we need to check whether the
       ! fixed positions make sense)
       call init_fixed( ucell, na_u , isa, iza )
       call print_fixed( )
 
       ! Build initial velocities according to Maxwell-Bolzmann distribution....
-      if (idyn .ne. 0 .and. idyn .ne. 6 .and. (.not. xv_file_read)) 
+      if (idyn .ne. 0 .and. idyn .ne. 6 .and. (.not. xv_file_read))
      &    call vmb( na_u, tempinit, amass, xa, isa, va )
 
       istp = 0
-      
+
       call ts_init(spin%Grid,ucell,na_u,xa,lasto,no_u,inicoor,fincoor)
 
 #ifdef SIESTA__FLOOK
@@ -723,8 +695,8 @@ C     Initialise MPI and set processor number
 
       call timer( 'Setup', 2 )
 
-!--------------------------------------------------------------------------- END
-
       END subroutine siesta_init
+
+!--------------------------------------------------------------------------- END
 
       END MODULE m_siesta_init

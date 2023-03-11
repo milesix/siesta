@@ -141,7 +141,7 @@ contains
     use class_OrbitalDistribution
     use class_dSpData2D
 
-    use m_ts_electype
+    use ts_electrode_m
     use m_ts_chem_pot, only : ts_mu
     use m_ts_contour_neq, only : N_nEq_ID, ID2mu
 #ifdef TRANSIESTA_DEBUG_NELEC
@@ -157,7 +157,7 @@ contains
     ! * OUTPUT variables  *
     ! *********************
     integer,            intent(in) :: N_Elec
-    type(Elec),         intent(in) :: Elecs(N_Elec)
+    type(electrode_t),         intent(in) :: Elecs(N_Elec)
     integer,            intent(in) :: N_mu
     type(ts_mu),        intent(in) :: mus(N_mu)
     ! The last-orbital of each atom
@@ -397,7 +397,7 @@ contains
           ! weight if Elec%Bulk
           if ( (.not. Elecs(io)%Bulk) .and. Elecs(io)%DM_update /= 2 ) cycle
           ! if we are not in the electrode we do not correct weight
-          if ( .not. AtomInElec(Elecs(io),ia) ) cycle
+          if ( .not. Elecs(io)%has_atom(ia) ) cycle
           ! in case of sum with the off-diagonal terms we have to sum (otherwise it should be (:,ia) = tmp ; (mu%ID,ia) = 0._dp) 
           atom_w(:,ia) = 0._dp
           atom_w(Elecs(io)%mu%ID,ia) = 1._dp
@@ -869,41 +869,28 @@ contains
 
 
   ! Calculate the theta values
-  pure subroutine calc_theta(N_mu,N_id,ID_mu,w_ID,theta)
-    integer,  intent(in)  :: N_mu, N_id, ID_mu(N_id)
-    real(dp), intent(in)  :: w_ID(N_id)
-    real(dp), intent(out) :: theta(N_mu)
-    integer :: ID
-
-    ! TODO check that this is correct for several electrodes
-    theta(:) = 0._dp
-    do ID = 1 , N_id
-      theta(ID_mu(ID)) = theta(ID_mu(ID)) + w_ID(ID)
-    end do
-
-  end subroutine calc_theta
-
-  ! Calculate the theta values
   pure subroutine calc_weight(N_mu,N_id,ID_mu,w_ID,w)
     integer,  intent(in)  :: N_mu, N_id, ID_mu(N_id)
     real(dp), intent(in)  :: w_ID(N_id)
     real(dp), intent(out) :: w(N_mu)
     real(dp) :: theta(N_mu), tmp
-    integer :: i
+    integer :: i, j
 
-    call calc_theta(N_mu,N_id,ID_mu,w_ID,theta)
-
-    w(:) = product(theta)
+    call calc_neq(N_mu,N_id,ID_mu,w_ID,theta)
+    ! We need to do it this complicated since
+    ! one of theta's may be 0.
+    tmp = 0._dp
     do i = 1 , N_mu
-      if ( theta(i) > 0._dp ) then
-        w(i) = w(i) / theta(i)
-      else
-        w(i) = 0._dp
-      end if
+      w(i) = 1._dp
+      do j = 1, N_mu
+        if ( i /= j ) then
+          w(i) = w(i) * theta(j)
+        end if
+      end do
+      tmp = tmp + w(i)
     end do
 
     ! The denominator
-    tmp = sum(w)
     if ( tmp == 0._dp ) then
       w = 1._dp / real(N_mu,dp)
     else
@@ -919,37 +906,38 @@ contains
     real(dp), intent(in)  :: neq_ID(N_id)
     real(dp), intent(out) :: neq(N_mu)
     real(dp), intent(out) :: w(N_mu)
-    integer :: i
+    integer :: i, j
     real(dp) :: tmp
 
     ! TODO check that this is correct for several electrodes
-    call calc_theta(N_mu,N_id,ID_mu,neq_ID**2,neq)
-    w(:) = product(neq)
+    call calc_neq(N_mu,N_id,ID_mu,neq_ID**2,neq)
+    tmp = 0._dp
     do i = 1 , N_mu
-      if ( neq(i) > 0._dp ) then
-        w(i) = w(i) / neq(i)
-      else
-        w(i) = 0._dp
-      end if
+      ! Calculate weight for chemical potential i
+      w(i) = 1._dp
+      do j = 1, N_mu
+        if ( i /= j ) then
+          w(i) = w(i) * neq(j)
+        end if
+      end do
+      tmp = tmp + w(i)
     end do
 
     ! The denominator
-    tmp = sum(w)
     if ( tmp == 0._dp ) then
       w = 1._dp / real(N_mu,dp)
     else
       w = w / tmp
     end if
 
-    neq(:) = 0._dp
-    do i = 1 , N_id
-      neq(ID_mu(i)) = neq(ID_mu(i)) + neq_ID(i)
-    end do
+    call calc_neq(N_mu,N_id,ID_mu,neq_ID,neq)
 
   end subroutine calc_neq_weight
 
   ! Calculate both the non-equilibrium contribution
   ! and the weight associated with those points
+  ! Note that the non-equilibrium contribution calculation
+  ! is the same as the theta calculation.
   pure subroutine calc_neq(N_mu,N_id,ID_mu,neq_ID,neq)
     integer,  intent(in)  :: N_mu, N_id, ID_mu(N_id)
     real(dp), intent(in)  :: neq_ID(N_id)

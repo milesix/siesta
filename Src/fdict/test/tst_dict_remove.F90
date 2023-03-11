@@ -6,10 +6,10 @@ program test_dict
 
   real :: a, b(2),c(2,2)
   real, pointer :: d => null()
-  type(var) :: v
-  type(dict) :: dic
+  type(variable_t) :: v
+  type(dictionary_t) :: dic
 
-#include "var_declarations.inc"
+#include "variable_declarations_.inc"
 
   a = 1.
   b = 2.
@@ -20,7 +20,7 @@ program test_dict
 
   ! fill dictionary
   dic = ('a'.kv.a)//('b'.kv.b)//('c'.kv.c)//('d'.kvp.d)// &
-       ('string'.kv."Hello world")
+      ('string'.kv."Hello world")
 
   ! print all the values
   call print(dic)
@@ -54,7 +54,7 @@ program test_dict
   print *,ps0%p,d
 
   print *,'Length:',len(dic),3
-  
+
   ! print all the values
   call print(dic)
 

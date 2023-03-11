@@ -39,7 +39,7 @@ C **********************************************************************
 
       use parallel,  only : nodes
       use mesh,      only : NSM, nsp, meshLim
-      use siestaXC,  only : cellXC       ! Finds xc energy and potential
+      use gridXC,    only : cellXC=>gridxc_cellXC ! Finds xc energy and potential
 
       use moreMeshSubs, only : setMeshDistr, distMeshData
       use moreMeshSubs, only: UNIFORM, LINEAR
@@ -133,7 +133,7 @@ C ----------------------------------------------------------------------
       ! The input distribution is UNIFORM, but we need to work with the
       ! "zero/not-zero rho" distribution (miscalled 'LINEAR')
       if (nodes.gt.1) then
-         call setMeshDistr( LINEAR, nsm, nsp, nml, nmpl, ntml, ntpl )
+         call setMeshDistr( LINEAR, nml, nmpl, ntml, ntpl )
       endif
 
       nullify( drhoin_par, vharris1_par, dvxcdn_par )
@@ -172,8 +172,7 @@ C ----------------------------------------------------------------------
 
       if (nodes.gt.1) then
 !     Everything back to UNIFORM, sequential
-         call setMeshDistr( UNIFORM, nsm, nsp,
-     &        nml, nmpl, ntml, ntpl )
+         call setMeshDistr( UNIFORM, nml, nmpl, ntml, ntpl )
       endif
 
       DO ISPIN = 1, NSPIN

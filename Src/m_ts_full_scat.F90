@@ -13,7 +13,7 @@ module m_ts_full_scat
 
   use precision, only : dp
 
-  use m_ts_electype
+  use ts_electrode_m
   use m_ts_cctype
 
   implicit none
@@ -25,6 +25,12 @@ module m_ts_full_scat
   public :: calc_GF_Part
   public :: GF_Gamma_GF
   public :: insert_Self_Energies
+
+#ifdef USE_GEMM3M
+# define GEMM zgemm3m
+#else
+# define GEMM zgemm
+#endif
 
 contains
 
@@ -44,9 +50,9 @@ contains
 ! * INPUT variables   *
 ! *********************
     ! electrode self-energy
-    type(Elec), intent(in) :: El
+    type(electrode_t), intent(in) :: El
     integer, intent(in) :: no_u_TS ! no. states in contact region
-    integer, intent(in) :: no      ! no. states for all electrodes
+    integer, intent(in) :: no      ! no. states for this electrode
     ! The Green function (it has to be the column that corresponds to the electrode)
     complex(dp), intent(inout) :: GF(no_u_TS,no)
     ! A work array for doing the calculation... (nwork has to be larger than no_u_TS)
@@ -79,74 +85,54 @@ contains
     ! Loop over bottom row matrix 
     do iB = 0 , NB - 1
        
-       ! Collect the top row of complex conjugated Gf
-       ind = no_u_TS * no * iB + 1
-       do i = 1 , no
-          GGG(ind:ind-1+no) = conjg(Gf(iB*no+1:(iB+1)*no,i))
-          ind = ind + no
-       end do
-       ind = no_u_TS * no * iB + 1
+      ! Collect the top row of complex conjugated Gf
+      ind = no_u_TS * no * iB + 1
+      do i = 1 , no
+        GGG(ind:ind-1+no) = conjg(Gf(iB*no+1:(iB+1)*no,i))
+        ind = ind + no
+      end do
+      ind = no_u_TS * no * iB + 1
+
+      ! Do Gamma.Gf^\dagger
+      call GEMM ('T','T',no,no,no,z1, &
+          El%Gamma, no, &
+          GGG(ind), no, &
+          z0, work,no)
        
-       ! Do Gamma.Gf^\dagger
-#ifdef USE_GEMM3M
-       call zgemm3m( &
-#else
-       call zgemm( &
-#endif
-            'T','T',no,no,no,z1, &
-            El%Gamma, no, &
-            GGG(ind), no, &
-            z0, work,no)
-       
-       ! Calculate the Gf.Gamma.Gf^\dagger product for the entire column
-#ifdef USE_GEMM3M
-       call zgemm3m( &
-#else
-       call zgemm( &
-#endif
-            'N','N',no_u_TS,no,no,z1, &
-            Gf(1,1), no_u_TS, &
-            work   ,      no, &
-            z0, GGG(ind),no_u_TS)
+      ! Calculate the Gf.Gamma.Gf^\dagger product for the entire column
+      call GEMM ('N','N',no_u_TS,no,no,z1, &
+          Gf(1,1), no_u_TS, &
+          work, no, &
+          z0, GGG(ind),no_u_TS)
     
     end do
 
     ! in case the block size does not match the matrix order
     if ( NB * no /= no_u_TS ) then
 
-       ! The size of the remaining block
-       iB = no_u_TS - NB * no
+      ! The size of the remaining block
+      iB = no_u_TS - NB * no
 
-       ! Copy over the block
-       ind = no_u_TS * no * NB + 1
-       do i = 1 , no
-          ! So this is the complex conjugated of the iB'th block
-          GGG(ind:ind-1+iB) = conjg(Gf(NB*no+1:NB*no+iB,i))
-          ind = ind + iB
-       end do
-       ind = no_u_TS * no * NB + 1
+      ! Copy over the block
+      ind = no_u_TS * no * NB + 1
+      do i = 1 , no
+        ! So this is the complex conjugated of the iB'th block
+        GGG(ind:ind-1+iB) = conjg(Gf(NB*no+1:NB*no+iB,i))
+        ind = ind + iB
+      end do
+      ind = no_u_TS * no * NB + 1
 
-       ! Do Gamma.Gf^\dagger
-#ifdef USE_GEMM3M
-       call zgemm3m( &
-#else
-       call zgemm( &
-#endif
-            'T','T',no,iB,no,z1, &
-            El%Gamma, no, &
-            GGG(ind), iB, &
-            z0, work,no)
+      ! Do Gamma.Gf^\dagger
+      call GEMM ('T','T',no,iB,no,z1, &
+          El%Gamma, no, &
+          GGG(ind), iB, &
+          z0, work,no)
        
-       ! Calculate the Gf.Gamma.Gf^\dagger product for the entire column
-#ifdef USE_GEMM3M
-       call zgemm3m( &
-#else
-       call zgemm( &
-#endif
-            'N','N',no_u_TS,iB,no,z1, &
-            Gf(1,1), no_u_TS, &
-            work   ,      no, &
-            z0, GGG(ind),no_u_TS)
+      ! Calculate the Gf.Gamma.Gf^\dagger product for the entire column
+      call GEMM ('N','N',no_u_TS,iB,no,z1, &
+          Gf(1,1), no_u_TS, &
+          work, no, &
+          z0, GGG(ind),no_u_TS)
 
     end if
 
@@ -162,24 +148,23 @@ contains
     call write_debug( 'POS GFGammaGF' )
 #endif
 
-  end subroutine GF_Gamma_GF
-
 #ifdef TRANSIESTA_31
-subroutine my_symmetrize(N,M)
-  use parallel, only : IONode
-    integer    , intent(in) :: N
-    complex(dp), intent(inout) :: M(N,N)
-    integer :: i,j
-    do j = 1 , N
-       do i = 1 , j
-!          if(ionode)print *,M(j,i),M(i,j)
+  contains
+    subroutine my_symmetrize(N,M)
+      integer    , intent(in) :: N
+      complex(dp), intent(inout) :: M(N,N)
+      integer :: i,j
+      do j = 1 , N
+        do i = 1 , j
           M(j,i) = aimag(M(i,j))
           M(i,j) = M(j,i)
-
-       end do
-    end do
-  end subroutine my_symmetrize
+        end do
+      end do
+    end subroutine my_symmetrize
 #endif
+
+  end subroutine GF_Gamma_GF
+
 
 ! ##################################################################
 ! ## Calculating Full Green functions of                          ## 
@@ -195,7 +180,6 @@ subroutine my_symmetrize(N,M)
 ! ##################################################################
   subroutine calc_GF(cE,no_u_TS,GFinv,GF)
     
-    use intrinsic_missing, only: EYE
     use precision, only: dp
 
     implicit none 
@@ -210,8 +194,8 @@ subroutine my_symmetrize(N,M)
     ! This may seem strange, however, it will clean up this routine extensively
     ! as we dont need to make two different routines for real and complex
     ! Hamiltonian values.
-    complex(dp), intent(in out) :: GFinv(no_u_TS,no_u_TS) ! the inverted GF
-    complex(dp), intent(out) :: GF(no_u_TS**2)
+    complex(dp), intent(inout) :: GFinv(no_u_TS,no_u_TS) ! the inverted GF
+    complex(dp), intent(out) :: GF(no_u_TS,no_u_TS)
 
 ! Local variables
     integer :: ipvt(no_u_TS), ierr
@@ -224,11 +208,11 @@ subroutine my_symmetrize(N,M)
 
     call timer('GFT',1) 
 
-    call EYE(no_u_TS,GF)
-    
-    ! Invert directly
-    call zgesv(no_u_TS,no_u_TS,GFinv,no_u_TS,ipvt,GF,no_u_TS,ierr)            
-    if ( ierr /= 0 ) call die('GF: Could not invert the Green function')
+    call zcopy(no_u_TS*no_u_TS, GFinv, 1, GF, 1)
+    call zgetrf(no_u_TS, no_u_TS, GF, no_u_TS, ipvt, ierr)
+    if ( ierr /= 0 ) call die('GF: Error on LU factorization')
+    call zgetri(no_u_TS, GF, no_u_TS, ipvt, GFinv, no_u_TS*no_u_TS, ierr)
+    if ( ierr /= 0 ) call die('GF: Error on inverting Green function')
        
     call timer('GFT',2)  
 
@@ -244,7 +228,7 @@ subroutine my_symmetrize(N,M)
 ! ##                                                              ##          
 ! ##  Fully created by Nick Papior Andersen, nickpapior@gmail.com ##
 ! ##################################################################
-  subroutine calc_GF_Bias(cE,no_u_TS,N_Elec,Elecs,GFinv,GF)
+  subroutine calc_GF_Bias(cE,no_u_TS,no_Els,N_Elec,Elecs,GFinv,GF)
     
     use precision, only: dp
 
@@ -257,21 +241,21 @@ subroutine my_symmetrize(N,M)
 ! *********************
     type(ts_c_idx), intent(in) :: cE
     ! Sizes of the different regions...
-    integer, intent(in) :: no_u_TS
+    integer, intent(in) :: no_u_TS, no_Els
     ! Electrodes
     integer, intent(in) :: N_Elec
-    type(Elec), intent(in) :: Elecs(N_Elec)
+    type(electrode_t), intent(in) :: Elecs(N_Elec)
     ! Work should already contain Z*S - H
     ! This may seem strange, however, it will clean up this routine extensively
     ! as we dont need to make two different routines for real and complex
     ! Hamiltonian values.
-    complex(dp), intent(in out) :: GFinv(no_u_TS,no_u_TS) ! the inverted GF
+    complex(dp), intent(inout) :: GFinv(no_u_TS,no_u_TS) ! the inverted GF
     ! We only need Gf in the left and right blocks...
-    complex(dp), intent(out) :: GF(:)
+    complex(dp), intent(out) :: GF(no_u_TS,no_Els)
 
 ! Local variables
     integer :: ipvt(no_u_TS)
-    integer :: i, o, no, iEl, off_row
+    integer :: i, o, iEl, off_row
 
     if ( cE%fake ) return
 
@@ -281,26 +265,23 @@ subroutine my_symmetrize(N,M)
 
     call timer('GFTB',1) 
 
-    no = sum(TotUsedOrbs(Elecs(:)))
-    if ( no == 0 ) call die('GFB: Error in contour setup')
-    if ( no * no_u_TS > size(GF) ) &
-         call die('GFB: Wrong size of Green function')
-
     ! Create the RHS for inversion...
-    GF(:) = cmplx(0._dp,0._dp,dp)
+    GF(:,:) = cmplx(0._dp,0._dp, dp)
 
     o = 0
     do iEl = 1 , N_Elec
-       i = Elecs(iEl)%idx_o
-       off_row = i - orb_offset(i) - 1
-       do i = 1 , TotUsedOrbs(Elecs(iEl))
-          GF(o*no_u_TS+off_row+i) = cmplx(1._dp,0._dp,dp)
-          o = o + 1
-       end do
+      i = Elecs(iEl)%idx_o
+      off_row = i - orb_offset(i) - 1
+      do i = 1 , Elecs(iEl)%device_orbitals()
+        o = o + 1
+        GF(off_row+i,o) = cmplx(1._dp,0._dp, dp)
+      end do
     end do
 
+    if ( o /= no_Els ) call die('GFB: Error in sizes of electrodes')
+
     ! Invert directly
-    call zgesv(no_u_TS,o,GFinv,no_u_TS,ipvt,GF,no_u_TS,i)
+    call zgesv(no_u_TS,no_Els,GFinv,no_u_TS,ipvt,GF,no_u_TS,i)
     if ( i /= 0 ) call die('GFB: Could not invert the Green function')
        
     call timer('GFTB',2)  
@@ -312,24 +293,17 @@ subroutine my_symmetrize(N,M)
   end subroutine calc_GF_Bias
 
 
-! ##################################################################
-! ## Calculating Full Green functions of                          ## 
-! ##                                                              ##          
-! ##                            By                                ##
-! ##              Mads Brandbyge, mbr@mic.dtu.dk                  ##
-! ##                                                              ##
-! ##                                                              ##
-! ## Completely restructured to be able to handle sparse matrices ##
-! ##                                                              ##
-! ##                                                              ##
-! ##  Modified by Nick Papior Andersen                            ##
-! ##################################################################
-  subroutine calc_GF_Part(cE,no_u_TS, N_Elec, Elecs, & ! Size of the problem
+  ! Calculate a sub-part of the full Green function.
+  ! This routine calculates the dense part that does not overlap with
+  ! electrodes.
+  ! I.e. this can *only* be used for equilibrium contour points
+  ! since it removes the columns for electrodes where DM_update == 0.
+  subroutine calc_GF_Part(cE,no_u, no_u_TS, no_col, N_Elec, Elecs, & ! Size of the problem
        GFinv,GF)
     
     use intrinsic_missing, only: EYE
     use precision, only: dp
-    use m_ts_method, only : orb_offset
+    use m_ts_method, only : orb_offset, orb_type, TYP_BUFFER
 
     implicit none 
 
@@ -338,20 +312,20 @@ subroutine my_symmetrize(N,M)
 ! *********************
     type(ts_c_idx), intent(in) :: cE
     ! Sizes of the different regions...
-    integer, intent(in) :: no_u_TS
+    integer, intent(in) :: no_u, no_u_TS, no_col
     integer, intent(in) :: N_Elec
-    type(Elec), intent(in) :: Elecs(N_Elec)
+    type(electrode_t), intent(in) :: Elecs(N_Elec)
     ! Work should already contain Z*S - H
     ! This may seem strange, however, it will clean up this routine extensively
     ! as we dont need to make two different routines for real and complex
     ! Hamiltonian values.
     complex(dp), intent(in out) :: GFinv(no_u_TS,no_u_TS) ! the inverted GF
-    complex(dp), intent(out) :: GF(:)
+    complex(dp), intent(out) :: GF(no_u_TS,no_col)
 
 ! Local variables
     integer :: ipvt(no_u_TS)
-    integer :: i, j, no
-    logical :: found
+    integer :: jo, i, j
+    logical :: dm_update_0(N_elec)
 
     if ( cE%fake ) return
 
@@ -359,35 +333,33 @@ subroutine my_symmetrize(N,M)
     call write_debug( 'PRE getGF' )
 #endif
 
-    call timer('GFT_P',1) 
+    call timer('GFT_P',1)
 
-    no = no_u_TS
-    do i = 1, N_Elec
-       if ( Elecs(i)%DM_update == 0 ) then
-          no = no - TotUsedOrbs(Elecs(i))
-       end if
-    end do
-    if ( no * no_u_TS > size(GF) ) &
-         call die('GFP: Wrong size of Green function')
+    dm_update_0(:) = Elecs(:)%DM_update == 0
 
     ! initialize
-    GF(:) = cmplx(0._dp,0._dp,dp)
+    GF(:,:) = cmplx(0._dp,0._dp,dp)
 
+    j = 0
     i = 0
-    do j = 0 , no - 1
-       found = .false.
-       do while ( .not. found ) 
-          i = i + 1
-          if ( .not. any(OrbInElec(Elecs,i) .and. Elecs(:)%DM_update == 0) ) then
-             
-             GF(j*no_u_TS+i-orb_offset(i)) = cmplx(1._dp,0._dp,dp)
-             found = .true.
-          end if
-       end do
+    do jo = 1, no_u
+
+      ! if buffer, skip!
+      if ( orb_type(jo) == TYP_BUFFER ) cycle
+      if ( any(Elecs%has_orbital(jo) .and. dm_update_0(:)) ) then
+        i = i + 1
+        cycle
+      end if
+      i = i + 1
+      j = j + 1
+
+      GF(i,j) = cmplx(1._dp,0._dp,dp)
     end do
 
+    if ( i /= no_u_TS .or. j /= no_col ) call die('GFP: error in constructing part GF')
+
     ! Invert directly
-    call zgesv(no_u_TS,no,GFinv,no_u_TS,ipvt,GF,no_u_TS,i)
+    call zgesv(no_u_TS,no_col,GFinv,no_u_TS,ipvt,GF,no_u_TS,i)
     if ( i /= 0 ) call die('GFP: Could not invert the Green function')
 
     call timer('GFT_P',2)
@@ -401,37 +373,39 @@ subroutine my_symmetrize(N,M)
   subroutine insert_Self_Energies(no_u, Gfinv, El)
     use m_ts_method, only : orb_offset
     integer, intent(in) :: no_u
-    complex(dp), intent(in out) :: GFinv(no_u,no_u)
-    type(Elec), intent(in) :: El
+    complex(dp), intent(inout) :: GFinv(no_u,no_u)
+    type(electrode_t), intent(in) :: El
     
     integer :: i, j, ii, jj, iii, off, no
     
-    no = TotUsedOrbs(El)
+    no = El%device_orbitals()
     off = El%idx_o - orb_offset(El%idx_o) - 1
     
     if ( El%Bulk ) then
 !$OMP do private(j,jj,i,ii)
-       do j = 0 , no - 1
-          jj = off + j + 1
-          ii = j * no
-          do i = 1 , no
-             Gfinv(off+i,jj) = El%Sigma(ii+i)
-          end do
-       end do
+      do j = 0 , no - 1
+        jj = off + j + 1
+        ii = j * no
+        do i = 1 , no
+          Gfinv(off+i,jj) = El%Sigma(ii+i)
+        end do
+      end do
 !$OMP end do nowait
     else
 !$OMP do private(j,jj,i,ii,iii)
-       do j = 0 , no - 1
-          iii = j * no
-          jj = off + j + 1
-          do i = 1 , no
-             ii  = off + i
-             Gfinv(ii,jj) = Gfinv(ii,jj) - El%Sigma(iii+i) 
-          end do
-       end do
+      do j = 0 , no - 1
+        jj = off + j + 1
+        ii = j * no
+        do i = 1 , no
+          iii = off + i
+          Gfinv(iii,jj) = Gfinv(iii,jj) - El%Sigma(ii+i)
+        end do
+      end do
 !$OMP end do nowait
     end if
 
   end subroutine insert_Self_Energies
+
+#undef GEMM
 
 end module m_ts_full_scat

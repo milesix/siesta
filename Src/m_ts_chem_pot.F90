@@ -68,12 +68,14 @@ module m_ts_chem_pot
   end interface copy
   public :: copy
 
+  interface delete
+     module procedure delete_
+  end interface delete
+  public :: delete
+
   public :: Eq_segs
-
   public :: chem_pot_add_Elec
-
   public :: fdf_nmu, fdffake_mu, fdf_mu
-
   public :: print_mus_block
 
   private
@@ -109,7 +111,7 @@ contains
 
     allocate(this_n(n))
     this_n(:)%N_poles = fdf_get('TS.Contours.Eq.Pole.N',def_poles)
-    E_pole = fdf_get('TS.Contours.Eq.Pole',2.5_dp*eV,'Ry')
+    E_pole = fdf_get('TS.Contours.Eq.Pole',1.5_dp*eV,'Ry')
     if ( E_pole > 0._dp ) then
        call E2Npoles(E_pole,kT,i)
        this_n(:)%N_poles = i
@@ -153,7 +155,7 @@ contains
 
     ! Read in number of poles
     this_n(:)%N_poles = fdf_get('TS.Contours.Eq.Pole.N',def_poles)
-    E_pole = fdf_get('TS.Contours.Eq.Pole',2.5_dp*eV,'Ry')
+    E_pole = fdf_get('TS.Contours.Eq.Pole',1.5_dp*eV,'Ry')
     ! If the energy is larger than zero, the user requests
     ! number of poles
     if ( E_pole > 0._dp ) then
@@ -288,7 +290,7 @@ contains
        ! Update the number of poles
        call E2Npoles(E_pole, this%kT, this%N_poles)
     else if ( .not. bool_pole(1) ) then
-       E_pole = fdf_get('TS.Contours.Eq.Pole',2.5_dp*eV,'Ry')
+       E_pole = fdf_get('TS.Contours.Eq.Pole',1.5_dp*eV,'Ry')
        if ( E_pole > 0._dp ) then
           call E2Npoles(E_pole,this%kT,this%N_poles)
        end if
@@ -507,7 +509,7 @@ contains
     if ( .not. IONode ) return
 
     def_pole = fdf_get('TS.Contours.Eq.Pole.N',def_poles)
-    E_pole = fdf_get('TS.Contours.Eq.Pole',2.5_dp*eV,'Ry')
+    E_pole = fdf_get('TS.Contours.Eq.Pole',1.5_dp*eV,'Ry')
     if ( E_pole > 0._dp ) then
        call E2Npoles(E_pole,this%kT, def_pole)
     end if
@@ -562,6 +564,18 @@ contains
     allocate(copy%Eq_seg(size(this%Eq_seg)))
     copy%Eq_seg(:) = this%Eq_seg(:)
   end subroutine copy_
+
+  subroutine delete_(this)
+    type(ts_mu), intent(inout) :: this
+
+    if ( allocated(this%Eq_seg) ) then
+      deallocate(this%Eq_seg)
+    end if
+    deallocate(this%el)
+    nullify(this%el)
+    this%N_El = 0
+
+  end subroutine delete_
 
 end module m_ts_chem_pot
   

@@ -42,6 +42,7 @@
       use siesta_cml
       use cellsubs,      only : reclat  ! Finds reciprocal unit cell
       use cellsubs,      only : volcel  ! Finds unit cell volume
+      use fdf,           only : fdf_defined
 #ifdef MPI
       use mpi_siesta
 #endif
@@ -140,29 +141,35 @@ C     Functions
 ! Note needed integer*8 !
 !!AG** Check proper kind name
 
-      ntp = product(INT(ntm,kind=i8b))
+      ntp = product(INT(ntm,i8b))
+
+      if (fdf_defined('MeshSizes') .and. .not.fdf_defined('MeshCutoff'))
+     &    G2max = 0._dp
+
+      if ( Node == 0 ) then
+        write(6,'(/a,3(tr1,i0,tr1,a),i0)') 'InitMesh: MESH =',
+     &      ntm(1),'x',ntm(2),'x',ntm(3),'= ', ntp
+#ifdef SIESTA__DEV_INFO
+        write(6,'(a,3(i6,a),i12)') 'InitMesh: (bp) =',
+     &      nm(1),' x',nm(2),' x',nm(3),' =', product(INT(nm,i8b))
+#endif
+C     Output current mesh dimensions and cut-off
+        write(6,'(a,2f10.3,a)')
+     &      'InitMesh: Mesh cutoff (required, used) =',
+     &      G2max, G2mesh, ' Ry'
+      endif
 
 C     Create the first mesh distribution
-      call initMeshDistr( oDistr=UNIFORM, nm=nm )
+      call initMeshDistr( oDistr=UNIFORM, nm=nm, nsm=nsm )
 
 C     Find and sets local number of Mesh points of each kind
 !     Sets nml, nmpl, ntml and ntpl
-      call setMeshDistr( UNIFORM, nsm, nsp, nml, nmpl, ntml, ntpl )
+      call setMeshDistr( UNIFORM, nml, nmpl, ntml, ntpl )
 
 C     Find volume of unit cell and of mesh cell
       volume = volcel( cell )
       dvol = volume / ntp
 
-C     Output current mesh dimensions and cut-off
-      if (Node.eq.0) then
-        write(6,'(/,a,3(i6,a),i12)') 'InitMesh: MESH =',
-     &        ntm(1),' x',ntm(2),' x',ntm(3),' =', ntp
-        write(6,'(a,3(i6,a),i12)') 'InitMesh: (bp) =',
-     &        nm(1),' x',nm(2),' x',nm(3),' =', product(INT(nm,8))
-        write(6,'(a,2f10.3,a)')
-     &        'InitMesh: Mesh cutoff (required, used) =',
-     &        G2max, G2mesh, ' Ry'
-      endif
       if (cml_p) then
         call cmlStartPropertyList(mainXML)
         call cmlAddProperty(xf=mainXML, value=ntm,
@@ -269,9 +276,10 @@ C     Create extended mesh arrays for the first data distribution
       ! sampling size nsm.
 
       use precision,     only : dp
+      use parallel,      only : IOnode
       use cellsubs,      only : reclat  ! Finds reciprocal unit cell
       use m_chkgmx,      only : chkgmx  ! Checks planewave cutoff of a mesh
-      use fft1d,         only : nfft    ! Finds allowed value for 1-D FFT
+      use gpfa_fft,      only : nfft    ! Finds allowed value for 1-D FFT
       use fdf
       use sys,           only : die, message
 
@@ -283,7 +291,7 @@ C     Create extended mesh arrays for the first data distribution
       
       real(dp)  :: rcell(3,3), vecmod
       integer   :: i, itmp
-      real(dp), parameter     :: k0(3) = (/ 0.0, 0.0, 0.0 /)
+      real(dp), parameter     :: k0(3) = (/ 0.d0, 0.d0, 0.d0 /)
 
       type(block_fdf)            :: bfdf
       type(parsed_line), pointer :: pline
@@ -365,10 +373,10 @@ C     Create extended mesh arrays for the first data distribution
 
 !     Issue a warning if the mesh sizes are smaller than
 !     the requested mesh cutoff
-      if ( RealCutoff < G2max ) then
-        call message("WARNING","Read mesh sizes give a smaller"
-     $      // " cutoff than requested")
-      end if
+        if (RealCutoff<G2max .and. fdf_defined('MeshCutoff')) then
+           call message("WARNING","Read mesh sizes give a smaller"
+     &                   // " cutoff than requested")
+        endif
 
 !     Check whether the resulting mesh sizes are multiples
 !     of nsm.
@@ -433,8 +441,8 @@ C     Passed arguments
 C     Local variables
 C     Saved
       integer,           save :: lastna     = 0
-      real(dp),          save :: tiny       = 1.0e-12_dp,
-     &                           lastc(3,3) = 0.743978657912656e50_dp,
+      real(dp), parameter :: tiny       = 1.0e-12_dp
+      real(dp), save :: lastc(3,3) = 0.743978657912656e50_dp,
      &                           lastra     = 0.0_dp
 C     non-saved
       integer                 :: i, ia, j
@@ -541,7 +549,7 @@ C     If cell has changed then it is necessary to reinitialise coordinates
 !     (Re)allocate atom-mesh arrays
       call allocIpaDistr( distr, na )
       if (na.ne.lastna) then
-        call re_alloc( dxa, 1,3, 1,na, myName//'dxa' )
+        call re_alloc( dxa, 1,3, 1,na, 'dxa', myName )
         call re_alloc( iatfold, 1,3, 1,na, myName//'iatfold' )
       endif
       lastna = na
@@ -663,9 +671,8 @@ C     Internal variables
      &                             ispin, iua
       real(dp)                  :: dfa(3), dx(3), grrho(3), r, ra,
      &                             rhop, vxc
-      real(dp),            save :: tiny
+      real(dp), parameter :: tiny = 1.0e-12_dp
       logical                   :: Gradients
-      data tiny / 1.0e-12_dp /
 
 !------------------------------------------------------------------------- BEGIN
 #ifdef DEBUG
@@ -840,9 +847,8 @@ C ----------------------------------------------------------------------
 C real    Chlocal(ntpl)     : Sum of diffuse ionic charge densities
 C ----------------------------------------------------------------------
       use precision, only: dp, grid_p
-      use atmfuncs,  only: rcut, psch
+      use atmfuncs,  only: rcut, psch, rchlocal
       use atm_types, only: species
-      use radial,    only: rad_func
       use mesh,      only: dxa, idop, indexp, ipa, mop, nsp, xdop, xdsp
       implicit none
 C     Passed arguments
@@ -852,8 +858,6 @@ C     Passed arguments
 C     Internal variables
       integer                   :: ia, iop, ip, ip0, is, isp, iua
       real(dp)                  :: dx(3), grpsch(3), r, ra, pschloc
-      type(rad_func), pointer  :: func   
- 
 !------------------------------------------------------------------------- BEGIN
 #ifdef DEBUG
       call write_debug( '      PRE LocalChargeOnMesh' )
@@ -865,8 +869,7 @@ C     Initialise array to zero
         if (ipa(ia)==0) cycle ! Atomic sphere does not intersec my Box
         iua = indxua(ia)
         is = isa(ia)
-        func => species(is)%chlocal
-        ra = func%cutoff
+        ra = rchlocal(is)
 C       Loop over mesh points inside rmax
         do iop = 1,mop
           ip0 = indexp( ipa(ia) + idop(iop) )
@@ -910,7 +913,7 @@ C real    ModelCore(ntpl)     : Sum of model core charge densities
 C ----------------------------------------------------------------------
 
       use precision,     only : dp, grid_p
-      use atmfuncs, only: izofis, zvalfis
+      use atmfuncs, only: izofis, zvalfis, rchlocal
       use atm_types, only : species
       use mesh,     only: dxa, idop, indexp, ipa, mop, nsp, xdop, xdsp
       use fdf
@@ -934,7 +937,6 @@ C
       real(dp) dx(3), ra, charge_ratio, r
       real(dp) core_charge
       real(dp), parameter :: pi = 3.141592653589793_dp
-
         ! We want a total core charge of (Z-Zval), localized in a
         ! region of around 1.0 bohr.
         ! Note that we put 1 electron (extra!) for Hydrogen atoms,
@@ -1096,12 +1098,14 @@ C     Allocate phi if this is not a direct calculation
         nphi = 1
       else
         nphi = nlist
+#ifdef SIESTA__DEV_INFO
         if (IONode) then
            write(6,"(a,i20)")
      $          "PhiOnMesh: Number of (b)points on node 0 = ", nmpl
            write(6,"(a,i20)")
      $          "PhiOnMesh: nlist on node 0 = ", nlist
         endif
+#endif
       endif
 
 C     Add an extra margin of error to nlist to minimise reallocations
@@ -1244,10 +1248,12 @@ C     Functions
       nem(:) = myExtBox(2,:) - myExtBox(1,:) + 1
       nep = nem(1) * nem(2) * nem(3)
 
+#ifdef SIESTA__DEV_INFO
       if (IONode) then
          write(6,'(a,3(i6,a),i12)') 'ExtMesh (bp) on 0 =',
      &        nem(1),' x',nem(2),' x',nem(3),' =', nep
       endif
+#endif
 
 !     Allocate memory for indexp(nep), idop(mop) and xdop(3,mop) of
 !     the current data distribution
@@ -1363,11 +1369,11 @@ C  - Uniform:   Same amount of mesh in every process. Used in Poison
 C  - Quadratic: The load in every point of the mesh is proporcional
 C               to the square of the number of orbitals that intersects
 C               in that point. Used in rhoofd and vmat.
-C  - Lineal:    We try to distribute those points of the mesh that have
+C  - Linear:    We try to distribute those points of the mesh that have
 C               at least one orbital intersection. Used in cellxc.
 C
 C ==================================================================
-      use mesh,         only: mop, ipa, idop, nsp, xdop, xdsp, dxa,
+      use mesh,         only: mop, ipa, idop, nsm, nsp, xdop, xdsp, dxa,
      &                        indexp, meshLim
       use precision,    only: dp, grid_p
       use atmfuncs,     only: rcut
@@ -1432,7 +1438,7 @@ C           If within range, add one to number of point orbitals
         do ip0= 1, nmpl
           wload(ip0) = numphi(ip0)*(numphi(ip0)+1) + 1
         enddo
-        call initMeshDistr( UNIFORM, QUADRATIC, nm, wload )
+        call initMeshDistr( UNIFORM, QUADRATIC, nm, nsm, wload)
 
         do ip0= 1, nmpl
 !         The computational work of a mesh point in cellxc is almost 0 when
@@ -1443,7 +1449,7 @@ C           If within range, add one to number of point orbitals
             wload(ip0) = 1
           endif
         enddo
-        call initMeshDistr( UNIFORM, LINEAR, nm, wload )
+        call initMeshDistr( UNIFORM, LINEAR, nm, nsm, wload )
         if (need_gradients_in_xc) call initMeshExtencil( LINEAR, nm )
 
 C       Free local memory

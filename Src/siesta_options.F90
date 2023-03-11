@@ -28,6 +28,7 @@ MODULE siesta_options
   logical :: compat_pre_v4_dynamics      ! General switch
 
   logical :: mix_scf_first ! Mix first SCF step?
+  logical :: mix_scf_first_force ! Mix first SCF step? and force it!
   logical :: mix_charge    ! New: mix fourier components of rho
   logical :: mixH          ! Mix H instead of DM
   logical :: h_setup_only  ! H Setup only
@@ -43,7 +44,7 @@ MODULE siesta_options
   logical :: use_aux_cell  ! Force the use of the auxiliary cell
   logical :: negl          ! Neglect hamiltonian matrix elements without overlap?
   logical :: noeta         ! Use computed chemical potential instead of eta in ordern?
-  logical :: new_diagk     ! Use new diagk routine with file storage of eigenvectors?
+  integer :: diag_wfs_cache! WFS cache used in diagonalization routine (0=none, 1=cdf)
   logical :: outlng        ! Long output in the output file?
   logical :: pulfile       ! Use file to store Pulay info in pulayx? (Obsolete)
   logical :: RelaxCellOnly ! Relax only lattice vectors, not atomic coordinates
@@ -142,6 +143,9 @@ MODULE siesta_options
   real(dp):: dDtol            ! Tolerance in change of DM elements to finish SCF iteration
   logical :: converge_H       ! to finish SCF iteration?
   real(dp):: dHtol            ! Tolerance in change of H elements to finish SCF iteration
+
+  ! DFT-D3
+  logical :: want_dftd3_dispersion ! Whether to use DFT-D3
   
   logical :: broyden_optim ! Use Broyden method to optimize geometry?
   logical :: fire_optim    ! Use FIRE method to optimize geometry?
@@ -203,7 +207,6 @@ MODULE siesta_options
   integer :: min_nscf      ! Minimum number of SCF iteration steps
   integer :: pmax          
   integer :: neigwanted    ! Wanted number of eigenstates (per k point)
-  integer :: level         ! Option for allocation report level of detail
   integer :: call_diagon_default    ! Default number of SCF steps for which to use diagonalization before OMM
   integer :: call_diagon_first_step ! Number of SCF steps for which to use diagonalization before OMM (first MD step)
 
@@ -230,7 +233,6 @@ MODULE siesta_options
   real(dp) :: taurelax      ! Relaxation time to reach desired T and P in anneal
   real(dp) :: temp          
   real(dp) :: tempinit      ! Initial ionic temperature read in redata
-  real(dp) :: threshold     ! Min. size of arrays printed by alloc_report
   real(dp) :: tp            ! Target pressure. Read in redata. Used in dynamics routines
   real(dp) :: total_spin    ! Total spin used in spin-polarized calculations
   real(dp) :: tt            ! Target temperature. Read in redata. Used in dynamics rout.

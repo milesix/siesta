@@ -59,7 +59,7 @@ C **********************************************************************
       use atomlist,     only : iphorb, iaorb
       use atmfuncs,     only : zetafio, mofio, lofio, cnfigfio, labelfis
       use atmfuncs,     only : pol, izofis
-      use flib_wxml,    only : xmlf_t, xml_OpenFile, xml_NewElement, 
+      use xmlf90_wxml,  only : xmlf_t, xml_OpenFile, xml_NewElement, 
      .                         xml_AddArray, xml_AddPCData,
      $                         xml_AddAttribute,
      .                         xml_EndElement, xml_Close
@@ -274,6 +274,9 @@ C New writing
         call xml_NewElement(xf,"nspin")
         call xml_AddPCData(xf,spin%EDM)
         call xml_EndElement(xf,"nspin")
+        call xml_NewElement(xf,"norbitals")
+        call xml_AddPCData(xf,no_u)
+        call xml_EndElement(xf,"norbitals")
 
         write(iunit2,'(a)') '<pdos>'
         write(iunit2,'(a,i1,a)') '<nspin>', spin%EDM, '</nspin>'
