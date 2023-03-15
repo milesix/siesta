@@ -74,7 +74,7 @@ C *********************************************************************
       use sys,          only : die
       use m_fermid,     only : stepf
       use files,        only : slabel, label_length
-      use units,        only : pi
+      use units,        only : pi, eV
 #ifdef MPI
       use mpi_siesta
 #endif
@@ -609,8 +609,12 @@ C A factor of 4 due to the integration in Ry rather than in a.u.
         enddo 
       
         write(iu,'(a)') '## Minimum and maximum energy in eV'
-        write(iu,'(a,2f10.4)') 
+        write(iu,'(a,2f10.4)')
+#ifdef SIESTA__UNITS_ORIGINAL
      &    '## ', wmin*13.6058d0, (wmin+(nwf-1)*dw)*13.6058d0
+#else
+     &    '## ', wmin/eV, (wmin+(nwf-1)*dw)/eV
+#endif        
         write(iu,'(a)') '## Number of spin components'
         write(iu,'(a,i3)') '## ',nspin
         if (nspin.gt.1) then 
@@ -630,7 +634,11 @@ C A factor of 4 due to the integration in Ry rather than in a.u.
         endif   
         do iw = 1,nwf
           w = wmin + (iw-1)*dw
+#ifdef SIESTA__UNITS_ORIGINAL
           write(iu,*) w*13.6058d0, (epsimg(iw,ispin),ispin=1,nspin)
+#else
+          write(iu,*) w/eV, (epsimg(iw,ispin),ispin=1,nspin)
+#endif        
         enddo 
         call io_close(iu)
       endif

@@ -29,6 +29,7 @@ C
       use parallel,     only : Node
       use alloc,        only : re_alloc
       use sys,          only : die
+      use units,        only : Ang
       use fdf
 
       implicit none
@@ -73,7 +74,7 @@ C Check that correct info is given
             ! Distance in r - r_0, where r is the distance between
             ! atom i and j
             ! Unit: Ang
-            GaussR0(nGauss) = fdf_breals(pline,2)/0.529177_dp
+            GaussR0(nGauss) = fdf_breals(pline,2)*Ang
             ! Gaussian prefactor
             ! Unit: 1/Bohr**2
             GaussZeta(nGauss) = fdf_breals(pline,3)
