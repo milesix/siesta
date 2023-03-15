@@ -6,12 +6,6 @@
 ! See Docs/Contributors.txt for a list of contributors.
 !
 
-      ! NOTES
-      ! 8.617e-5 should be (Kelvin/eV)
-! we could define legacy_kelvin_over_eV = 8.617e-5
-
-! And have a module-wide definition for units, with the #ifdefs
-! and avoid them elsewhere.
       
       module m_dynamics
 
@@ -20,11 +14,11 @@
       use m_ioxv,      only : xv_file_read
       use sys,         only : die
       use atomlist,    only : iza
-      use units,       only : Ang, eV
+      use units,       only : Ang, eV, Kelvin, amu
       use m_mpi_utils, only : broadcast
       use files,       only : slabel
       use alloc,       only : re_alloc, de_alloc
-      use units,       only : Kelvin, eV, Ang, amu
+
       implicit none
 
 
@@ -36,13 +30,21 @@
       character(len=60)    :: restart_file
       logical              :: first_time = .true.
 
-      real(dp), parameter :: kelvin_over_eV
+! Note that, e.g., 8.617e-5 is (Kelvin/eV)
+! We can define kelvin_over_eV = 8.617e-5
+! And have a module-wide definition for conversion factors within ifdefs,
+! and avoid them elsewhere.
       
+! We should make sure that any variables here are never public,
+! and never changed inside the module      
 #ifdef SIESTA__UNITS_ORIGINAL
-      real(dp), parameter :: legacy_kelvin_over_eV = 8.617e-5
-      kelvin_over_eV = legacy_kelvin_over_eV
+      real(dp), parameter :: kelvin_over_eV = 8.617e-5
+      real(dp), parameter :: fovermp_1 = 0.009579038d0
+      real(dp)            :: fovermp_2 = 0.009579038d0 *Ang**2 / eV
 #else
-      kelvin_over_eV = Kelvin/eV
+      real(dp)            :: kelvin_over_eV = Kelvin/eV
+      real(dp)            :: fovermp_1 = 1._dp / amu / Ang ** 2 * eV
+      real(dp)            :: fovermp_2 = 1._dp / amu
 #endif      
       
 
@@ -180,34 +182,17 @@ C Define constants and conversion factors ......................................
       twodt = dt*2.0d0
 
       if (iunit .eq. 1) then
-#ifdef SIESTA__UNITS_ORIGINAL
 C  convert target temperature into target kinetic energy
 C  Ekin=1/2*(3N-3)*kB*Temp  (yields Ekin in eV if Temp is in Kelvin)
-        tekin = 0.5d0 * (3.d0 * natoms - ct) * 8.617d-5 * tt
+        tekin = 0.5d0 * (3.d0 * natoms - ct) * kelvin_over_eV * tt
 C  convert F/m in (eV/Angstrom)/amu  to  Angstrom/fs**2
-        fovermp = 0.009579038d0
-#else
-        ! convert target temperature into target kinetic energy
-        ! Ekin=1/2*(3N-3)*kB*Temp  (yields Ekin in eV if Temp is in Kelvin)
-        tekin = 0.5d0 * (3.d0 * natoms - ct) * Kelvin * tt / eV
-        ! The default units of Siesta are Bohr and fs
-        ! Hence any conversion is simpler from that respect
-        fovermp = 1._dp / amu / Ang ** 2 * eV
-#endif
+        fovermp = fovermp_1
       else
-#ifdef SIESTA__UNITS_ORIGINAL
 C  convert target temperature into target kinetic energy
 C  Ekin=1/2*(3N-3)*kB*Temp  (yields Ekin in Ry if Temp is in Kelvin)
-        tekin = eV * 0.5d0 * (3.d0 * natoms - ct) * 8.617d-5 * tt
+        tekin = eV * 0.5d0 * (3.d0 * natoms - ct) * kelvin_over_eV * tt
 C  convert F/m in (Ry/Bohr)/amu  to  Bohr/fs**2
-        fovermp = 0.009579038d0 *Ang**2 / eV
-#else
-        ! convert target temperature into target kinetic energy
-        ! Ekin=1/2*(3N-3)*kB*Temp  (yields Ekin in Ry if Temp is in Kelvin)
-        tekin = 0.5d0 * (3.d0 * natoms - ct) * Kelvin * tt
-        ! The default units of Siesta are Bohr and fs, so no conversion needed
-        fovermp = 1._dp / amu
-#endif
+        fovermp = fovermp_2
       endif
 
 C  calculate cell volume at current time
