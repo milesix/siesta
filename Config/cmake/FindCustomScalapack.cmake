@@ -109,7 +109,7 @@ else()
          HINTS
          ${SCALAPACK_LIBRARY_DIR}
          ${_SCALAPACK_LIBRARY_DIRS}
-         ENV SCALAPACKROOT
+         ENV SCALAPACK_ROOT
          /usr
          PATH_SUFFIXES lib
          DOC "scalapack library path")
