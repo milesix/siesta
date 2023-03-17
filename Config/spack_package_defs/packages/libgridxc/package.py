@@ -9,7 +9,7 @@ class Libgridxc(CMakePackage):
 
     git = 'https://gitlab.com/siesta-project/libraries/libgridxc.git'
 
-    version('master', branch='cmake-master')
+    version('master', branch='master-flags')
 
     variant('mpi', default=False, description='Use MPI.')
     variant('libxc', default=False, description='Use libxc')
@@ -18,7 +18,7 @@ class Libgridxc(CMakePackage):
     depends_on('cmake@3.14.0:', type='build')
 
     depends_on('mpi', when='+mpi')
-    depends_on('libxc@4.:', when='+libxc')
+    depends_on('libxc@4:', when='+libxc')
     
 
     def cmake_args(self):
