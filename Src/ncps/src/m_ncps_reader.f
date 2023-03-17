@@ -11,7 +11,6 @@
       integer, parameter, private :: dp = selected_real_kind(14,100)
 
       public :: pseudo_read
-      private
 
       interface
          subroutine die(str)
