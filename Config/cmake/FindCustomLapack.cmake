@@ -88,9 +88,16 @@ else()
       if(NOT LAPACK_FOUND)
         find_package(LAPACK)
       endif()
-      set(LAPACK_LIBRARY "${LAPACK_LIBRARIES}" CACHE STRING "LAPACK library to link" FORCE)
-      set(LAPACK_LINKER_FLAG "${LAPACK_LINKER_FLAGS}" CACHE STRING
-        "Linker flags to use when linking LAPACK" FORCE)
+      if (LAPACK_FOUND)
+        if("${LAPACK_LIBRARIES}" STREQUAL "")
+	 # implicitly linked...
+         set(LAPACK_LIBRARY "NONE")
+	else()
+         set(LAPACK_LIBRARY "${LAPACK_LIBRARIES}" CACHE STRING "LAPACK library to link" FORCE)
+         set(LAPACK_LINKER_FLAG "${LAPACK_LINKER_FLAGS}" CACHE STRING
+             "Linker flags to use when linking LAPACK" FORCE)
+	endif()
+      endif()
 
     elseif(NOT "${LAPACK_LIBRARY}" STREQUAL "NONE")
 
