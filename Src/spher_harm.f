@@ -659,7 +659,8 @@ C -------------------------------------------------------------------
       XM = 0.5_DP*(X2+X1)
       XL = 0.5_DP*(X2-X1)
       DO 12 I=1,M
-        ! Precision-alert --- Use Pi here
+        ! Precision-warning --- Use Pi here
+        ! Alternatively, use code in m_gauss_quad.f90
         Z=COS(3.141592654_DP*(I-.25_DP)/(N+.5_DP))
 1       CONTINUE
           P1=1._DP
