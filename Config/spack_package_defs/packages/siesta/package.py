@@ -9,7 +9,7 @@ class Siesta(CMakePackage):
     git = 'https://gitlab.com/garalb/siesta.git'
 
     # Only a development version for now
-    version('master-fixes-spack', branch='master-fixes-spack')
+    version('master-spack', branch='master-spack')
 
     variant('mpi', default=False, description='Use MPI')
     variant('netcdf', default=False, description='Use NetCDF')

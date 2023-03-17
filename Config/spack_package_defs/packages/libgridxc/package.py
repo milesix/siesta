@@ -9,7 +9,7 @@ class Libgridxc(CMakePackage):
 
     git = 'https://gitlab.com/siesta-project/libraries/libgridxc.git'
 
-    version('master', branch='master-flags')
+    version('master', branch='master')
 
     variant('mpi', default=False, description='Use MPI.')
     variant('libxc', default=False, description='Use libxc')
