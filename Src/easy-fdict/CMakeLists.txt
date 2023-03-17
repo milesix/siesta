@@ -4,7 +4,7 @@
 add_library(
   ${PROJECT_NAME}-libfdict
    
-  variable.f90
+  variable.F90
   dictionary.f90
   )
 
