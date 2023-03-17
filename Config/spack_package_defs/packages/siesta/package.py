@@ -9,7 +9,7 @@ class Siesta(CMakePackage):
     git = 'https://gitlab.com/garalb/siesta.git'
 
     # Only a development version for now
-    version('full-build', branch='full-build')
+    version('master-fixes-spack', branch='master-fixes-spack')
 
     variant('mpi', default=False, description='Use MPI')
     variant('netcdf', default=False, description='Use NetCDF')
@@ -29,7 +29,7 @@ class Siesta(CMakePackage):
     depends_on('mpi', when='+mpi')
     depends_on('scalapack', when='+mpi')
     depends_on('netcdf-fortran', when='+netcdf')
-    depends_on('libxc@4.:', when='+libxc')
+    depends_on('libxc@4:', when='+libxc')
     depends_on('libgridxc+libxc', when='+libxc')
     depends_on('libgridxc~libxc', when='-libxc')
     depends_on('libgridxc+mpi', when='+mpi')
