@@ -67,6 +67,11 @@ The following cache variables may be set to influence the library detection:
 include(FindPackageHandleStandardArgs)
 include(CustomLibraryFinder)
 
+# indent for cleaner output
+message(STATUS "Parsing ScaLAPACK options")
+list(APPEND CMAKE_MESSAGE_INDENT "  ")
+
+
 if(TARGET scalapack)
 
   set(CUSTOMSCALAPACK_FOUND True)
@@ -74,36 +79,42 @@ if(TARGET scalapack)
   set(SCALAPACK_FOUND True)
   set(Scalapack_FOUND True)
 
+  message(STATUS "ScaLAPACK already defined")
+
 else()
 
-  find_package(MPI ${Find_Scalapack_REQUIRED})
+  # We are already locating MPI at the top-level, or at least we should do that!
+  find_package(MPI ${Find_Scalapack_REQUIRED} QUIET)
 
   option(SCALAPACK_DETECTION "Whether ScaLAPACK library should be detected" TRUE)
+  message(CHECK_START "Locating ScaLAPACK library")
 
   if(SCALAPACK_DETECTION)
+    if(NOT "${SCALAPACK_LIBRARY_DIR}" STREQUAL "")
+      message(STATUS "Searching in: ${SCALAPACK_LIBRARY_DIR}")
+    endif()
 
     if("${SCALAPACK_LIBRARY}" STREQUAL "")
 
       # Try Scalapack via CMake export file
       find_package(scalapack QUIET)
       if(scalapack_FOUND)
+      	message(STATUS "Found intrinsic package")
+
         get_target_property(_scalapack_library scalapack INTERFACE_LINK_LIBRARIES)
         set(SCALAPACK_LIBRARY "${_scalapack_library}" CACHE STRING "ScaLAPACK library to link"
           FORCE)
         unset(_scalapack_library)
-	message(STATUS "Found Scalapack with find_package: ${SCALAPACK_LIBRARY}")
       else()
-
-	message(STATUS "Scalapack: Did not find a cmake package for it")
+      	message(STATUS "Trying to use pkg-config")
 
         # Very simple ScaLAPACK auto-detection: looking for a library called scalapack
         # The following logic comes from SIRIUS, and we add our own SCALAPACK_LIBRARY_DIR
-	# to the list of hints
-	find_package(PkgConfig REQUIRED)
+      	# to the list of hints
+      	find_package(PkgConfig REQUIRED QUIET)
 
         # If found, this command will set _SCALAPACK_LIBRARY_DIRS
-        pkg_search_module(_SCALAPACK scalapack)
-	message(STATUS "Scalapack: Finding libraries in sundry directories...")
+        pkg_search_module(_SCALAPACK scalapack QUIET)
         find_library(SCALAPACK_LIBRARY
          NAMES scalapack scalapack-openmpi
          HINTS
@@ -118,9 +129,10 @@ else()
 
     elseif(NOT "${SCALAPACK_LIBRARY}" STREQUAL "NONE")
 
-      message(STATUS "Scalapack: Will trust passed library incantation: ${SCALAPACK_LIBRARY}")
-      find_custom_libraries("${SCALAPACK_LIBRARY}" "${SCALAPACK_LIBRARY_DIR}"
-        "${CustomScalapack_FIND_QUIETLY}" _libs)
+      message(STATUS "Using user-defined variables")
+
+      # ON = find_quietly
+      find_custom_libraries("${SCALAPACK_LIBRARY}" "${SCALAPACK_LIBRARY_DIR}" ON _libs)
       set(SCALAPACK_LIBRARY "${_libs}" CACHE STRING "List of ScaLAPACK libraries to link" FORCE)
       unset(_libs)
 
@@ -133,17 +145,27 @@ else()
   find_package_handle_standard_args(CustomScalapack REQUIRED_VARS SCALAPACK_LIBRARY
     MPI_Fortran_FOUND)
 
-  set(SCALAPACK_FOUND ${CUSTOMSCALAPACK_FOUND})
-  set(Scalapack_FOUND ${CUSTOMSCALAPACK_FOUND})
+  set(CUSTOMSCALAPACK_FOUND ${CustomScalapack_FOUND})
+  set(SCALAPACK_FOUND ${CustomScalapack_FOUND})
+  set(Scalapack_FOUND ${CustomScalapack_FOUND})
 
-  if(SCALAPACK_FOUND)
+  if( SCALAPACK_FOUND )
+    message(CHECK_PASS "found")
+    message(STATUS "ScaLAPACK library: ${SCALAPACK_LIBRARY}")
+    message(STATUS "ScaLAPACK link flags: ${SCALAPACK_LINKER_FLAG}")
+
     if(NOT TARGET scalapack)
       add_library(scalapack INTERFACE IMPORTED)
       if(NOT "${SCALAPACK_LIBRARY}" STREQUAL "NONE")
         target_link_libraries(scalapack INTERFACE "${SCALAPACK_LIBRARY}")
       endif()
       target_link_Libraries(scalapack INTERFACE MPI::MPI_Fortran)
+      if(TARGET LAPACK::LAPACK)
+      	# lapack should have the logic for adding BLAS::BLAS, if needed
+      	target_link_libraries(scalapack INTERFACE LAPACK::LAPACK)
+      endif()
     endif()
+
   endif()
 
   mark_as_advanced(SCALAPACK_DETECTION SCALAPACK_LIBRARY SCALAPACK_LIBRARY_DIR)
@@ -155,3 +177,5 @@ if(TARGET scalapack AND NOT TARGET Scalapack::Scalapack)
   add_library(Scalapack::Scalapack INTERFACE IMPORTED)
   target_link_libraries(Scalapack::Scalapack INTERFACE scalapack)
 endif()
+
+list(POP_BACK CMAKE_MESSAGE_INDENT)

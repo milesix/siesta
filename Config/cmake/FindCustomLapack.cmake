@@ -13,7 +13,7 @@ This is a wrapper around CMakes FindLAPACK module with the additional
 possibility to customize the library name manually. In latter case the module will
 check the existence of those libraries and stop if they are not found.
 
-Note: The module is named FindLapack (and not FindLAPACK) to avoid name
+Note: The module is named FindCustomLapack (and not FindLAPACK) to avoid name
 collision with CMakes built-in FindLAPACK module.
 
 
@@ -67,6 +67,11 @@ influence the LAPACK detection if the built-in module is invoked.
 include(FindPackageHandleStandardArgs)
 include(CustomLibraryFinder)
 
+# indent for cleaner output
+message(STATUS "Parsing LAPACK options")
+list(APPEND CMAKE_MESSAGE_INDENT "  ")
+
+
 if(TARGET LAPACK::LAPACK)
 
   set(CUSTOMLAPACK_FOUND True)
@@ -74,11 +79,18 @@ if(TARGET LAPACK::LAPACK)
   set(LAPACK_FOUND True)
   set(Lapack_FOUND True)
 
+  message(STATUS "LAPACK already defined")
+
 else()
 
   option(LAPACK_DETECTION "Whether LAPACK library should be detected" TRUE)
+  message(CHECK_START "Locating LAPACK library")
 
   if(LAPACK_DETECTION)
+    if(NOT "${LAPACK_LIBRARY_DIR}" STREQUAL "")
+      message(STATUS "Searching in: ${LAPACK_LIBRARY_DIR}")
+    endif()
+
     # LAPACK has either not been found yet or it was found by an older built-in findLAPACK module.
     # which does not provide the imported target LAPACK::LAPACK
 
@@ -102,8 +114,8 @@ else()
     elseif(NOT "${LAPACK_LIBRARY}" STREQUAL "NONE")
 
       # LAPACK explicitely set by the user, search for those libraries
-      find_custom_libraries("${LAPACK_LIBRARY}" "${LAPACK_LIBRARY_DIR}"
-        "${CustomLapack_FIND_QUIETLY}" _libs)
+      # ON = find_quietly
+      find_custom_libraries("${LAPACK_LIBRARY}" "${LAPACK_LIBRARY_DIR}" ON _libs)
       set(LAPACK_LIBRARY "${_libs}" CACHE STRING "List of LAPACK libraries to link" FORCE)
       unset(_libs)
 
@@ -115,22 +127,37 @@ else()
 
   find_package_handle_standard_args(CustomLapack REQUIRED_VARS LAPACK_LIBRARY)
 
-  set(LAPACK_FOUND ${CUSTOMLAPACK_FOUND})
-  set(Lapack_FOUND ${CUSTOMLAPACK_FOUND})
+  set(CUSTOMLAPACK_FOUND ${CustomLapack_FOUND})
+  set(LAPACK_FOUND ${CustomLapack_FOUND})
+  set(Lapack_FOUND ${CustomLapack_FOUND})
 
-  if (LAPACK_FOUND AND NOT TARGET LAPACK::LAPACK)
-    add_library(LAPACK::LAPACK INTERFACE IMPORTED)
-    if(NOT "${LAPACK_LIBRARY}" STREQUAL "NONE")
-      target_link_libraries(LAPACK::LAPACK INTERFACE "${LAPACK_LIBRARY}")
+  if( LAPACK_FOUND )
+    message(CHECK_PASS "found")
+    message(STATUS "LAPACK library: ${LAPACK_LIBRARY}")
+    message(STATUS "LAPACK link flags: ${LAPACK_LINKER_FLAG}")
+
+    if(NOT TARGET LAPACK::LAPACK)
+      add_library(LAPACK::LAPACK INTERFACE IMPORTED)
+      if(NOT "${LAPACK_LIBRARY}" STREQUAL "NONE")
+       	target_link_libraries(LAPACK::LAPACK INTERFACE "${LAPACK_LIBRARY}")
+      endif()
+      if(NOT "${LAPACK_LIBRARY_DIR}" STREQUAL "")
+      	target_link_directories(LAPACK::LAPACK BEFORE INTERFACE "${LAPACK_LIBRARY_DIR}")
+      endif()
+      if(NOT "${LAPACK_LINKER_FLAG}" STREQUAL "")
+      	target_link_options(LAPACK::LAPACK INTERFACE "${LAPACK_LINKER_FLAG}")
+      endif()
+      if(TARGET BLAS::BLAS)
+      	target_link_libraries(LAPACK::LAPACK INTERFACE BLAS::BLAS)
+      endif()
     endif()
-    if(NOT "${LAPACK_LINKER_FLAG}" STREQUAL "")
-      target_link_options(LAPACK::LAPACK INTERFACE "${LAPACK_LINKER_FLAG}")
-    endif()
-    if(TARGET BLAS::BLAS)
-      target_link_libraries(LAPACK::LAPACK INTERFACE BLAS::BLAS)
-    endif()
+
+  else()
+    message(CHECK_FAIL "not found")
   endif()
-
+  
   mark_as_advanced(LAPACK_DETECTION LAPACK_LIBRARY LAPACK_LIBRARY_DIR LAPACK_LINKER_FLAG)
 
 endif()
+
+list(POP_BACK CMAKE_MESSAGE_INDENT)

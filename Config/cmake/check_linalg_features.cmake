@@ -1,5 +1,8 @@
 include(CheckFortranSourceCompiles)
 
+message(STATUS "Checking linear algebra compatibility and extensions")
+list(APPEND CMAKE_MESSAGE_INDENT "  ")
+
 set(CMAKE_REQUIRED_LIBRARIES LAPACK::LAPACK)
 check_fortran_source_compiles("external :: zheevr, dsyevr; call zheevr(); call dsyevr(); end"
                                LAPACK_HAS_MRRR SRC_EXT F90)
@@ -24,8 +27,11 @@ check_fortran_source_compiles("external :: dsyev_2stage; call dsyev_2stage(); en
 unset(CMAKE_REQUIRED_LIBRARIES)
 
 if(WITH_MPI)
+  # Also check ScaLAPACK for MRRR
 
-  set(CMAKE_REQUIRED_LIBRARIES Scalapack::Scalapack LAPACK::LAPACK)
+  # Odly enough adding LAPACK::LAPACK here will mess up the linking order
+  # Since LAPACK::LAPACK is added in FindCustomScalapack as a dependency we do not needed.
+  set(CMAKE_REQUIRED_LIBRARIES Scalapack::Scalapack)
   check_fortran_source_compiles("external :: pdsyevr, pzheevr; call pdsyevr(); call pzheevr(); end"
                                SCALAPACK_HAS_MRRR SRC_EXT F90)
   unset(CMAKE_REQUIRED_LIBRARIES)
@@ -38,3 +44,4 @@ else()
 
 endif(WITH_MPI)
 
+list(POP_BACK CMAKE_MESSAGE_INDENT)

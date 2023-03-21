@@ -31,27 +31,13 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "ReleaseWithDebInfo")
 endif()
 
+
 # -- Options ----------------------------------------
-#
-option(WITH_MPI "Build Siesta with MPI support" TRUE)
-
-option(WITH_NETCDF "Build Siesta with NetCDF support" TRUE)
-option(WITH_NCDF "Use the NCDF library" ${WITH_NETCDF})
-option(WITH_NCDF_PARALLEL "Use NCDF_PARALLEL" FALSE)
-
-option(WITH_FFTW "FFTW support (for STM/ol-stm utility)" TRUE)
-option(WITH_LIBXC "Include libxc support" FALSE)
 option(WITH_GRID_SP "Use single-precision for grid magnitudes" FALSE)
 
-option(WITH_OPENMP "Build Siesta and TBTrans with OpenMP support" FALSE)
-
 option(WITH_ELPA "Use the ELPA library (direct interface)" FALSE)
-option(WITH_LUA "Use the flook library for Lua scripting" FALSE)
 
-option(WITH_DFTD3 "Include support for DFT-D3" FALSE)
-
-# 
-option(BUILD_DOCS "Create Doxygen-based documentation (wip)" FALSE)
+option(BUILD_DOCS "Create Doxygen-based documentation (WIP)" FALSE)
 #--------------------------------------
 
 # Compiler flags
@@ -64,24 +50,58 @@ include(GNUInstallDirs)
 # Use Pkg-Config if available
 find_package(PkgConfig)
 
-if (WITH_MPI)
-  if (NOT TARGET MPI::MPI_Fortran)
-   # Find MPI
-   find_package(MPI OPTIONAL_COMPONENTS Fortran C)
-   if( NOT MPI_Fortran_FOUND )
-     # To change the setting to not build Siesta with parallel support,
-     # use the following line
-     #set(WITH_MPI OFF CACHE BOOL "Could not find MPI" FORCE)
-     message(STATUS "MPI could not be found by CMake")
-     message(STATUS "Try setting MPI_Fortran_COMPILER to an MPI wrapper, or the MPI_HOME env variable")
-     message(STATUS "If unsuccessful, set -DWITH_MPI=OFF")
-     message(FATAL_ERROR "MPI could not be found by CMake")
-   endif()
+
+# Look for blas, if needed, it is not required if LAPACK ships BLAS
+find_package(CustomBlas)
+
+# Look for LAPACK
+find_package(CustomLapack REQUIRED)
+include(check_lapack)
+
+if (NOT TARGET MPI::MPI_Fortran)
+ # Find MPI
+ find_package(MPI OPTIONAL_COMPONENTS Fortran C)
+endif()
+
+if (MPI_Fortran_FOUND)
+  find_package(CustomScalapack)
+  if( NOT SCALAPACK_FOUND )
+    message(WARNING
+      "MPI is found, but ScaLAPACK library cannot be found (or compiled against).\n"
+      "If parallel support is required please supply the ScaLAPACK library with appropriate "
+      "flags:\n"
+      " -DSCALAPACK_LIBRARY=<lib>")
+    set(MPI_Fortran_FOUND FALSE)
   endif()
 endif()
 
-#---------------------------- OpenMP
+option(WITH_MPI "Build Siesta with MPI support" ${MPI_Fortran_FOUND})
+if(WITH_MPI AND (NOT MPI_Fortran_FOUND))
+  message(WARNING
+    "MPI could not be found by CMake"
+    "Try setting MPI_Fortran_COMPILER to an MPI wrapper, or the MPI_HOME env variable"
+    "If unsuccessful, set -DWITH_MPI=OFF")
+  message(FATAL_ERROR "MPI was requested, but could not be found by CMake")
+endif()
+if(WITH_MPI AND (NOT SCALAPACK_FOUND))
+  message(WARNING
+    "ScaLAPACK could not be found by CMake"
+    "Try adding SCALAPACK_LIBRARIES with appropriate flags"
+    "If ScaLAPACK is not present MPI needs to be turned off:\n"
+    "  -DWITH_MPI=OFF"
+    )
+  message(FATAL_ERROR "MPI was requested, but ScaLAPACK could not be found by CMake")
+endif()
 
+# Now we can check for linear algebra stuff
+include(check_linalg_features)
+
+#---------------------------- OpenMP
+# OpenMP *must* be user-requested since it brings additional
+# overhead. We should also, for consistency check whether the LAPACK
+# and/or BLAS libraries support OpenMP in some form.
+# There is little gain when using OpenMP and BLAS libraries are not threaded.
+option(WITH_OPENMP "Build with OpenMP support (very few utilities will benefit)" FALSE)
 if( WITH_OPENMP )
 
   if(NOT TARGET OpenMP::OpenMP_Fortran)
@@ -91,7 +111,7 @@ if( WITH_OPENMP )
 
       if(NOT OpenMP_Fortran_HAVE_OMPLIB_MODULE)
              message(ERROR_FATAL
-	             "OpenMP does not have the 'omp_lib' module used by Siesta OpenMP")
+               "OpenMP does not have the 'omp_lib' module used by Siesta OpenMP")
       endif()
       
     else()
@@ -113,54 +133,58 @@ else()
 endif()
 
 
-if (WITH_NETCDF)
-  if(NOT TARGET NetCDF::NetCDF_Fortran)
-    if( (NOT DEFINED NetCDF_ROOT) AND (NOT DEFINED NetCDF_PATH) )
-      if( PKG_CONFIG_FOUND )
-        # Define NetCDF_PATH if not defined
-        # Use pkg-config to retrieve the path
-        pkg_get_variable(NetCDF_PATH netcdf prefix)
-      else()
-        if( DEFINED NETCDF_ROOT )
-          set(NetCDF_ROOT ${NETCDF_ROOT})
-        elseif( DEFINED NETCDF_PATH )
-          set(NetCDF_PATH ${NETCDF_PATH})
-        endif()
-      endif()
-    endif()
-    
-    # Require at least 4.0.0 version (we need >=4)
-    
-    find_package(NetCDF 4.0.0 OPTIONAL_COMPONENTS Fortran C)
-    if( NOT NetCDF_Fortran_FOUND )
-     message(STATUS "NetCDF_Fortran could not be found by CMake")
-     message(STATUS "Try setting variables: ")
-     message(STATUS "    NetCDF_ROOT or NetCDF_PATH")
-     message(STATUS " or NETCDF_ROOT or NETCDF_PATH")
-     message(STATUS " or NetCDF_INCLUDE_DIR or NetCDF_Fortran_INCLUDE_DIR")
-     message(STATUS " or NetCDF_INCLUDE_DIRS or NetCDF_Fortran_INCLUDE_DIRS")
-     message(STATUS "to appropriate values,")
-     message(STATUS "or use an appropriate path in CMAKE_PREFIX_PATH")
-     message(STATUS "If unsuccessful, set -DWITH_NETCDF=OFF")
-     message(STATUS "   (some Siesta functionalities will not be available)")
-     message(FATAL_ERROR "NetCDF could not be found by CMake")
-    endif()
+# First, a fault check for case-sensitive arguments
+# Instead of relying on multiple variants, we should just
+# kill the build.
+# The problem is that NetCDF *may* require additional
+# variables in correct case format. And if we allow upper-case
+# for the _ROOT variable, we should do so for all of the variables
+# which turns out to be a mess... (we can do a loop if we have everything,
+# but for now lets not do this.
+foreach(name IN ITEMS "PATH" "ROOT")
+  if( (DEFINED NETCDF_${name}) AND (NOT DEFINED NetCDF_${name}) )
+    message(WARNING
+      "Searching for NetCDF requires the correct case of the search."
+      "The build script detected that NETCDF_${name} is defined whereas "
+      "NetCDF_${name} is not defined.\n"
+      "The search for the NetCDF library requires that you use the "
+      "NetCDF_* format for variables. E.g. do this:\n"
+      " -DNetCDF_${name}=${NETCDF_${name}}\n"
+      "on the command-line instead.")
+    message(FATAL_ERROR "Wrong case-notation of NetCDF search variables.")
   endif()
+endforeach()
+find_package(NetCDF 4.0.0 OPTIONAL_COMPONENTS Fortran C)
+
+
+# TODO catch WITH_NetCDF
+option(WITH_NETCDF "Build Siesta with NetCDF support" ${NetCDF_Fortran_FOUND})
+if( WITH_NETCDF )
+  # One should not be able to request NCDF without NetCDF
+  # either they should be fault-checked, or WITH_NETCDF enabled if WITH_NCDF is true
+  option(WITH_NCDF "Use the NCDF library" ${WITH_NETCDF})
+  # Only if netcdf-supports it will we add it.
+  option(WITH_NCDF_PARALLEL "Use NCDF_PARALLEL" ${NetCDF_PARALLEL})
 endif()
-#
-# Look for LAPACK
-#
-find_package(CustomLapack REQUIRED)
-include(check_lapack)
-if (WITH_MPI)
-  find_package(CustomScalapack REQUIRED)
+if (WITH_NETCDF AND (NOT NetCDF_Fortran_FOUND))
+  message(WARNING
+    "NetCDF_Fortran is requested but could not be found by CMake.\n"
+    "Try setting variables these variables for searching:\n"
+    " - NetCDF_ROOT or NetCDF_PATH\n"
+    " - NetCDF_INCLUDE_DIR or NetCDF_Fortran_INCLUDE_DIR\n"
+    " - NetCDF_INCLUDE_DIRS or NetCDF_Fortran_INCLUDE_DIRS\n"
+    "to appropriate variables for discovering NetCDF fortran libraries."
+    "Another possibility would be to add the NetCDF cmake package path to\n"
+    "  CMAKE_PREFIX_PATH\n"
+    "for automatic discovery."
+    "If still unsuccessful, please disable NetCDF support with:\n"
+    "  -DWITH_NETCDF=OFF\n")
+  message(FATAL_ERROR "NetCDF could not be found by CMake")
 endif()
 
-include(check_for_linalg_features)
 
 # Handle external dependencies
 # Use proper order for xmlf90 and libpsml dependencies
-
 if (NOT TARGET xmlf90::xmlf90)
   find_package(xmlf90)
 endif()
@@ -169,36 +193,49 @@ if (NOT TARGET libpsml::libpsml)
   find_package(libpsml)
 endif()
 
-if(WITH_LIBXC)
-  if (NOT TARGET libxc::XC_Fortran)
-     include(search_for_libxc)
-  endif()
-endif()  
+if (NOT TARGET libxc::XC_Fortran)
+  find_package(CustomLibxc)
+endif()
+option(WITH_LIBXC "Include libxc support" ${LIBXC_Fortran_FOUND})
+if( WITH_LIBXC AND (NOT LIBXC_Fortran_FOUND) )
+  message(WARNING
+    "Libxc support has been requested ${WITH_LIBXC} : ${LIBXC_Fortran_FOUND}, but the fortran libxc library cannot be found.")
+  message(FATAL_ERROR "Libxc could not be found by CMake")
+endif()
 
 if (NOT TARGET libgridxc::libgridxc)
-  include(search_for_gridxc)
-endif()
-
-if ( WITH_DFTD3 )
- add_subdirectory("External/DFTD3")
-endif()
-
-# Search for flook
-if (WITH_LUA)
-   add_subdirectory("External/Lua-Engine")
-endif()
-
-if (WITH_ELPA)
- include(search_for_elpa)
-endif()
-
-if (WITH_FFTW)
-  # For STM/ol-stm only for now
-  find_package(FFTW QUIET COMPONENTS DOUBLE_LIB)
-  if (FFTW_DOUBLE_LIB_FOUND)
-     message(STATUS "Found FFTW Double")
+  find_package(CustomLibGridxc)
+  if( NOT LIBGRIDXC_FOUND )
+    message(FATAL_ERROR "LibGridXC is a required dependency, but it could not be found by CMake")
   endif()
 endif()
+
+
+# Search for DFTD3
+add_subdirectory_option(
+  DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/External/DFTD3/"
+  HELP "Include support for DFT-D3 corrections"
+  NITEMS 2
+  OPTION WITH_DFTD3
+  )
+# TODO add a fallback for failure in DFTD3
+
+# Search for flook
+add_subdirectory_option(
+  DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/External/Lua-Engine/"
+  HELP "Include support for Lua engine through flook (custom MD + SCF interaction)"
+  NITEMS 2
+  OPTION WITH_LUA
+  )
+
+if (WITH_ELPA)
+  find_package(CustomElpa)
+endif()
+
+
+# For STM/ol-stm only for now
+find_package(FFTW QUIET COMPONENTS DOUBLE_LIB)
+option(WITH_FFTW "FFTW support (currently only STM/ol-stm utility)" ${FFTW_DOUBLE_LIB_FOUND})
 
 
 if( WITH_MPI )
@@ -250,10 +287,9 @@ include(TestMPIConfig)
 
 if(WITH_MPI)
   add_subdirectory("Util/MPI_test")
-endif(WITH_MPI)
+endif()
 
 add_subdirectory(Tests)
 
 
 #add_subdirectory("Src/ncps/examples")
-

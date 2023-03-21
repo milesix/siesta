@@ -7,8 +7,7 @@ include(CheckFortranSourceCompiles)
 include(CheckFortranSourceRuns)
 
 set(CMAKE_REQUIRED_QUIET OFF)
-message(STATUS
-        "Checking that Lapack library links...")
+message(STATUS "Checking that Lapack library links...")
 	
 set(CMAKE_REQUIRED_LIBRARIES LAPACK::LAPACK)
 check_fortran_source_compiles(
