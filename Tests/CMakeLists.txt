@@ -49,10 +49,10 @@ endfunction()
 
 
 
-setup_test("h2o" "H.psf O.psf" "")
-#setup_test("ch4" "H.pbe.psf C.pbe.psf" "")
-setup_test("si_pdos_kgrid" "Si.psf" "")
-setup_test("wannier" "Si.psf" "wannier.nnkp wannier.win")
+setup_test("h2o" "")
+#setup_test("ch4" "")
+setup_test("si_pdos_kgrid" "")
+setup_test("wannier" "wannier.nnkp wannier.win")
 
 
 if(WITH_LUA)
