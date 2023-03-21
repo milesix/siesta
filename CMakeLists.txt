@@ -165,6 +165,9 @@ if( WITH_NETCDF )
   option(WITH_NCDF "Use the NCDF library" ${WITH_NETCDF})
   # Only if netcdf-supports it will we add it.
   option(WITH_NCDF_PARALLEL "Use NCDF_PARALLEL" ${NetCDF_PARALLEL})
+else()
+  set(WITH_NCDF FALSE CACHE BOOL "Use the NCDF library" FORCE)
+  set(WITH_NCDF_PARALLEL FALSE CACHE BOOL "Use parallel NCDF library" FORCE)
 endif()
 if (WITH_NETCDF AND (NOT NetCDF_Fortran_FOUND))
   message(WARNING
