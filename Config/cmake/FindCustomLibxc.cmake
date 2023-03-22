@@ -32,13 +32,13 @@ will be usable upon return.
 #   LIBXC_Fortran_INTERFACE = f90;f03
 # which will prefer libxcf90, and if not found, then libxcf03.
 #
-find_package(PkgConfig REQUIRED)
+find_package(PkgConfig REQUIRED QUIET)
 
 message(CHECK_START "Searching for libXC library")
 list(APPEND CMAKE_MESSAGE_INDENT "  ")
 
 # This will be a required module
-pkg_check_modules(LIBXC_C REQUIRED libxc)
+pkg_check_modules(LIBXC_C libxc)
 
 message(DEBUG "LIBXC_C_LIBDIR: ${LIBXC_C_LIBDIR}")
 message(DEBUG "LIBXC_C_LIBRARIES: ${LIBXC_C_LIBRARIES}")

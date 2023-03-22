@@ -9,7 +9,7 @@ if(NOT "${FLOOK_ROOT}" STREQUAL "" )
   list(APPEND CMAKE_PREFIX_PATH "${FLOOK_ROOT}")
 endif()
 
-find_package(PkgConfig REQUIRED)
+find_package(PkgConfig REQUIRED QUIET)
 
 macro(found_return message)
   list(POP_BACK CMAKE_MESSAGE_INDENT)

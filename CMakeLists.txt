@@ -154,7 +154,7 @@ foreach(name IN ITEMS "PATH" "ROOT")
     message(FATAL_ERROR "Wrong case-notation of NetCDF search variables.")
   endif()
 endforeach()
-find_package(NetCDF 4.0.0 OPTIONAL_COMPONENTS Fortran C)
+find_package(NetCDF 4.0.0 COMPONENTS Fortran C)
 
 
 # TODO catch WITH_NetCDF
@@ -189,10 +189,11 @@ endif()
 # Handle external dependencies
 # Use proper order for xmlf90 and libpsml dependencies
 if (NOT TARGET xmlf90::xmlf90)
-  find_package(xmlf90)
+  find_package(xmlf90 REQUIRED)
 endif()
 
 if (NOT TARGET libpsml::libpsml)
+  # should we also add psml as required library?
   find_package(libpsml)
 endif()
 
@@ -207,7 +208,7 @@ if( WITH_LIBXC AND (NOT LIBXC_Fortran_FOUND) )
 endif()
 
 if (NOT TARGET libgridxc::libgridxc)
-  find_package(CustomLibGridxc)
+  find_package(CustomLibGridxc REQUIRED)
   if( NOT LIBGRIDXC_FOUND )
     message(FATAL_ERROR "LibGridXC is a required dependency, but it could not be found by CMake")
   endif()
@@ -228,7 +229,7 @@ add_subdirectory_option(
   DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/External/Lua-Engine/"
   HELP "Include support for Lua engine through flook (custom MD + SCF interaction)"
   NITEMS 2
-  OPTION WITH_LUA
+  OPTION WITH_FLOOK
   )
 
 if (WITH_ELPA)
@@ -294,5 +295,6 @@ endif()
 
 add_subdirectory(Tests)
 
+include(PrintBuildInfo)
 
 #add_subdirectory("Src/ncps/examples")

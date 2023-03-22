@@ -145,7 +145,7 @@ CMAKE_PREFIX_PATH and populating the submodule directories appropriately.
       - WITH_FFTW:  (ON by default) If not set, Util/STM/ol-stm will
                     not be compiled.
 
-      - WITH_LUA: The flook library can be compiled on-the-fly, using
+      - WITH_FLOOK: The flook library can be compiled on-the-fly, using
                   the code in a git submodule in
                   External/Lua-Engine/flook, or in a tarball pointed
                   to by FLOOK_PACKAGE. Pre-compiled installations can
@@ -246,5 +246,4 @@ _Experimental_) SPACK packages are available in Config/spack_package_defs
    branches of Siesta, without a well-defined source id. This is
    a temporary situation during the final stages of development of
    the CMake framework and the update of the dependency libraries.
-   
  
