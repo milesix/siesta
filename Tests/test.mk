@@ -3,8 +3,8 @@
 #
 # You can edit the SIESTA macro here, or pass it on the command line
 
-TOPDIR=/Users/ag/code/GITLAB/Siesta/garalb
-MAIN_OBJDIR=/Users/ag/code/GITLAB/Siesta/garalb/,pdos
+TOPDIR=.
+MAIN_OBJDIR=.
 
 MPI=mpirun -np 2
 SIESTA=$(MAIN_OBJDIR)/Src/siesta
