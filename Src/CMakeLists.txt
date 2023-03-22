@@ -551,7 +551,7 @@ target_compile_definitions(
   "$<$<BOOL:${WITH_NCDF}>:NCDF>"
   "$<$<BOOL:${WITH_NCDF}>:NCDF_4>"
   "$<$<BOOL:${WITH_NCDF_PARALLEL}>:NCDF_PARALLEL>"
-  "$<$<BOOL:${WITH_LUA}>:SIESTA__FLOOK>"
+  "$<$<BOOL:${WITH_FLOOK}>:SIESTA__FLOOK>"
   "$<$<BOOL:${WITH_DFTD3}>:SIESTA__DFTD3>"
 )
 
@@ -566,11 +566,12 @@ target_link_libraries(
   ${PROJECT_NAME}-libncps
   ${PROJECT_NAME}-libpsop
   ${PROJECT_NAME}-libms
-  "$<$<BOOL:${WITH_LUA}>:flook::flook>"
+  "$<$<BOOL:${WITH_FLOOK}>:flook::flook>"
   "$<$<BOOL:${WITH_MPI}>:mpi_siesta>"
   "$<$<BOOL:${WITH_NETCDF}>:NetCDF::NetCDF_Fortran>"
   "$<$<BOOL:${WITH_NCDF}>:${PROJECT_NAME}-libncdf>"
-  "$<$<BOOL:${WITH_NCDF}>:${PROJECT_NAME}-libfdict>"
+  # Generator OR: does not work! I have no idea why
+  "$<$<BOOL:WITH_NCDF OR WITH_FLOOK>:${PROJECT_NAME}-libfdict>"
    $<$<BOOL:${WITH_ELPA}>:Elpa::elpa>
   "$<$<BOOL:${WITH_MPI}>:Scalapack::Scalapack>"
   "$<$<BOOL:${WITH_DFTD3}>:s-dftd3::s-dftd3>"

@@ -130,7 +130,8 @@ function(print_feature_info)
   list(POP_BACK CMAKE_MESSAGE_INDENT)
 endfunction()
 
-message(NOTICE ""
+message(NOTICE "")
+message(NOTICE
   "Printing out information related to the build about to proceed."
   "Please carefully go through the following lines to assert that the \
   options are as expected, some default fall-backs may disable features \
@@ -243,16 +244,16 @@ print_feature_info(
     LIBXC_C_LINK_LIBRARIES
     LIBXC_C_INCLUDEDIR
     LIBXC_C_INCLUDE_DIRS
-    LIBXC_f03_LIBDIR
-    LIBXC_f03_LIBRARIES
-    LIBXC_f03_LINK_LIBRARIES
-    LIBXC_f03_INCLUDEDIR
-    LIBXC_f03_INCLUDE_DIRS
-    LIBXC_f90_LIBDIR
-    LIBXC_f90_LIBRARIES
-    LIBXC_f90_LINK_LIBRARIES
-    LIBXC_f90_INCLUDEDIR
-    LIBXC_f90_INCLUDE_DIRS
+    LIBXC_F03_LIBDIR
+    LIBXC_F03_LIBRARIES
+    LIBXC_F03_LINK_LIBRARIES
+    LIBXC_F03_INCLUDEDIR
+    LIBXC_F03_INCLUDE_DIRS
+    LIBXC_F90_LIBDIR
+    LIBXC_F90_LIBRARIES
+    LIBXC_F90_LINK_LIBRARIES
+    LIBXC_F90_INCLUDEDIR
+    LIBXC_F90_INCLUDE_DIRS
   OPTION WITH_LIBXC
   FOUND LIBXC_Fortran_FOUND
   )
@@ -309,5 +310,7 @@ print_feature_info(
 
 
 # Empty line
-message(NOTICE "" "Done with build information" "")
+message(NOTICE "")
+message(NOTICE "Done with build information")
+message(NOTICE "")
 
