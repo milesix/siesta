@@ -151,7 +151,7 @@ OBJS =  automatic_cell.o atom_options.o \
         m_forces.o m_stress.o m_eo.o m_spin.o spin_subs.o io_hsx.o m_fire.o setup_H0.o \
         get_kpoints_scale.o get_target_stress.o fire_optim.o zm_fire_optim.o \
         cell_fire_optim.o m_fire_para.o m_fire_mixing.o write_raw_efs.o \
-        pdos2g.o pdos2k.o pdos3g.o pdos3k.o spinorbit.o moments.o \
+        pdos2g.o pdos2k.o pdos2kp.o pdos3g.o pdos3k.o pdos3kp.o spinorbit.o moments.o \
 	fsiesta_mpi.o \
         final_H_f_stress.o \
         debugmpi.o qsort.o save_density_matrix.o \
@@ -1101,8 +1101,10 @@ pdos.o: m_energies.o m_spin.o parallel.o parallelsubs.o precision.o
 pdos.o: siesta_geom.o units.o xml.o
 pdos2g.o: alloc.o parallel.o parallelsubs.o precision.o sys.o units.o
 pdos2k.o: alloc.o parallel.o parallelsubs.o precision.o sys.o units.o
+pdos2kp.o: alloc.o parallel.o parallelsubs.o precision.o sys.o units.o
 pdos3g.o: alloc.o parallel.o parallelsubs.o precision.o sys.o units.o
 pdos3k.o: alloc.o parallel.o parallelsubs.o precision.o sys.o units.o
+pdos3kp.o: alloc.o parallel.o parallelsubs.o precision.o sys.o units.o
 pdosg.o: alloc.o parallel.o parallelsubs.o precision.o sys.o units.o
 pdosk.o: alloc.o parallel.o parallelsubs.o precision.o sys.o units.o
 pdoskp.o: alloc.o parallel.o parallelsubs.o precision.o sys.o units.o
