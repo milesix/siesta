@@ -98,6 +98,9 @@ else()
       # No user customized BLAS library, try built-in finder
       if(NOT BLAS_FOUND)
         find_package(BLAS)
+        if( BLAS_FOUND AND "${BLAS_LIBRARIES}" STREQUAL "")
+          set(BLAS_LIBRARIES "NONE")
+        endif()
       endif()
       set(BLAS_LIBRARY "${BLAS_LIBRARIES}" CACHE STRING "BLAS library to link" FORCE)
       set(BLAS_LINKER_FLAG "${BLAS_LINKER_FLAGS}" CACHE STRING

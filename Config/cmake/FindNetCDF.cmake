@@ -185,7 +185,7 @@ else()
 endif()
 
 if(NetCDF_PARALLEL)
-  find_package(MPI)
+  find_package(MPI QUIET)
 endif()
 
 ## Find libraries for each component

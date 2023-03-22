@@ -109,9 +109,9 @@ endif()
 message(STATUS "Checking that ScaLAPACK library works...")
 list(APPEND CMAKE_MESSAGE_INDENT "  ")
 
-# Test for lapack
-if(TARGET Scalapack::Scalapack)
-  set(CMAKE_REQUIRED_LIBRARIES Scalapack::Scalapack)
+# Test for scalapack
+if(TARGET SCALAPACK::SCALAPACK)
+  set(CMAKE_REQUIRED_LIBRARIES SCALAPACK::SCALAPACK)
 endif()
 check_fortran_source_compiles(
 "

@@ -14,6 +14,9 @@ function(print_feature_info)
 
   # add an empty line
   message(NOTICE "")
+  message(NOTICE "-------------------------------------------------------")
+  list(APPEND CMAKE_MESSAGE_INDENT "|")
+
   if(DEFINED _pi_HEADER)
     foreach(line IN LISTS _pi_HEADER)
       message(NOTICE "${line}")
@@ -81,16 +84,16 @@ function(print_feature_info)
       message(NOTICE "Variables used to enable feature:")
       list(APPEND CMAKE_MESSAGE_INDENT "  - ")
       foreach(var IN LISTS _pi_VARIABLES)
-        if(DEFINED "${var}")
+        if(NOT "${${var}}" STREQUAL "")
           message(NOTICE "${var}=${${var}}")
         endif()
       endforeach()
       list(POP_BACK CMAKE_MESSAGE_INDENT)
       
-      message(NOTICE "Variables are NOT defined nor used (possibly not needed to be set!):")
+      message(NOTICE "Empty or undefined variables (possibly not needed to be set!):")
       list(APPEND CMAKE_MESSAGE_INDENT "  - ")
       foreach(var IN LISTS _pi_VARIABLES)
-        if(NOT DEFINED "${var}")
+        if("${${var}}" STREQUAL "")
           message(NOTICE "${var}")
         endif()
       endforeach()
@@ -102,16 +105,16 @@ function(print_feature_info)
       message(NOTICE "Variables used but the feature is NOT enabled still:")
       list(APPEND CMAKE_MESSAGE_INDENT "  - ")
       foreach(var IN LISTS _pi_VARIABLES)
-        if(DEFINED "${var}")
+        if(NOT "${${var}}" STREQUAL "")
           message(NOTICE "${var}=${${var}}")
         endif()
       endforeach()
       list(POP_BACK CMAKE_MESSAGE_INDENT)
       
-      message(NOTICE "Variables are NOT defined nor used (possibly some of these are require to enable the feature):")
+      message(NOTICE "Empty or undefined variables (possibly some are needed to enable the feature):")
       list(APPEND CMAKE_MESSAGE_INDENT "  - ")
       foreach(var IN LISTS _pi_VARIABLES)
-        if(NOT DEFINED "${var}")
+        if("${${var}}" STREQUAL "")
           message(NOTICE "${var}")
         endif()
       endforeach()
@@ -128,14 +131,16 @@ function(print_feature_info)
   endif()
 
   list(POP_BACK CMAKE_MESSAGE_INDENT)
+  list(POP_BACK CMAKE_MESSAGE_INDENT)
+  message(NOTICE "-------------------------------------------------------")
 endfunction()
 
 message(NOTICE "")
 message(NOTICE
-  "Printing out information related to the build about to proceed."
-  "Please carefully go through the following lines to assert that the \
-  options are as expected, some default fall-backs may disable features \
-  depending on how variables are passed."
+  "Printing out information related to the build about to proceed.\n"
+  "Please carefully go through the following lines to assert that the "
+  "options are as expected, some default fall-backs may disable features "
+  "depending on how variables are passed."
 )
 
 print_feature_info(

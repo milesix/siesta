@@ -64,6 +64,7 @@ endif()
 # Now we need to search for the fortran libraries
 set(LIBXC_Fortran_INTERFACE "f03;f90" CACHE STRING
   "Which fortran libxc interfaces to use (in order of priority) (LIBXC_Fortran_INTERFACE)")
+mark_as_advanced(LIBXC_Fortran_INTERFACE)
 foreach(xcv IN LISTS LIBXC_Fortran_INTERFACE)
   message(CHECK_START "Using pkg-config to search for libxc${xcv}")
   string(TOUPPER "${xcv}" xcV)

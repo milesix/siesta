@@ -55,7 +55,7 @@ endmacro()
 
 
 # -- As a cmake package
-find_package(libgridxc QUIET CONFIG)
+find_package(libgridxc CONFIG)
 if (libgridxc_FOUND)
   message(STATUS "Found ${_lib} cmake package -- checking compatibility")
 

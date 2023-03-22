@@ -203,7 +203,7 @@ TARGET_LINK_LIBRARIES(
   $<$<BOOL:${WITH_NCDF}>:${PROJECT_NAME}-libncdf>
   ${PROJECT_NAME}-libfdict     # Even if not using NCDF
   $<$<BOOL:${WITH_ELPA}>:Elpa::elpa>     # ????
-  $<$<BOOL:${WITH_MPI}>:Scalapack::Scalapack>
+  $<$<BOOL:${WITH_MPI}>:SCALAPACK::SCALAPACK>
   LAPACK::LAPACK
 )
 

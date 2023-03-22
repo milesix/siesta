@@ -573,7 +573,7 @@ target_link_libraries(
   # Generator OR: does not work! I have no idea why
   "$<$<BOOL:WITH_NCDF OR WITH_FLOOK>:${PROJECT_NAME}-libfdict>"
    $<$<BOOL:${WITH_ELPA}>:Elpa::elpa>
-  "$<$<BOOL:${WITH_MPI}>:Scalapack::Scalapack>"
+  "$<$<BOOL:${WITH_MPI}>:SCALAPACK::SCALAPACK>"
   "$<$<BOOL:${WITH_DFTD3}>:s-dftd3::s-dftd3>"
   LAPACK::LAPACK
 )

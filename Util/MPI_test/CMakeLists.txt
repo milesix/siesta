@@ -49,7 +49,7 @@ setup_test(newcomm)
 add_executable(blacs_prb  blacs_prb.f90 )
 target_link_libraries(blacs_prb
   PRIVATE
-  Scalapack::Scalapack
+  SCALAPACK::SCALAPACK
   MPI::MPI_Fortran
   LAPACK::LAPACK
 )
@@ -59,7 +59,7 @@ setup_test(blacs_prb)
   add_executable(pblas_prb  pblas_prb.f90 )
   target_link_libraries(pblas_prb
     PRIVATE
-    Scalapack::Scalapack
+    SCALAPACK::SCALAPACK
     MPI::MPI_Fortran
     LAPACK::LAPACK
   )

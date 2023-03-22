@@ -31,7 +31,7 @@ if(WITH_MPI)
 
   # Odly enough adding LAPACK::LAPACK here will mess up the linking order
   # Since LAPACK::LAPACK is added in FindCustomScalapack as a dependency we do not needed.
-  set(CMAKE_REQUIRED_LIBRARIES Scalapack::Scalapack)
+  set(CMAKE_REQUIRED_LIBRARIES SCALAPACK::SCALAPACK)
   check_fortran_source_compiles("external :: pdsyevr, pzheevr; call pdsyevr(); call pzheevr(); end"
                                SCALAPACK_HAS_MRRR SRC_EXT F90)
   unset(CMAKE_REQUIRED_LIBRARIES)

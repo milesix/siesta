@@ -97,15 +97,19 @@ else()
     if("${SCALAPACK_LIBRARY}" STREQUAL "")
 
       # Try Scalapack via CMake export file
-      find_package(scalapack QUIET)
+      find_package(scalapack)
       if(scalapack_FOUND)
       	message(STATUS "Found intrinsic package")
 
         get_target_property(_scalapack_library scalapack INTERFACE_LINK_LIBRARIES)
-        set(SCALAPACK_LIBRARY "${_scalapack_library}" CACHE STRING "ScaLAPACK library to link"
-          FORCE)
+
+        if("${_scalapack_library}" STREQUAL "")
+          set(_scalapack_library "NONE")
+        endif()
+        set(SCALAPACK_LIBRARY "${_scalapack_library}" CACHE STRING "ScaLAPACK library to link" FORCE)
         unset(_scalapack_library)
       else()
+
       	message(STATUS "Trying to use pkg-config")
 
         # Very simple ScaLAPACK auto-detection: looking for a library called scalapack
@@ -142,8 +146,8 @@ else()
 
   endif()
 
-  find_package_handle_standard_args(CustomScalapack REQUIRED_VARS SCALAPACK_LIBRARY
-    MPI_Fortran_FOUND)
+  find_package_handle_standard_args(CustomScalapack 
+    REQUIRED_VARS SCALAPACK_LIBRARY MPI_Fortran_FOUND)
 
   set(CUSTOMSCALAPACK_FOUND ${CustomScalapack_FOUND})
   set(SCALAPACK_FOUND ${CustomScalapack_FOUND})
@@ -163,6 +167,8 @@ else()
       if(TARGET LAPACK::LAPACK)
       	# lapack should have the logic for adding BLAS::BLAS, if needed
       	target_link_libraries(scalapack INTERFACE LAPACK::LAPACK)
+      elseif(TARGET BLAS::BLAS)
+        target_link_libraries(scalapack INTERFACE BLAS::BLAS)
       endif()
     endif()
 
@@ -173,9 +179,9 @@ else()
 endif()
 
 # Add namespaced library name variant
-if(TARGET scalapack AND NOT TARGET Scalapack::Scalapack)
-  add_library(Scalapack::Scalapack INTERFACE IMPORTED)
-  target_link_libraries(Scalapack::Scalapack INTERFACE scalapack)
+if(TARGET scalapack AND NOT TARGET SCALAPACK::SCALAPACK)
+  add_library(SCALAPACK::SCALAPACK INTERFACE IMPORTED)
+  target_link_libraries(SCALAPACK::SCALAPACK INTERFACE scalapack)
 endif()
 
 list(POP_BACK CMAKE_MESSAGE_INDENT)

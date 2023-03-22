@@ -116,7 +116,7 @@ add_executable(unfold "${sources}")
  ##  "$<$<BOOL:${WITH_NCDF}>:${PROJECT_NAME}-libncdf>"
  ##  "$<$<BOOL:${WITH_NCDF}>:${PROJECT_NAME}-libfdict>"
   $<$<BOOL:${WITH_ELPA}>:Elpa::elpa>
-  "$<$<BOOL:${WITH_MPI}>:Scalapack::Scalapack>"
+  "$<$<BOOL:${WITH_MPI}>:SCALAPACK::SCALAPACK>"
   LAPACK::LAPACK
  )
 
