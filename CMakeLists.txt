@@ -35,8 +35,6 @@ endif()
 # -- Options ----------------------------------------
 option(WITH_GRID_SP "Use single-precision for grid magnitudes" FALSE)
 
-option(WITH_ELPA "Use the ELPA library (direct interface)" FALSE)
-
 option(BUILD_DOCS "Create Doxygen-based documentation (WIP)" FALSE)
 #--------------------------------------
 
@@ -48,7 +46,9 @@ include(flags)
 include(GNUInstallDirs)
 
 # Use Pkg-Config if available
-find_package(PkgConfig)
+# Many of our sub-inclusions requires this one, so we will catch errors here
+# To not confuse users!
+find_package(PkgConfig REQUIRED)
 
 
 # Look for blas, if needed, it is not required if LAPACK ships BLAS
@@ -232,10 +232,11 @@ add_subdirectory_option(
   OPTION WITH_FLOOK
   )
 
-if (WITH_ELPA)
+if( WITH_MPI )
+  # no need to search for ELPA in non-mpi environments
   find_package(CustomElpa)
+  option(WITH_ELPA "Include ELPA support" ${ELPA_FOUND})
 endif()
-
 
 # For STM/ol-stm only for now
 find_package(FFTW QUIET COMPONENTS DOUBLE_LIB)
