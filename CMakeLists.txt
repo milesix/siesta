@@ -56,7 +56,6 @@ find_package(CustomBlas)
 
 # Look for LAPACK
 find_package(CustomLapack REQUIRED)
-include(check_lapack)
 
 if (NOT TARGET MPI::MPI_Fortran)
  # Find MPI
@@ -94,6 +93,7 @@ if(WITH_MPI AND (NOT SCALAPACK_FOUND))
 endif()
 
 # Now we can check for linear algebra stuff
+include(check_linalg)
 include(check_linalg_features)
 
 #---------------------------- OpenMP
