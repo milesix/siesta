@@ -7,7 +7,8 @@ function(print_feature_info)
   set(options REQUIRED)
   set(oneValueArgs OPTION FOUND)
   set(multiValueArgs
-    VARIABLES DEPENDENCIES OPTIONAL_DEPENDENCIES
+    VARIABLES
+    DEPENDENCIES OPTIONAL_DEPENDENCIES
     MSG MSGOFF MSGON
     HEADER FOOTER)
   cmake_parse_arguments(_pi "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -146,8 +147,8 @@ message(NOTICE
 print_feature_info(
   HEADER "BLAS support"
   VARIABLES
-    BLAS_LIBRARY
     BLAS_LIBRARY_DIR
+    BLAS_LIBRARY
     BLAS_LIBRARIES
     BLAS_LINKER_FLAG
     BLAS_DETECTION
@@ -164,8 +165,8 @@ print_feature_info(
 print_feature_info(REQUIRED
   HEADER "LAPACK support"
   VARIABLES
-    LAPACK_LIBRARY
     LAPACK_LIBRARY_DIR
+    LAPACK_LIBRARY
     LAPACK_LIBRARIES
     LAPACK_LINKER_FLAG
     LAPACK_DETECTION
@@ -173,7 +174,7 @@ print_feature_info(REQUIRED
   MSG "Required library for fast performance"
   "Recommended libraries are:"
   "  - mkl"
-  "  - openblas"
+  "  - openblas (can have built-in LAPACK support)"
   "  - flame"
   "The NetLib LAPACK library is fine to use as long as the linked BLAS library is"
   "NOT the NetLib BLAS library!"
@@ -193,8 +194,8 @@ print_feature_info(
   FOUND SCALAPACK_FOUND
   DEPENDENCIES "MPI"
   VARIABLES
-    SCALAPACK_LIBRARY
     SCALAPACK_LIBRARY_DIR
+    SCALAPACK_LIBRARY
     SCALAPACK_LIBRARIES
     SCALAPACK_LINKER_FLAG
     SCALAPACK_DETECTION
@@ -209,7 +210,7 @@ print_feature_info(
     "ELPA provides a significant speedup for diagonalizations, users are "
     "generally advised to add support for this library, if able."
   MSGON
-    "ELPA support is controlled in the fdf via:"
+    "ELPA support is controlled in fdf via:"
     "  Diag.Algorithm ELPA-2stage|ELPA-1stage # former is preferred"
   VARIABLES
     ELPA_LIBDIR
@@ -282,6 +283,9 @@ print_feature_info(
     NetCDF_PATH
     NetCDF_INCLUDE_DIR
     NetCDF_INCLUDE_DIRS
+    NetCDF_LIBRARIES
+    NetCDF_PARALLEL
+    NetCDF_Fortran_LIBRARIES
     NetCDF_Fortran_INCLUDE_DIR
     NetCDF_Fortran_INCLUDE_DIRS
 
@@ -312,6 +316,13 @@ print_feature_info(
   )
 
 
+print_feature_info(
+  HEADER "Use FFTW where possible"
+  MSGON
+    "Only the STM/ol-stm utility will currently benefit from FFTW"
+  OPTION WITH_FFTW
+  FOUND FFTW_DOUBLE_LIB_FOUND
+  )
 
 
 # Empty line

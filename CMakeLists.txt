@@ -262,7 +262,6 @@ add_subdirectory("Src/ncps/src")
 add_subdirectory("Src/psoplib/src")
 add_subdirectory("Src/MatrixSwitch/src")
 if (WITH_NCDF)
-  message("---- Using the NCDF library")
   add_subdirectory("Src/easy-ncdf")
 endif()
 
