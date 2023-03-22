@@ -149,7 +149,7 @@ siesta_test(h2o)
 siesta_test(wannier
   EXTRA_FILES wannier.nnkp wannier.win)
 
-setup_test(si_pdos_kgrid)
+siesta_test(si_pdos_kgrid)
 
 if(WITH_LUA)
   siesta_test(lua_h2o
