@@ -4,8 +4,11 @@
 
 # This variable controls the width of the output bars
 set(_pi_width 80)
-set(_pi_section_delim "+")
 set(_pi_section_package "|")
+# Will allow up to 4 nested sections
+set(_pi_section_delims "+" "*" ">" "<")
+# create an empty list to deal with nested sections
+set(_pi_section_headers)
 
 # Global function for printing stuff
 function(print_feature_info)
@@ -153,19 +156,25 @@ The package is required but not used!")
   message(NOTICE ${_pi_line})
 endfunction()
 
+# Section handlers
+
 macro(print_start_section msg)
-  set(_pi_section_msg "${msg}")
   # Do some arithmetic
   string(LENGTH "${msg}" _pi_section_msg_length)
   # calculate the size of the header sections
   math(EXPR _pi_section_delim_len "(${_pi_width} - ${_pi_section_msg_length} - 2)/2")
 
+  # Get delimiter
+  list(LENGTH _pi_section_headers _pi_sec_depth)
+  list(GET _pi_section_delims ${_pi_sec_depth} _pi_section_delim)
+
   string(REPEAT "${_pi_section_delim}" ${_pi_section_delim_len} _pi_section_line)
-  set(_pi_section_header "${_pi_section_line} ${msg} ${_pi_section_line}")
+  set(_pi_tmp "${_pi_section_line} ${msg} ${_pi_section_line}")
+  list(APPEND _pi_section_headers "${_pi_tmp}")
 
   # Print new section
   message(NOTICE "")
-  message(NOTICE "${_pi_section_header}")
+  message(NOTICE "${_pi_tmp}")
 
   list(APPEND CMAKE_MESSAGE_INDENT "${_pi_section_delim} ")
 endmacro()
@@ -174,7 +183,8 @@ macro(print_end_section)
   message(NOTICE "")
   list(POP_BACK CMAKE_MESSAGE_INDENT)
   # new line, and then header
-  message(NOTICE "${_pi_section_header}")
+  list(POP_BACK _pi_section_headers _pi_tmp)
+  message(NOTICE "${_pi_tmp}")
 endmacro()
 
 
@@ -251,6 +261,7 @@ print_feature_info(REQUIRED
   "NOT the NetLib BLAS library!"
   )
 
+print_start_section("Parallel")
 
 print_feature_info(
   HEADER "ScaLAPACK library"
@@ -286,6 +297,7 @@ print_feature_info(
   DEPENDENCIES "MPI" "ScaLAPACK"
   )
 
+print_end_section()
 print_end_section()
 
 
