@@ -216,6 +216,7 @@ endif()
 
 
 # Search for DFTD3
+# TODO use the utility for locating it, but then revert here
 add_subdirectory_option(
   DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/External/DFTD3/"
   HELP "Include support for DFT-D3 corrections"

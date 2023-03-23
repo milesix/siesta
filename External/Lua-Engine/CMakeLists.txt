@@ -66,6 +66,7 @@ find_library(FLOOK_LINK_LIBRARIES
 
 if("${FLOOK_LINK_LIBRARIES}" STREQUAL "FLOOK_LINK_LIBRARIES-NOTFOUND")
   message(CHECK_FAIL "not found")
+  unset(FLOOK_LINK_LIBRARIES CACHE)
 else()
   set(FLOOK_INCLUDE_DIRS "${FLOOK_ROOT}/include")
   message(VERBOSE "FLOOK_LINK_LIBRARIES: ${FLOOK_LINK_LIBRARIES}")
@@ -128,6 +129,7 @@ elseif(EXISTS "${CMAKE_SOURCE_DIR}/External/Lua-Engine/flook/LICENSE")
   # The sub-module exists, or at least the LICENSE file does!
 
   set(url "${CMAKE_SOURCE_DIR}/External/Lua-Engine/flook")
+  set(FLOOK_SOURCE_DIR "${url}" PARENT_SCOPE)
   message(STATUS "flook: will compile on-the-fly from submodule in External/Lua-Engine/flook")
 
 else()
