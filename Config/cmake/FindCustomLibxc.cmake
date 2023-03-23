@@ -56,7 +56,7 @@ if(NOT TARGET libxc::xc)
   )
   target_include_directories(
     libxc::xc
-    INTERFACE "${LIBXC_C_INCLUDE_DIRS}"
+    INTERFACE "${LIBXC_C_INCLUDE_DIRS}" "${LIBXC_C_INCLUDEDIR}"
   )
 endif()
 
@@ -93,7 +93,7 @@ foreach(xcv IN LISTS LIBXC_Fortran_INTERFACE)
 
     target_include_directories(
       libxc::xc${xcv}
-      INTERFACE "${LIBXC_${xcV}_INCLUDE_DIRS}"
+      INTERFACE "${LIBXC_${xcV}_INCLUDE_DIRS}" "${LIBXC_${xcV}_INCLUDEDIR}"
     )
   
     add_library(libxc::XC_Fortran INTERFACE IMPORTED)
