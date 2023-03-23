@@ -60,8 +60,20 @@ function(print_feature_info)
 
 
   if( _pi_REQUIRED AND (NOT _pi_used) )
-    message(FATAL_ERROR "Logic in library information could not be fulfilled. \
-The package is required but not used!")
+    set(_pi_tmp "")
+    if( _pi_REQUIRED )
+      set(_pi_tmp "${_pi_tmp}\nThis feature is a REQUIRED feature")
+    endif()
+    if( DEFINED _pi_OPTION)
+      set(_pi_tmp "${_pi_tmp}\nFlag for controlling feature usage (is defined): ${_pi_OPTION}=${${_pi_OPTION}}")
+    endif()
+    if( DEFINED _pi_FOUND)
+      set(_pi_tmp "${_pi_tmp}\nBuild system flag whether the package was found: ${_pi_FOUND}=${${_pi_FOUND}}")
+    endif()
+    message(FATAL_ERROR
+      "${_pi_tmp}\n"
+      "Logic in library information could not be understood."
+      "The package is REQUIRED but cannot be used?")
   endif()
 
   # Print out information if on
@@ -71,7 +83,7 @@ The package is required but not used!")
     endforeach()
   endif()
 
-  if( ${${_pi_OPTION}} )
+  if( ${_pi_used} )
     if(DEFINED _pi_MSGON)
       foreach(line IN LISTS _pi_MSGON)
         message(NOTICE "${line}")
@@ -99,7 +111,7 @@ The package is required but not used!")
 
   if(DEFINED _pi_VARIABLES)
 
-    if( ${${_pi_OPTION}} )
+    if( ${_pi_used} )
 
       # We have enabled the feature, so the user has supplied enough information
       message(NOTICE "Variables used to enable feature:")
@@ -120,7 +132,7 @@ The package is required but not used!")
       endforeach()
       list(POP_BACK CMAKE_MESSAGE_INDENT)
 
-    else( ${${_pi_OPTION}} )
+    else( ${_pi_used} )
       
       # We have not enabled the feature, so the user may have some missing information
       message(NOTICE "Variables used but the feature is NOT enabled still:")
@@ -141,7 +153,7 @@ The package is required but not used!")
       endforeach()
       list(POP_BACK CMAKE_MESSAGE_INDENT)
 
-    endif( ${${_pi_OPTION}} )
+    endif( ${_pi_used} )
 
   endif()
   
@@ -328,7 +340,7 @@ print_feature_info(REQUIRED
   FOUND LIBGRIDXC_FOUND
   )
 
-print_feature_info(REQUIRED
+print_feature_info(
   HEADER "LibPSML allows reading PSML file format"
   MSG "Allows using pseudo-potentials from pseudo-dojo.org"
   FOUND LIBPSML_FOUND
