@@ -17,7 +17,7 @@
 set(_lib "libpsml")
 set(_pkg "LIBPSML")
 set(_url "https://gitlab.com/siesta-project/libraries/libpsml")
-set(_tag "cmake")
+set(_tag "master")
 
 if(NOT DEFINED "${_pkg}_FIND_METHOD")
   if(DEFINED "${PROJECT_NAME}-dependency-method")

@@ -38,7 +38,7 @@ set(LIBGRIDXC_ALLOW_FETCH "ON" CACHE BOOL "Allow remote fetching of libgridxc co
 set(_lib "libgridxc")
 set(_pkg "LIBGRIDXC")
 set(_url "https://gitlab.com/siesta-project/libraries/libgridxc")
-set(_tag "cmake-master")
+set(_tag "master") #TODO revision of version for libgridxc
 
 set(_GOOD_LIBRARY TRUE)
 

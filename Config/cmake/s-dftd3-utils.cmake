@@ -31,7 +31,7 @@ macro(
   string(TOLOWER "${package}" _pkg_lc)
   string(TOUPPER "${package}" _pkg_uc)
 
-  foreach(method in ITEMS ${methods})
+  foreach(method IN ITEMS ${methods})
 
     if(TARGET "${package}::${package}")
       break()
@@ -69,8 +69,8 @@ macro(
 
     if("${method}" STREQUAL "subproject")
       set("${_pkg_uc}_SOURCE_DIR" "${PROJECT_SOURCE_DIR}/External/${submodule_path}")
-      set("${_pkg_uc}_BINARY_DIR" "${PROJECT_BINARY_DIR}/External/${submodule_path}")
       if(EXISTS "${${_pkg_uc}_SOURCE_DIR}/CMakeLists.txt")
+        set("${_pkg_uc}_BINARY_DIR" "${PROJECT_BINARY_DIR}/External/${submodule_path}")
         message(STATUS "Include ${package} as submodule from External/${submodule_path}")
         add_subdirectory(
           "${${_pkg_uc}_SOURCE_DIR}"
@@ -113,12 +113,15 @@ macro(
 
   endforeach()
 
-  unset(_pkg_lc)
-  unset(_pkg_uc)
 
   if(NOT TARGET "${package}::${package}")
     message(FATAL_ERROR "Could not find dependency ${package}")
   endif()
 
+  # notify about the found-variables
   set("${package}_FOUND" TRUE)
+  set("${_pkg_uc}_FOUND" TRUE)
+  
+  unset(_pkg_lc)
+  unset(_pkg_uc)
 endmacro()

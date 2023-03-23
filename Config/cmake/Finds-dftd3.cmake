@@ -17,7 +17,7 @@
 set(_lib "s-dftd3")
 set(_pkg "S-DFTD3")
 set(_url "https://github.com/dftd3/simple-dftd3")
-set(_tag "cmake")
+set(_tag "v0.7.0")
 
 if(NOT DEFINED "${_pkg}_FIND_METHOD")
   if(DEFINED "${PROJECT_NAME}-dependency-method")

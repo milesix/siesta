@@ -17,7 +17,7 @@
 set(_lib "xmlf90")
 set(_pkg "XMLF90")
 set(_url "https://gitlab.com/siesta-project/libraries/xmlf90")
-set(_tag "cmake")
+set(_tag "master")
 
 if(NOT DEFINED "${_pkg}_FIND_METHOD")
   if(DEFINED "${PROJECT_NAME}-dependency-method")

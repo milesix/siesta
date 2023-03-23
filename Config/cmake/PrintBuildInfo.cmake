@@ -336,11 +336,13 @@ print_feature_info(REQUIRED
   HEADER "LibGridXC support to calculate XC functionals on the grid"
   VARIABLES
     LIBGRIDXC_ALLOW_FETCH
+    LIBGRIDXC_SOURCE_DIR # if submodule
+    libgridxc_SOURCE_DIR # if fetch (FetchContent uses lowercase)
   OPTIONAL_DEPENDENCIES LibXC MPI
   FOUND LIBGRIDXC_FOUND
   )
 
-print_feature_info(
+print_feature_info(REQUIRED
   HEADER "LibPSML allows reading PSML file format"
   MSG "Allows using pseudo-potentials from pseudo-dojo.org"
   FOUND LIBPSML_FOUND
@@ -348,6 +350,8 @@ print_feature_info(
     LIBPSML_LINK_LIBRARIES
     LIBPSML_INCLUDE_DIRS
     LIBPSML_INCLUDEDIR
+    LIBPSML_SOURCE_DIR
+    libpsml_SOURCE_DIR
   )
 
 print_end_section()
@@ -418,6 +422,7 @@ print_feature_info(
     FLOOK_ROOT
     FLOOK_LINK_LIBRARIES
     FLOOK_INCLUDE_DIRS
+    FLOOK_SOURCE_DIR # if a submodule or fetch
   OPTION WITH_FLOOK
   FOUND FLOOK_FOUND
   )
@@ -425,6 +430,9 @@ print_feature_info(
 print_feature_info(
   HEADER "DFT-D3 corrections"
   OPTION WITH_DFTD3
+  VARIABLES
+    S-DFTD3_SOURCE_DIR
+    s-dftd3_SOURCE_DIR
   MSGOFF
     "Adding support for DFT-D3 can improve force descriptions"
     "using simple but heuristically determined corrections to forces"
@@ -438,7 +446,6 @@ print_feature_info(
   OPTION WITH_FFTW
   FOUND FFTW_DOUBLE_LIB_FOUND
   )
-
 
 
 
