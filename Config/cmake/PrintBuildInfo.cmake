@@ -171,9 +171,9 @@ macro(print_start_section msg)
 endmacro()
 
 macro(print_end_section)
+  message(NOTICE "")
   list(POP_BACK CMAKE_MESSAGE_INDENT)
   # new line, and then header
-  message(NOTICE "")
   message(NOTICE "${_pi_section_header}")
 endmacro()
 
