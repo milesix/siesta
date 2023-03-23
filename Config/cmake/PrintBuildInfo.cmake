@@ -2,6 +2,11 @@
 # This should comprise *ALL* components.
 # And preferentially in some order to retain information locally.
 
+# This variable controls the width of the output bars
+set(_pi_width 80)
+set(_pi_section_delim "+")
+set(_pi_section_package "|")
+
 # Global function for printing stuff
 function(print_feature_info)
   set(options REQUIRED)
@@ -15,8 +20,9 @@ function(print_feature_info)
 
   # add an empty line
   message(NOTICE "")
-  message(NOTICE "-------------------------------------------------------")
-  list(APPEND CMAKE_MESSAGE_INDENT "|")
+  string(REPEAT "-" ${_pi_width} _pi_line)
+  message(NOTICE ${_pi_line})
+  list(APPEND CMAKE_MESSAGE_INDENT "${_pi_section_package}")
 
   if(DEFINED _pi_HEADER)
     foreach(line IN LISTS _pi_HEADER)
@@ -25,27 +31,43 @@ function(print_feature_info)
   endif()
   list(APPEND CMAKE_MESSAGE_INDENT "  ")
   
+  set(_pi_used "${_pi_REQUIRED}")
+  set(_pi_available "${_pi_REQUIRED}")
   if(DEFINED _pi_OPTION)
-    if( ${${_pi_OPTION}} )
-      message(NOTICE "Feature is turned ON and controlled by '${_pi_OPTION}=${${_pi_OPTION}}'")
-    else()
-      message(NOTICE "Feature is turned OFF and controlled by '${_pi_OPTION}=${${_pi_OPTION}}'")
+    set(_pi_used ${${_pi_OPTION}})
+  endif()
+  if(DEFINED _pi_FOUND)
+    set(_pi_available ${${_pi_FOUND}})
+    if(NOT DEFINED _pi_OPTION)
+      set(_pi_used "${_pi_available}")
     endif()
-  elseif(DEFINED _pi_FOUND)
-    if( ${${_pi_FOUND}} )
-      message(NOTICE "Feature is turned ON")
-    else()
-      message(NOTICE "Feature is turned OFF")
-    endif()
-    set("${_pi_OPTION}" "${${_pi_FOUND}}")
   endif()
 
-  if(_pi_REQUIRED AND (NOT ${${_pi_OPTION}}) )
-    message(FATAL_ERROR "Logic in library information could not be fulfilled"
-      "Neither OPTION or FOUND variable is defined")
+  if( _pi_used )
+    if( _pi_REQUIRED )
+      message(NOTICE "Required feature (cannot be disabled)")
+    else()
+      message(NOTICE "Feature is turned ON and controlled by '${_pi_OPTION}'")
+    endif()
+  elseif( _pi_available )
+    message(NOTICE "Feature is turned OFF but can be turned ON (controlled by '${_pi_OPTION}'")
+  else()
+    message(NOTICE "Feature is turned OFF and requires additional information to be available")
+  endif()
+
+
+  if( _pi_REQUIRED AND (NOT _pi_used) )
+    message(FATAL_ERROR "Logic in library information could not be fulfilled. \
+The package is required but not used!")
   endif()
 
   # Print out information if on
+  if(DEFINED _pi_MSG)
+    foreach(line IN LISTS _pi_MSG)
+      message(NOTICE "${line}")
+    endforeach()
+  endif()
+
   if( ${${_pi_OPTION}} )
     if(DEFINED _pi_MSGON)
       foreach(line IN LISTS _pi_MSGON)
@@ -58,11 +80,6 @@ function(print_feature_info)
     endforeach()
   endif()
 
-  if(DEFINED _pi_MSG)
-    foreach(line IN LISTS _pi_MSG)
-      message(NOTICE "${line}")
-    endforeach()
-  endif()
 
   if(DEFINED _pi_DEPENDENCIES)
     message(NOTICE "The following dependencies are required to use this feature:")
@@ -133,8 +150,34 @@ function(print_feature_info)
 
   list(POP_BACK CMAKE_MESSAGE_INDENT)
   list(POP_BACK CMAKE_MESSAGE_INDENT)
-  message(NOTICE "-------------------------------------------------------")
+  message(NOTICE ${_pi_line})
 endfunction()
+
+macro(print_start_section msg)
+  set(_pi_section_msg "${msg}")
+  # Do some arithmetic
+  string(LENGTH "${msg}" _pi_section_msg_length)
+  # calculate the size of the header sections
+  math(EXPR _pi_section_delim_len "(${_pi_width} - ${_pi_section_msg_length} - 2)/2")
+
+  string(REPEAT "${_pi_section_delim}" ${_pi_section_delim_len} _pi_section_line)
+  set(_pi_section_header "${_pi_section_line} ${msg} ${_pi_section_line}")
+
+  # Print new section
+  message(NOTICE "")
+  message(NOTICE "${_pi_section_header}")
+
+  list(APPEND CMAKE_MESSAGE_INDENT "${_pi_section_delim} ")
+endmacro()
+
+macro(print_end_section)
+  list(POP_BACK CMAKE_MESSAGE_INDENT)
+  # new line, and then header
+  message(NOTICE "")
+  message(NOTICE "${_pi_section_header}")
+endmacro()
+
+
 
 message(NOTICE "")
 message(NOTICE
@@ -143,6 +186,34 @@ message(NOTICE
   "options are as expected, some default fall-backs may disable features "
   "depending on how variables are passed."
 )
+
+
+print_start_section("Parallel")
+
+print_feature_info(
+  HEADER "OpenMP (threaded) support"
+  MSGOFF
+    "Can be used for extremely large systems to reduce memory requirements"
+    "at the cost of some overhead since only some parts of the code is parallelized with OpenMP"
+  MSGON
+    "Carefully analyze your typicals runs for whether this makes sense (performance wise)"
+    "It might be that the overhead of using OpenMP is very high in which case it should not be used."
+    "Users are encouraged to have both a non-OpenMP AND an OpenMP executable to easily switch on a case-by-case"
+  OPTION WITH_OPENMP
+  )
+
+print_feature_info(
+  HEADER "MPI (parallel support)"
+  OPTION WITH_MPI
+  FOUND MPI_Fortran_FOUND
+  MSGOFF "Parallel support is highly advised to allow scalable and faster calculations"
+  DEPENDENCIES "ScaLAPACK"
+)
+
+print_end_section()
+
+
+print_start_section("Linear algebra")
 
 print_feature_info(
   HEADER "BLAS support"
@@ -180,13 +251,6 @@ print_feature_info(REQUIRED
   "NOT the NetLib BLAS library!"
   )
 
-print_feature_info(
-  HEADER "MPI (parallel support)"
-  OPTION WITH_MPI
-  FOUND MPI_Fortran_FOUND
-  MSGOFF "Parallel support is highly advised to allow scalable and faster calculations"
-  DEPENDENCIES "ScaLAPACK"
-)
 
 print_feature_info(
   HEADER "ScaLAPACK library"
@@ -222,18 +286,8 @@ print_feature_info(
   DEPENDENCIES "MPI" "ScaLAPACK"
   )
 
+print_end_section()
 
-print_feature_info(
-  HEADER "OpenMP (threaded) support"
-  MSGOFF
-    "Can be used for extremely large systems to reduce memory requirements"
-    "at the cost of some overhead since only some parts of the code is parallelized with OpenMP"
-  MSGON
-    "Carefully analyze your typicals runs for whether this makes sense (performance wise)"
-    "It might be that the overhead of using OpenMP is very high in which case it should not be used."
-    "Users are encouraged to have both a non-OpenMP AND an OpenMP executable to easily switch on a case-by-case"
-  OPTION WITH_OPENMP
-  )
 
 
   
@@ -293,6 +347,9 @@ print_feature_info(
   FOUND NetCDF_FOUND 
   )
 
+
+print_start_section("Optional features")
+
 print_feature_info(
   HEADER "Lua support through flook library"
   MSGON "Interaction with Lua can be enabled by adding"
@@ -323,6 +380,8 @@ print_feature_info(
   OPTION WITH_FFTW
   FOUND FFTW_DOUBLE_LIB_FOUND
   )
+
+print_end_section()
 
 
 # Empty line
