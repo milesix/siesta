@@ -6,7 +6,7 @@
 set(_pi_width 80)
 set(_pi_section_package "|")
 # Will allow up to 4 nested sections
-set(_pi_section_delims "+" "*" ">" "<")
+set(_pi_section_delims "+" "*" "O" "@")
 # create an empty list to deal with nested sections
 set(_pi_section_headers)
 
@@ -53,7 +53,7 @@ function(print_feature_info)
       message(NOTICE "Feature is turned ON and controlled by '${_pi_OPTION}'")
     endif()
   elseif( _pi_available )
-    message(NOTICE "Feature is turned OFF but can be turned ON (controlled by '${_pi_OPTION}'")
+    message(NOTICE "Feature is turned OFF but can be turned ON (controlled by '${_pi_OPTION}')")
   else()
     message(NOTICE "Feature is turned OFF and requires additional information to be available")
   endif()
@@ -158,33 +158,50 @@ endfunction()
 
 # Section handlers
 
-macro(print_start_section msg)
-  # Do some arithmetic
-  string(LENGTH "${msg}" _pi_section_msg_length)
-  # calculate the size of the header sections
-  math(EXPR _pi_section_delim_len "(${_pi_width} - ${_pi_section_msg_length} - 2)/2")
+function(print_section_line delim delim_pre_count msg delim_post_count)
+  string(REPEAT "${delim}" ${delim_pre_count} _pi_delim_pre)
+  string(REPEAT "${delim}" ${delim_post_count} _pi_delim_post)
+  message(NOTICE "${_pi_delim_pre}${msg}${_pi_delim_post}")
+endfunction()
 
-  # Get delimiter
+
+macro(print_start_section _pi_msg)
+  # Get current section delimiter
   list(LENGTH _pi_section_headers _pi_sec_depth)
   list(GET _pi_section_delims ${_pi_sec_depth} _pi_section_delim)
 
-  string(REPEAT "${_pi_section_delim}" ${_pi_section_delim_len} _pi_section_line)
-  set(_pi_tmp "${_pi_section_line} ${msg} ${_pi_section_line}")
-  list(APPEND _pi_section_headers "${_pi_tmp}")
+  # Append the section msg to the headers
+  list(APPEND _pi_section_headers "${_pi_msg}")
+
+  # Calculate the filling of the delimiter
+  string(LENGTH "${_pi_msg}" _pi_section_msg_length)
+
+  math(EXPR _pi_section_delim_len "${_pi_width} - ${_pi_section_msg_length} - 8 - 2")
 
   # Print new section
   message(NOTICE "")
-  message(NOTICE "${_pi_tmp}")
+  print_section_line("${_pi_section_delim}" 4 " ${_pi_msg} >>> " ${_pi_section_delim_len})
 
   list(APPEND CMAKE_MESSAGE_INDENT "${_pi_section_delim} ")
 endmacro()
 
 macro(print_end_section)
+  # new line, and then header
   message(NOTICE "")
   list(POP_BACK CMAKE_MESSAGE_INDENT)
-  # new line, and then header
-  list(POP_BACK _pi_section_headers _pi_tmp)
-  message(NOTICE "${_pi_tmp}")
+
+  # create the final section line
+  list(POP_BACK _pi_section_headers _pi_msg)
+
+  # Get current section delimiter
+  list(LENGTH _pi_section_headers _pi_sec_depth)
+  list(GET _pi_section_delims ${_pi_sec_depth} _pi_section_delim)
+
+  # Do some arithmetic
+  string(LENGTH "${_pi_msg}" _pi_section_msg_length)
+  math(EXPR _pi_section_delim_len "${_pi_width} - ${_pi_section_msg_length} - 8 - 2")
+  print_section_line("${_pi_section_delim}" ${_pi_section_delim_len} " <<< ${_pi_msg} " 4)
+
 endmacro()
 
 
@@ -301,8 +318,31 @@ print_end_section()
 print_end_section()
 
 
-
+print_start_section("Required dependencies")
   
+print_feature_info(REQUIRED
+  HEADER "LibGridXC support to calculate XC functionals on the grid"
+  VARIABLES
+    LIBGRIDXC_ALLOW_FETCH
+  OPTIONAL_DEPENDENCIES LibXC MPI
+  FOUND LIBGRIDXC_FOUND
+  )
+
+print_feature_info(REQUIRED
+  HEADER "LibPSML allows reading PSML file format"
+  MSG "Allows using pseudo-potentials from pseudo-dojo.org"
+  FOUND LIBPSML_FOUND
+  VARIABLES
+    LIBPSML_LINK_LIBRARIES
+    LIBPSML_INCLUDE_DIRS
+    LIBPSML_INCLUDEDIR
+  )
+
+print_end_section()
+
+
+print_start_section("Recommended dependencies")
+
 print_feature_info(
   HEADER "Libxc for reference exchange-correlation functionals"
   MSGOFF
@@ -330,14 +370,6 @@ print_feature_info(
   FOUND LIBXC_Fortran_FOUND
   )
 
-print_feature_info(REQUIRED
-  HEADER "LibGridXC support to calculate XC functionals on the grid"
-  VARIABLES
-    GRIDXC_ALLOW_FETCH
-  OPTIONAL_DEPENDENCIES LibXC MPI
-  )
-
-
 print_feature_info(
   HEADER "NetCDF output file support"
   MSGOFF
@@ -358,6 +390,8 @@ print_feature_info(
   OPTION WITH_NETCDF
   FOUND NetCDF_FOUND 
   )
+
+print_end_section()
 
 
 print_start_section("Optional features")
@@ -392,6 +426,9 @@ print_feature_info(
   OPTION WITH_FFTW
   FOUND FFTW_DOUBLE_LIB_FOUND
   )
+
+
+
 
 print_end_section()
 

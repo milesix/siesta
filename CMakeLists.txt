@@ -194,7 +194,7 @@ endif()
 
 if (NOT TARGET libpsml::libpsml)
   # should we also add psml as required library?
-  find_package(libpsml)
+  find_package(libpsml REQUIRED)
 endif()
 
 if (NOT TARGET libxc::XC_Fortran)

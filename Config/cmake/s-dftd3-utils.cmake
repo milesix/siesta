@@ -120,4 +120,5 @@ macro(
     message(FATAL_ERROR "Could not find dependency ${package}")
   endif()
 
+  set("${package}_FOUND" TRUE)
 endmacro()

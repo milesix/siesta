@@ -22,7 +22,7 @@ requested Siesta precision and 3) libxc support.
 3. Search for the libgridxc in single-config mode using pkg-config
 4. If libgridxc directory is found in the External/ folder it may be
    used as a sub-project.
-5. If GRIDXC_ALLOW_FETCH is true cmake will try and fetch the remote
+5. If LIBGRIDXC_ALLOW_FETCH is true cmake will try and fetch the remote
    and add it as a sub-project.
 
 
@@ -33,7 +33,7 @@ will be usable upon return.
 #]=======================================================================]
 
 
-set(GRIDXC_ALLOW_FETCH "ON" CACHE BOOL "Allow remote fetching of libgridxc code")
+set(LIBGRIDXC_ALLOW_FETCH "ON" CACHE BOOL "Allow remote fetching of libgridxc code")
 
 set(_lib "libgridxc")
 set(_pkg "LIBGRIDXC")
@@ -284,7 +284,7 @@ if(EXISTS "${GRIDXC_SOURCE_DIR}/CMakeLists.txt")
   found_return()
 endif()
 
-if (GRIDXC_ALLOW_FETCH)
+if (LIBGRIDXC_ALLOW_FETCH)
   # -- Fetch
   message(STATUS "Retrieving ${_lib} from ${_url}")
   include(FetchContent)
@@ -306,12 +306,12 @@ if (GRIDXC_ALLOW_FETCH)
 
   found_return()
 
-else(GRIDXC_ALLOW_FETCH)
+else(LIBGRIDXC_ALLOW_FETCH)
 
   message(WARNING "** Note that fetching is disabled for ${_lib}")
-  message(WARNING "** Enable through GRIDXC_ALLOW_FETCH")
+  message(WARNING "** Enable through LIBGRIDXC_ALLOW_FETCH")
 
-endif(GRIDXC_ALLOW_FETCH)
+endif(LIBGRIDXC_ALLOW_FETCH)
 
 set(LIBGRIDXC_FOUND FALSE)
 list(POP_BACK CMAKE_MESSAGE_INDENT)
