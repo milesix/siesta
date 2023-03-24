@@ -21,6 +21,11 @@ MODULE siesta_geom
   ! Shape of the system
   character(len=10)               :: shape
 
+  ! Periodic directions in system
+  ! This may seemingly be equivalent to nsc, but it not be
+  ! in case of Gamma-calculations without auxiliary cells.
+  logical :: cell_periodic(3) = .false.
+
   ! Unit cell volume  (dangerous: the old code might have a BUG,
   ! as the volume is printed at the end 
   ! without being updated for the final cell change, and used in

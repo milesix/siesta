@@ -189,14 +189,16 @@ contains
     else
        ! the other nodes will get the data structure
     endif
+
+    ! Parse the command line
+    ! Note that there could be changes to the fdf data structure
+    call tbt_parse_command_line(info=.false.)
+
 #ifdef MPI      
       call broadcast_fdf_struct(0,mpi_comm_world)
 #endif
 
-    ! Parse the command line
-    call tbt_parse_command_line(info=.false.)
-
-    ! Initialize the verbosity setting
+      ! Initialize the verbosity setting
     call init_verbosity('TBT.Verbosity', 5)
 
     ! Define Name of the system ...

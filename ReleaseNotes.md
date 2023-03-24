@@ -40,6 +40,9 @@ grouped under headings representing past (and upcoming) releases.
 
 ### Changes
 
+* Extend the options for pseudopotential handling with ps-file-spec in the ChemicalSpecies block
+  and SIESTA_PS_PATH environment variable (Alberto Garcia).
+
 * Add XC information to CML file (@william-chem)
 
 * Added support for D3 dispersion corrections (Federico Pedron)

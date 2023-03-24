@@ -650,7 +650,7 @@ contains
     type(electrode_t), intent(in) :: Elecs(N_Elec)
     type(dictionary_t), intent(inout) :: save_DATA
 
-    character(len=100) :: char
+    character(len=100) :: char, char2
     type(block_fdf) :: bfdf
     type(parsed_line), pointer :: pline
     integer :: ipt, ip, iE_p, im_p, ip_p, iE_c, im_c, ip_c, it
@@ -740,11 +740,11 @@ contains
 
         ! Skip empty lines
         if ( fdf_bnnames(pline) == 0 ) cycle
-        char = fdf_bnames(pline,1)
-        if ( leqi(char,'end') ) exit
+        char2 = fdf_bnames(pline,1)
+        if ( leqi(char2,'end') ) exit
 
         ! 2 This corresponds to all the projections on Gamma_R
-        call parse_T(N_Elec,Elecs,N_mol,mols,char,iE_c,im_c,ip_c)
+        call parse_T(N_Elec,Elecs,N_mol,mols,char2,iE_c,im_c,ip_c)
 
         ! we do not allow pure projections (i.e. no projectinos)
         if ( ip_p == 0 .and. ip_c == 0 ) cycle
@@ -775,6 +775,11 @@ contains
             end if
           end if
 
+        else if ( Node == 0 ) then
+          if ( .not. any_skipped ) write(*,*) ! newline
+          any_skipped = .true.
+          write(*,'(5a)')'tbt: Projection " ',trim(char), " -> ", &
+              trim(char2), '" has been silently rejected.'
         end if
         
       end do
@@ -855,6 +860,15 @@ contains
     call fdf_brewind(bfdf)
 
     if ( N_proj_T == 0 .or. N_proj_ME == 0 ) then
+
+      if ( Node == 0 .and. any_skipped ) then
+        write(*,'(a)') 'tbt: Certain projections have been skipped'
+        write(*,'(a)') 'tbt: Often this is a result of projection from the last electrode (missing Projs.T.All flag)'
+        write(*,'(a)') 'tbt: or because of reflection projections (missing Projs.T.Out flag)'
+        write(*,'(a)') 'tbt: Check manual for allowing all projections'
+        write(*,'(a)') 'tbt:  manual for allowing all projections'
+      end if
+
       call die('The projection block was ill-formatted &
           &or all projections has been rejected. Check input.')
     end if
@@ -1061,7 +1075,10 @@ contains
 
     if ( Node == 0 .and. any_skipped ) then
       write(*,'(a)') 'tbt: Certain projections have been skipped'
+      write(*,'(a)') 'tbt: Often this is a result of projection from the last electrode (missing Projs.T.All flag)'
+      write(*,'(a)') 'tbt: or because of reflection projections (missing Projs.T.Out flag)'
       write(*,'(a)') 'tbt: Check manual for allowing all projections'
+      write(*,'(a)') 'tbt:  manual for allowing all projections'
     end if
 
   contains

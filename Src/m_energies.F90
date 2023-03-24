@@ -53,6 +53,9 @@ module m_energies
   real(dp):: DEdftu
                         !    LDA+U+SO calculations
 
+  !< Free energy correction when a bulk current is running (applied bias far from bulk part)
+  real(dp) :: E_bulk_bias
+
   real(dp) :: NEGF_DE  ! NEGF total energy contribution = - e * \sum_i N_i \mu_i
   real(dp) :: NEGF_Vha ! Potential offset for fixing the boundary conditions for NEGF
   ! Generally we should only calculate energies in the regions where we are updating elements
@@ -65,7 +68,7 @@ module m_energies
   real(dp) :: NEGF_Eharrs
   real(dp) :: NEGF_Etot
   real(dp) :: NEGF_FreeE
-
+  
 contains
 
   !> Initialize ALL energies to 0.
@@ -119,6 +122,9 @@ contains
     NEGF_Etot = 0._dp
     NEGF_FreeE = 0._dp
 
+    ! Bulk_bias
+    E_bulk_bias = 0._dp
+
   end subroutine init_Energies
 
   !> To ease the computation of specific deferred
@@ -148,7 +154,7 @@ contains
     if ( TSrun ) then
       NEGF_Etot = Ena + NEGF_Ekin + NEGF_Enl - Eions + &
           DEna + DUscf + DUext + Exc + Ecorrec + Emad + Emm + Emeta + &
-          Edftu + NEGF_DE
+          Edftu
     end if
 
   end subroutine update_Etot
@@ -158,9 +164,11 @@ contains
     use m_ts_global_vars, only: TSrun
     real(dp), intent(in) :: kBT
 
-    FreeE = Etot - kBT * Entropy
+    FreeE = Etot - kBT * Entropy + E_bulk_bias
 
     if ( TSrun ) then
+      ! A TS-run will not incorporate the bulk-bias energy.
+      ! So it should be left out.
       NEGF_FreeE = NEGF_Etot - kBT * Entropy
     end if
 
@@ -170,7 +178,7 @@ contains
   subroutine update_FreeEHarris( kBT )
     real(dp), intent(in) :: kBT
 
-    FreeEHarris = Eharrs - kBT * Entropy
+    FreeEHarris = Eharrs - kBT * Entropy + E_bulk_bias
 
   end subroutine update_FreeEHarris
 

@@ -2,11 +2,19 @@
 
       use m_ncps_froyen_ps_t,    only: pseudopotential_t => froyen_ps_t
 
+      private
+
       public :: pseudo_read_unformatted
       public :: pseudo_read_formatted
       public :: pseudo_reparametrize
 
       integer, parameter, private :: dp = selected_real_kind(10,100)
+
+      interface
+         subroutine die(str)
+         character(len=*), intent(in), optional :: str
+         end subroutine die
+      end interface
 
       CONTAINS
 
@@ -19,8 +27,8 @@
 
         call get_free_lun(io_ps)
         open(io_ps,file=fname,form='unformatted',status='unknown')
-        write(6,'(3a)') 'Reading pseudopotential information ',
-     $       'in unformatted form from ', trim(fname)
+        write(6,'(2a,/,tr2,a)') 'Reading pseudopotential information ',
+     $       'in unformatted form from:', trim(fname)
 
         read(io_ps) p%name, p%icorr, p%irel, p%nicore,
      .       (p%method(i),i=1,6), p%text,
@@ -78,8 +86,8 @@
 
         call get_free_lun(io_ps)
         open(io_ps,file=fname,form='formatted',status='unknown')
-        write(6,'(3a)') 'Reading pseudopotential information ',
-     $       'in formatted form from ', trim(fname)
+        write(6,'(2a,/,tr2,a)') 'Reading pseudopotential information ',
+     $       'in formatted form from:', trim(fname)
 
  8000   format(1x,i2)
  8005   format(1x,a2,1x,a2,1x,a3,1x,a4)
@@ -174,12 +182,6 @@
         subroutine get_free_lun(lun)
         integer, intent(out) :: lun
 
-        interface
-           subroutine die(str)
-           character(len=*), intent(in), optional :: str
-           end subroutine die
-        end interface
-
         logical :: used
         integer :: iostat
 
@@ -246,7 +248,7 @@
 
          end subroutine charge_from_ps_conf
 
-         subroutine pseudo_reparametrize(p,a,b,label,new_rmax)
+         subroutine pseudo_reparametrize(p,a,b,new_rmax)
          use ncps_interpolation, only: generate_spline
          use ncps_interpolation, only: evaluate_spline
 !
@@ -256,7 +258,6 @@
 
          type(pseudopotential_t)          :: p
          real(dp), intent(in)             :: a, b
-         character(len=*), intent(in)     :: label
          real(dp), intent(in), optional   :: new_rmax
 
          real(dp)  :: rmax, rpb, ea, ea2, rr
