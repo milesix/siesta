@@ -114,8 +114,8 @@ C
 #ifdef MPI
       use m_diag_option, only: ParallelOverK
       use mpi_siesta
-#endif
       use velocity_shift_m, only: use_velocity_shift
+#endif
       use siesta_options, only: diag_wfs_cache
 
       implicit none
@@ -167,6 +167,12 @@ C Get Node number and calculate local orbital range
 C Start time counter ................................................
       call timer( 'diagon', 1 )
 
+#ifdef MPI
+      if ( use_velocity_shift .and. .not. ParallelOverK ) then
+        call die('diagon: Velocity-shift requires ParallelOverK')
+      end if
+#endif
+      
 C     Check internal dimensions ..........................................
       
       if ( spin%none .or. spin%Col ) then
@@ -211,9 +217,6 @@ C     Check internal dimensions ..........................................
       endif
 
       call allocDenseMatrix(nhs, nhs, npsi)
-      if ( use_velocity_shift .and. .not. ParallelOverK ) then
-        call die('diagon: Velocity-shift requires ParallelOverK')
-      end if
 
 C Allocate local arrays
       nullify(aux)

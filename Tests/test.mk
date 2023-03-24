@@ -30,7 +30,7 @@ completed_$(label):
 	@echo ">>>> Running $(name) test..."
 	@if [ -d $(label) ] ; then rm -rf $(label) ; fi; mkdir $(label)
 	@if [ -n "$(EXTRAFILES)" ] ; then cp -f $(EXTRAFILES) $(label) ; fi
-	@echo "    ==> Running SIESTA as $(MPI) $(SIESTA) -fdf XML.Write ../$(name).fdf "
+	@echo "    ==> Running SIESTA as SIESTA_PS_PATH=../../Pseudos $(MPI) $(SIESTA) -fdf XML.Write ../$(name).fdf "
 	@(cd $(label) ; SIESTA_PS_PATH=../../Pseudos $(MPI) $(SIESTA) -fdf XML.Write ../$(name).fdf 2>&1 > $(name).out ) \
           && touch completed_$(label)
 	@if [ -f completed_$(label) ] ; then cp $(label)/$(name).out $(label)/$(name).xml .;\

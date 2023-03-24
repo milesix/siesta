@@ -2474,7 +2474,7 @@ C
         if (debug_kb_generation) then
           nrckb = nint(log(rc/b+1.0d0)/a)+1
           write(filename,"(a,i1)")
-     .          trim(global_label) // "-KBProj.", indx
+     .          trim(global_label) // "-KBProj.", ikb
           call file_out(nrckb,rofi,proj,filename)
         endif
 !

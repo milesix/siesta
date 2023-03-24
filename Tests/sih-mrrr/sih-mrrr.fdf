@@ -108,3 +108,8 @@ AtomicCoordinatesFormat  ScaledCartesian
     1.750    1.750    1.250   1 #  Si 64
     1.125    1.125    1.125   2 #  H  65
 %endblock AtomicCoordinatesAndAtomicSpecies
+
+
+%block Projected-density-of-states
+-30.00 15.00 0.200 500 eV
+%endblock Projected-density-of-states
