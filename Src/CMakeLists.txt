@@ -536,7 +536,6 @@ target_link_libraries(
 set_target_properties(
   ${PROJECT_NAME}-siesta
   PROPERTIES
-  VERSION "${PROJECT_VERSION}"
   OUTPUT_NAME "siesta"
 )
 
