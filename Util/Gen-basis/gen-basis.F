@@ -15,6 +15,7 @@ C This program generates .ion/.ion.xml (optionally .ion.nc) files readable
 C by SIESTA
 C
       use fdf
+      use units, only: inquire_unit
 
       use basis_types, only: nsp, basis_specs_transfer, initialize
       use basis_types, only: iz, lmxkb, nkbl, 
@@ -73,6 +74,7 @@ c Reading input for the pseudopotentials and atomic orbitals
       end if
       
       call fdf_init(filein,'gen-basis_fdf.log')
+      call fdf_set_unit_handler(inquire_unit)
       
       call get_atom_options()
       write_ion_plot_files = .true. ! get them always

@@ -129,7 +129,7 @@ spher_harm.o: alloc.o precision.o sys.o
 units.o: precision.o
 xml.o: precision.o
 gen-basis.o: atm_types.o atom.o atom_options.o basis_io.o basis_specs.o
-gen-basis.o: basis_types.o chemical.o dftu_specs.o sys.o
+gen-basis.o: basis_types.o chemical.o dftu_specs.o sys.o units.o
 ioncat.o: atm_types.o atmfuncs.o basis_io.o m_getopts.o precision.o
 aux_proj.o: atom.o
 gpfa_core_dp.o: m_fft_gpfa.o
