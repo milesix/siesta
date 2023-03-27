@@ -22,9 +22,7 @@ program unfold
   use basis_types,  only: basis_parameters, initialize
   use basis_io,     only: read_basis_ascii
   use cellsubs,     only: reclat, volcel
-  use fdf,          only: block_fdf, fdf_bintegers, fdf_bline, fdf_block, &
-                          fdf_bmatch, fdf_bnames, fdf_bnnames, fdf_bnvalues, &
-                          fdf_bvalues, fdf_convfac, fdf_get, fdf_init, parsed_line
+  use fdf
   use hsx_m,        only: hsx_t, read_hsx_file
   use m_array,      only: array_copy
   use m_get_kpoints_scale, &
@@ -45,6 +43,8 @@ program unfold
   use spher_harm,   only: lofilm, rlylm
   use siesta_geom,  only: ucell, xa, isa   ! unit cell, atomic coords and species
   use sys,          only: die
+
+  use units,        only: inquire_unit
 
 
   implicit none
@@ -126,6 +126,8 @@ program unfold
 #ifdef MPI      
   call broadcast_fdf_struct(0,mpi_comm_world)
 #endif
+
+  call fdf_set_unit_handler(inquire_unit)
 
   ! Initialize timer
   threshold = fdf_get('TimerReportThreshold', 0._dp)
