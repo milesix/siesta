@@ -7,24 +7,21 @@ set(top_src_dir "${CMAKE_SOURCE_DIR}/Src")
 
 add_library(vca_objs OBJECT
    ${top_src_dir}/interpolation.f90
-   ${top_src_dir}/atom_options.F90
    ${top_src_dir}/m_io.f
    ${top_src_dir}/io.f
-   ${top_src_dir}/alloc.F90
    ${top_src_dir}/periodic_table.f
    ${top_src_dir}/precision.F
    local_sys.f
    handlers.f
 )
 target_link_libraries(vca_objs PUBLIC
-                               libfdf::libfdf
 			       ${PROJECT_NAME}-libncps)
 
 add_executable( mixps mixps.f )
 add_executable( fractional fractional.f)
 
 
-# These will pick up the fdf and ncps dependencies from vca_objs
+# These will pick up the ncps dependency from vca_objs
 target_link_libraries(mixps      vca_objs )
 target_link_libraries(fractional vca_objs )
     
