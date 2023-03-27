@@ -162,7 +162,7 @@ include(check_for_linalg_features)
 # Use proper order for xmlf90 and libpsml dependencies
 
 if (NOT TARGET libfdf::libfdf)
-  find_package(libfdf)
+  find_package(libfdf REQUIRED)
 endif()
 
 if (NOT TARGET xmlf90::xmlf90)
