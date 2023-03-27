@@ -137,6 +137,8 @@ WITH_GRIDXC=1
 
 SIESTA_INSTALL_DIRECTORY?=$(MAIN_OBJDIR)/local_install
 
+PKG_CONFIG_EXECUTABLE?=pkg-config
+
 FC_ASIS=$(FC_SERIAL)
 
 # These are for initialization of variables added to below
@@ -281,8 +283,8 @@ ifeq ($(WITH_LIBXC),1)
    $(error You need to define LIBXC_ROOT in your arch.make)
  endif
  # LIBPREFIX for libxc is here set to 'lib'. This might not be appropriate
- LIBXC_INCFLAGS=$(shell PKG_CONFIG_PATH=$(LIBXC_ROOT)/lib/pkgconfig  pkg-config --cflags libxcf03 libxc)
- LIBXC_LIBS=$(shell PKG_CONFIG_PATH=$(LIBXC_ROOT)/lib/pkgconfig  pkg-config --libs libxcf03 libxc)
+ LIBXC_INCFLAGS=$(shell PKG_CONFIG_PATH=$(LIBXC_ROOT)/lib/pkgconfig  $(PKG_CONFIG_EXECUTABLE) --cflags libxcf03 libxc)
+ LIBXC_LIBS=$(shell PKG_CONFIG_PATH=$(LIBXC_ROOT)/lib/pkgconfig  $(PKG_CONFIG_EXECUTABLE) --libs libxcf03 libxc)
 endif
 
 ifeq ($(WITH_GRID_SP),1)
@@ -295,31 +297,31 @@ ifeq ($(WITH_DFTD3),1)
  FPPFLAGS += $(FPPFLAGS_DFTD3)
  EXTLIBS += mctc-lib test-drive toml-f s-dftd3
 
- DFTD3_INCFLAGS = $(shell PKG_CONFIG_PATH=$(PKG_PATH) pkg-config --cflags s-dftd3 mctc-lib)
- DFTD3_LIBS = $(shell PKG_CONFIG_PATH=$(PKG_PATH) pkg-config --libs s-dftd3 mctc-lib)
+ DFTD3_INCFLAGS = $(shell PKG_CONFIG_PATH=$(PKG_PATH) $(PKG_CONFIG_EXECUTABLE) --cflags s-dftd3 mctc-lib)
+ DFTD3_LIBS = $(shell PKG_CONFIG_PATH=$(PKG_PATH) $(PKG_CONFIG_EXECUTABLE) --libs s-dftd3 mctc-lib)
 endif
 
-XMLF90_INCFLAGS=$(shell PKG_CONFIG_PATH=$(PKG_PATH)  pkg-config --cflags xmlf90)
-XMLF90_LIBS=$(shell PKG_CONFIG_PATH=$(PKG_PATH) pkg-config --libs xmlf90)
-FDF_INCFLAGS=$(shell PKG_CONFIG_PATH=$(PKG_PATH)  pkg-config --cflags libfdf)
-FDF_LIBS=$(shell PKG_CONFIG_PATH=$(PKG_PATH) pkg-config --libs libfdf)
-PSML_INCFLAGS=$(shell PKG_CONFIG_PATH=$(PKG_PATH)  pkg-config --cflags libpsml)
-PSML_LIBS=$(shell PKG_CONFIG_PATH=$(PKG_PATH) pkg-config --libs libpsml)
-GRIDXC_INCFLAGS=$(shell PKG_CONFIG_PATH=$(PKG_PATH)  pkg-config --cflags libgridxc) $(LIBXC_INCFLAGS)
-GRIDXC_LIBS=$(shell PKG_CONFIG_PATH=$(PKG_PATH) pkg-config --libs libgridxc) $(LIBXC_LIBS)
+XMLF90_INCFLAGS=$(shell PKG_CONFIG_PATH=$(PKG_PATH)  $(PKG_CONFIG_EXECUTABLE) --cflags xmlf90)
+XMLF90_LIBS=$(shell PKG_CONFIG_PATH=$(PKG_PATH) $(PKG_CONFIG_EXECUTABLE) --libs xmlf90)
+FDF_INCFLAGS=$(shell PKG_CONFIG_PATH=$(PKG_PATH)  $(PKG_CONFIG_EXECUTABLE) --cflags libfdf)
+FDF_LIBS=$(shell PKG_CONFIG_PATH=$(PKG_PATH) $(PKG_CONFIG_EXECUTABLE) --libs libfdf)
+PSML_INCFLAGS=$(shell PKG_CONFIG_PATH=$(PKG_PATH)  $(PKG_CONFIG_EXECUTABLE) --cflags libpsml)
+PSML_LIBS=$(shell PKG_CONFIG_PATH=$(PKG_PATH) $(PKG_CONFIG_EXECUTABLE) --libs libpsml)
+GRIDXC_INCFLAGS=$(shell PKG_CONFIG_PATH=$(PKG_PATH)  $(PKG_CONFIG_EXECUTABLE) --cflags libgridxc) $(LIBXC_INCFLAGS)
+GRIDXC_LIBS=$(shell PKG_CONFIG_PATH=$(PKG_PATH) $(PKG_CONFIG_EXECUTABLE) --libs libgridxc) $(LIBXC_LIBS)
 
 else
 
 #  Use of pre-installed required libraries
 
-# FDF -- must use pkg-config
+# FDF -- must use pkg-config/pkgconf
 ifndef FDF_ROOT
   $(info A pre-installed libfdf library is needed)
   $(error You need to define FDF_ROOT in your arch.make)
 endif
 FDF_PKG_PATH=$(FDF_ROOT)/$(LIBPREFIX)/pkgconfig
-FDF_INCFLAGS=$(shell PKG_CONFIG_PATH=$(FDF_PKG_PATH)  pkg-config --cflags libfdf)
-FDF_LIBS=$(shell PKG_CONFIG_PATH=$(FDF_PKG_PATH) pkg-config --libs libfdf)
+FDF_INCFLAGS=$(shell PKG_CONFIG_PATH=$(FDF_PKG_PATH)  $(PKG_CONFIG_EXECUTABLE) --cflags libfdf)
+FDF_LIBS=$(shell PKG_CONFIG_PATH=$(FDF_PKG_PATH) $(PKG_CONFIG_EXECUTABLE) --libs libfdf)
 
 # These lines make use of a custom mechanism to generate library lists and
 # include-file management. The mechanism is not implemented in all libraries.
@@ -364,8 +366,8 @@ ifeq ($(WITH_DFTD3),1)
    #
    # Assuming the (standard) installation is in DFTD3_ROOT, we can use the following to get the right symbols
    #
-   DFTD3_INCFLAGS = $(shell PKG_CONFIG_PATH=$(DFTD3_ROOT)/lib/pkgconfig pkg-config --cflags s-dftd3 mctc-lib)
-   DFTD3_LIBS = $(shell PKG_CONFIG_PATH=$(DFTD3_ROOT)/lib/pkgconfig pkg-config --libs s-dftd3 mctc-lib)
+   DFTD3_INCFLAGS = $(shell PKG_CONFIG_PATH=$(DFTD3_ROOT)/lib/pkgconfig $(PKG_CONFIG_EXECUTABLE) --cflags s-dftd3 mctc-lib)
+   DFTD3_LIBS = $(shell PKG_CONFIG_PATH=$(DFTD3_ROOT)/lib/pkgconfig $(PKG_CONFIG_EXECUTABLE) --libs s-dftd3 mctc-lib)
  endif
 
  FPPFLAGS_DFTD3 = $(DEFS_PREFIX) -DSIESTA__DFTD3
