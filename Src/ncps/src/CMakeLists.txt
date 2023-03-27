@@ -10,6 +10,8 @@ add_library(
   m_ncps_translators.f90
   m_ncps_utils.f90
   m_ncps_writers.f90
+  env_utils_m.f90
+  search_ps_m.F90
   )
 
 target_link_libraries(

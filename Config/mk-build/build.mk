@@ -417,7 +417,7 @@ FPPFLAGS+=$(EXTRA_FPPFLAGS)
 #--------------------
 .PHONY: DO_NCPS
 NCPS=$(MAIN_OBJDIR)/Src/ncps/src/libncps.a
-NCPS_INCFLAGS=-I$(MAIN_OBJDIR)/Src/ncps/src
+NCPS_INCFLAGS=-I$(MAIN_OBJDIR)/Src/ncps/src -I$(MAIN_OBJDIR)/Src/ncps/src/libxc-compat
 $(NCPS): DO_NCPS
 DO_NCPS:
 	@echo "+++ Compiling internal ncps library"

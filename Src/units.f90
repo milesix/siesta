@@ -198,8 +198,6 @@ module units
 CONTAINS
 
   subroutine inquire_unit(unit_str, stat, phys_dim, unit_name, unit_value)
-    use utils, only: leqi
-    use prec, only: dp
 
     character(len=*), intent(in)   :: unit_str
     character(len=*), intent(out)  :: phys_dim

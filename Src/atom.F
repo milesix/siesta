@@ -2474,7 +2474,7 @@ C
         if (debug_kb_generation) then
           nrckb = nint(log(rc/b+1.0d0)/a)+1
           write(filename,"(a,i1)")
-     .          trim(global_label) // "-KBProj.", indx
+     .          trim(global_label) // "-KBProj.", ikb
           call file_out(nrckb,rofi,proj,filename)
         endif
 !
@@ -7190,8 +7190,6 @@ C
         type(ground_state_t), pointer ::  gs
 
         write(6,'(/,a)') 'prinput: Basis input '
-        write(6,'(a,/,58("-"))') '* WARNING: This information ' //
-     $                          'might be incomplete!!!'
 
         basistype = fdf_string('PAO.BasisType',basistype_default)
         call type_name(basistype) 
@@ -7237,7 +7235,7 @@ C
         write(6,'(/a)')        
      .   '%block PAO.Basis                 # Define Basis set'
         write(6,'(a)') '# WARNING: This information ' //
-     $                          'might be incomplete!!!'
+     $                          'might be incomplete!'
         do is = 1,ntotsp  
           nshell = 0 
           lo = lmxosave(is)

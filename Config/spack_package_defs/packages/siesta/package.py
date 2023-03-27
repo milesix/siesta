@@ -6,11 +6,15 @@ class Siesta(CMakePackage):
 
     homepage = "https://siesta-project.org/siesta"
 
-    git = 'https://gitlab.com/garalb/siesta.git'
+    git = 'https://gitlab.com/siesta-project/siesta.git'
 
-    # Only a development version for now
-    version('full-build', branch='full-build')
+    # You can edit this and the above repo to experiment
+    # with different versions
+    version('master', branch='master')
 
+    # Only a limited selection of variants for now,
+    # pending spack recipes for other dependencies
+    
     variant('mpi', default=False, description='Use MPI')
     variant('netcdf', default=False, description='Use NetCDF')
     variant('libxc', default=False, description='Use libxc')
@@ -29,7 +33,7 @@ class Siesta(CMakePackage):
     depends_on('mpi', when='+mpi')
     depends_on('scalapack', when='+mpi')
     depends_on('netcdf-fortran', when='+netcdf')
-    depends_on('libxc@4.:', when='+libxc')
+    depends_on('libxc@4:', when='+libxc')
     depends_on('libgridxc+libxc', when='+libxc')
     depends_on('libgridxc~libxc', when='-libxc')
     depends_on('libgridxc+mpi', when='+mpi')
