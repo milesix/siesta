@@ -13,6 +13,7 @@ add_executable(get_chem_labels
    ${top_src_dir}/periodic_table.f
    ${top_src_dir}/precision.F
    ${top_src_dir}/pxf.F90
+   ${top_src_dir}/units.f90
    get_chem_labels.f90
    local_sys.f
    handlers.f

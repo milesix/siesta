@@ -39,7 +39,7 @@ SYSOBJ=$(SYS).o
 SIESTA_OBJS=precision.o parallel.o \
           chemical.o io.o m_io.o alloc.o \
           memory_log.o memory.o periodic_table.o\
-          pxf.o atom_options.o  \
+          pxf.o atom_options.o  units.o \
           $(SYSOBJ)
 
 LOCAL_OBJS=get_chem_labels.o handlers.o local_sys.o
@@ -75,5 +75,5 @@ io.o: m_io.o
 m_io.o: local_sys.o
 memory.o: memory_log.o
 memory_log.o: m_io.o parallel.o precision.o
-get_chem_labels.o: chemical.o
+get_chem_labels.o: chemical.o units.o
 sys.o: local_sys.o
