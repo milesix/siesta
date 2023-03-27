@@ -197,13 +197,28 @@ module units
 
 CONTAINS
 
+  ! Returns information about a unit in the units table
+  ! 
+  ! Unit specifications might include an optional 'physical dimension'
+  ! qualifier (e.g. 'bfield:g')
+  ! In this case, 'phys_dim' returns the physical dimension, and the
+  ! qualifier is used to match the unit.
+  ! This version is case-insensitive (e.g. 'g' and 'G' could stand for 'Gauss').
+  ! As the above example indicates, in the absence of a physical dimension qualifier,
+  ! 'g' might be ambiguous ('bfield' or 'mass'?). The routine will return 'stat=-1'
+  ! in this case.
+  ! Units might be ambiguous in a more serious way: 'meV' and 'MeV' could both be
+  ! present in the table. In this case, it might be advisable to use a case-sensitive
+  ! version of this routine (replacing 'leqi' by 'leqi_strict' below).
+  ! If the unit is not found in the table, the routine returns 'stat=-2'.
+  
   subroutine inquire_unit(unit_str, stat, phys_dim, unit_name, unit_value)
 
-    character(len=*), intent(in)   :: unit_str
-    character(len=*), intent(out)  :: phys_dim
-    character(len=*), intent(out)  :: unit_name
-    real(dp), intent(out)          :: unit_value
-    integer, intent(out)           :: stat
+    character(len=*), intent(in)   :: unit_str   ! unit specification
+    character(len=*), intent(out)  :: phys_dim   ! physical dimension (e.g. 'mass')
+    character(len=*), intent(out)  :: unit_name  ! unit name (e.g. 'g')
+    real(dp), intent(out)          :: unit_value ! actual value (e.g. 1.e-3)
+    integer, intent(out)           :: stat       ! status code
 
     integer           :: idx_colon, iu, idx
     logical           :: phys_dim_specified, match
@@ -244,7 +259,7 @@ CONTAINS
       enddo
       
       if (idx == 0) then
-         stat = -1    ! not found
+         stat = -2    ! not found
       else
          phys_dim = trim(dimm(idx))
          unit_value = unit(idx)
