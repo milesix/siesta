@@ -3353,7 +3353,7 @@ Firstly, the size of the cell itself should be specified, using some
 combination of the options \fdf{LatticeConstant},
 \fdf{LatticeParameters}, and \fdf{LatticeVectors}, and
 \fdf{SuperCell}.  If nothing is specified, \siesta\ will construct a
-cubic cell in which the atoms will reside as a cluster.
+cubic cell in which the atoms will reside as a cluster (a molecule).
 
 Secondly, the positions of the atoms within the cells must be
 specified, using either the traditional \siesta\ input format (a
@@ -3361,21 +3361,19 @@ modified xyz format) which must be described within a
 \fdf{AtomicCoordinatesAndAtomicSpecies} block.
 
 \begin{fdfentry}{LatticeConstant}[length]
+  \fdfdepend{LatticeParameters,LatticeVectors}
 
   Lattice constant. This is just to define the scale of the lattice
   vectors.
 
-  \textit{Default value:} Minimum size to include the system (assumed
-  to be a molecule) without intercell interactions, plus 10\%.
-
-  \note A LatticeConstant value, even if redundant, might be needed
-  for other options, such as the units of the $k$-points used for
-  band-structure calculations. This mis-feature will be corrected in
-  future versions.
+  \note This defaults to $1\,\mathrm{Ang}$ when used in combination
+  with \fdf{LatticeParameters} or \fdf{LatticeVectors}. Otherwise it
+  is not used.
 
 \end{fdfentry}
 
 \begin{fdfentry}{LatticeParameters}[block]
+  \fdfdepend{LatticeConstant}
 
   Crystallographic way of specifying the lattice vectors, by giving
   six real numbers: the three vector modules, $a$, $b$, and $c$, and
@@ -3383,7 +3381,7 @@ modified xyz format) which must be described within a
   $\beta$, and $\gamma$. The three modules are in units of
   \fdf{LatticeConstant}, the three angles are in degrees.
 
-  This defaults to a square cell with side-lengths equal to \fdf{LatticeConstant}.
+  For example a square cell with side-lengths equal to \fdf{LatticeConstant}.
   \begin{fdfexample}
     1.0  1.0  1.0   90.  90.  90.
   \end{fdfexample}
@@ -3391,21 +3389,19 @@ modified xyz format) which must be described within a
 \end{fdfentry}
 
 \begin{fdfentry}{LatticeVectors}[block]
+  \fdfdepend{LatticeConstant}
 
-  The cell vectors are read in units of the lattice constant defined
-  above.  They are read as a matrix \texttt{CELL(ixyz,ivector)}, each
-  vector being one line.
+  The cell vectors are read in units of the lattice constant,
+  \fdf{LatticeConstant} which defaults to $1\,\mathrm{Ang}$.
 
-  This defaults to a square cell with side-lengths equal to \fdf{LatticeConstant}.
+  They are read as a matrix with each vector being one line.
+
+  For example a square cell with side-lengths equal to \fdf{LatticeConstant}.
   \begin{fdfexample}
     1.0  0.0  0.0
     0.0  1.0  0.0
     0.0  0.0  1.0
   \end{fdfexample}
-
-  \noindent
-  If the \fdf{LatticeConstant} default is used, the default of
-  \fdf{LatticeVectors} is still diagonal but not necessarily cubic.
 
 \end{fdfentry}
 
