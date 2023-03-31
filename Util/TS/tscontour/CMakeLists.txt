@@ -166,7 +166,7 @@ install(
   tscontour
   PRIVATE
   fdf
-  libpsml::libpsml
+  Siesta::libpsml
   libgridxc::libgridxc
   ${PROJECT_NAME}-libncps
   ${PROJECT_NAME}-libpsop

@@ -124,6 +124,8 @@ OBJS += m_integrate.o m_interpolate.o
 # Add sys object
 OBJS += $(SYSOBJ)
 
+# injector to psml
+OBJS += psml_die.o
 OBJS += handlers.o
 
 XC = $(GRIDXC_LIBS)

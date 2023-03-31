@@ -41,12 +41,12 @@ SYSOBJ=$(SYS).o
 DEPS_GEN-BASIS=m_io.o io.o alloc.o basis_types.o precision.o  parallel.o \
           parsing.o basis_io.o chemical.o atm_types.o \
           atmparams.o radial.o interpolation.o \
-	  bessph.o radfft.o  sorting.o m_filter.o \
+	  bessph.o radfft.o sorting.o m_filter.o \
           basis_specs.o dftu_specs.o atom.o periodic_table.o\
           pxf.o dot.o  atom_options.o arw.o \
           xml.o m_walltime.o read_xc_info.o  $(SYSOBJ) \
           m_fft_gpfa.o m_cite.o version.o posix_calls.o reclat.o units.o \
-          hamann.o files.o sys.o m_spin.o m_vee_integrals.o
+          hamann.o files.o sys.o m_spin.o m_vee_integrals.o psml_die.o
 
 GEN-BASIS_LOCAL_OBJS=gen-basis.o handlers.o 
 OBJS_GEN-BASIS=$(DEPS_GEN-BASIS) $(GEN-BASIS_LOCAL_OBJS)
@@ -58,7 +58,8 @@ DEPS_IONCAT=m_getopts.o basis_types.o precision.o  parallel.o \
           basis_specs.o periodic_table.o pxf.o \
           atom.o atmfuncs.o spher_harm.o interpolation.o arw.o \
           xml.o m_walltime.o dftu_specs.o m_spin.o m_vee_integrals.o \
-          hamann.o m_cite.o version.o posix_calls.o units.o files.o sys.o $(SYSOBJ)
+          hamann.o m_cite.o version.o posix_calls.o units.o files.o sys.o \
+          psml_die.o $(SYSOBJ)
 
 IONCAT_LOCAL_OBJS=ioncat.o handlers.o 
 OBJS_IONCAT=$(DEPS_IONCAT) $(IONCAT_LOCAL_OBJS)

@@ -54,7 +54,7 @@ FSIESTA_SOCKETS= posix_calls.o fsockets.o sockets.o fsiesta_sockets.o
 #
 # Siesta libraries used by MPI version
 #
-SIESTA_LIB=$(MAIN_OBJDIR)/Src/libSiestaForces.a
+SIESTA_LIB=$(MAIN_OBJDIR)/Src/libSiestaForces.a $(MAIN_OBJDIR)/Src/psml_die.o
 
 XMLPARSER=$(XMLF90_LIBS)
 XC=$(GRIDXC_LIBS)

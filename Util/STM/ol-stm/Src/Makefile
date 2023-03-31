@@ -105,7 +105,7 @@ SIESTA_OBJS +=precision.o parallel.o m_io.o alloc.o listsc.o  \
          radial.o spher_harm.o basis_io.o basis_types.o \
          domain_decom.o schecomm.o printmatrix.o qsort.o mmio.o pspltm1.o \
          sparse_matrices.o interpolation.o m_fft_gpfa.o \
-         files.o   chemical.o xml.o \
+         files.o chemical.o xml.o psml_die.o \
          parallelsubs.o spatial.o memory_log.o m_gridfunc.o units.o
 
 # Additional class objects

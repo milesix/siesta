@@ -423,7 +423,6 @@ set(libsiesta_sources
   projected_DOS.F90
   propor.f
   proximity_check.F
-  psml_die.F90
   pspltm1.F
   pxf.F90
   qsort.F
@@ -515,7 +514,6 @@ set(libsiesta_sources
   zm_broyden_optim.F
   zm_fire_optim.F
   zmatrix.F
-
 )
 
 add_library(${PROJECT_NAME}-libsiesta "${libsiesta_sources}")
@@ -586,7 +584,7 @@ target_link_libraries(
   $<$<BOOL:${WITH_OPENMP}>:OpenMP::OpenMP_Fortran>
   fdf
   xmlf90::xmlf90
-  libpsml::libpsml
+  Siesta::libpsml
   libgridxc::libgridxc
   ${PROJECT_NAME}-libncps
   ${PROJECT_NAME}-libpsop

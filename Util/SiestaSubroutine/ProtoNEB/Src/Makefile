@@ -38,7 +38,7 @@ INCFLAGS+= $(DFTD3_INCFLAGS)
 INCFLAGS+= $(SIESTA_LIB_INCFLAGS)
 #
 # The "Siesta library" is used by this MPI-based driver
-SIESTA_LIB=$(MAIN_OBJDIR)/Src/libSiestaForces.a
+SIESTA_LIB=$(MAIN_OBJDIR)/Src/libSiestaForces.a $(MAIN_OBJDIR)/Src/psml_die.o
 #
 # Link-time dependencies (could be handled by SIESTA_LIB logic...)
 #

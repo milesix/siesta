@@ -63,7 +63,7 @@ DEP_OBJS += m_uuid.o object_debug.o \
 DEP_OBJS += $(SYSOBJ)
 
 DEP_OBJS += m_os.o
-DEP_OBJS += m_ts_io_version.o
+DEP_OBJS += m_ts_io_version.o psml_die.o
 
 LOCAL_OBJS = tshs2tshs.o handlers.o 
 

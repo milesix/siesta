@@ -132,17 +132,3 @@
 
       end subroutine alloc_memory_event
 
-! The PSML library calls a "die" routine when it encounters an
-! error. This routine should take care of carrying out any needed
-! cleaning and terminating the program.  As the details would vary with
-! the client program, each program has to provide its own.
-! 
-
-      subroutine psml_die(str)
-      character(len=*), intent(in) :: str
-
-      external :: die
-      
-      call die(str)
-
-      end subroutine psml_die

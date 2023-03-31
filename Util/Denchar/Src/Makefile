@@ -81,7 +81,8 @@ SIESTA_OBJS += m_uuid.o object_debug.o class_Sparsity.o \
 	class_Pair_Data1D.o \
 	class_Fstack_Pair_Data1D.o \
 	class_Pair_Geometry_SpData2D.o \
-	class_Fstack_Pair_Geometry_SpData2D.o
+	class_Fstack_Pair_Geometry_SpData2D.o \
+	psml_die.o
 
 LOCAL_OBJS= atompla.o colinear.o denchar.o length.o \
             local_die.o local_reinit.o local_sys.o matvect.o neighb.o \

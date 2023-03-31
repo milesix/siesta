@@ -87,7 +87,7 @@ target_link_libraries(
   denchar
   PRIVATE
   fdf
-  libpsml::libpsml
+  Siesta::libpsml
   ${PROJECT_NAME}-libncps
   )
 

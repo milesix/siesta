@@ -8,9 +8,9 @@
 
 subroutine psml_die(str)
   character(len=*), intent(in) :: str
+  external :: die
 
   ! Just call the standard Siesta routine
-
   call die(str)
 
 end subroutine psml_die

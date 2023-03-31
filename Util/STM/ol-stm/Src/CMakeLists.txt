@@ -100,7 +100,7 @@ install(
   ol-stm
   PRIVATE
   fdf
-  libpsml::libpsml
+  Siesta::libpsml
   ${PROJECT_NAME}-libncps
   FFTW::Double
  )
