@@ -13,26 +13,20 @@ set(_pi_section_headers)
 # Global function for printing stuff
 function(print_feature_info)
   set(options REQUIRED)
-  set(oneValueArgs OPTION FOUND)
+  set(oneValueArgs OPTION FOUND NAME)
   set(multiValueArgs
     VARIABLES
     DEPENDENCIES OPTIONAL_DEPENDENCIES
-    MSG MSGOFF MSGON
+    MSGOFF MSGON
     HEADER FOOTER)
   cmake_parse_arguments(_pi "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
   # add an empty line
   message(NOTICE "")
-  string(REPEAT "-" ${_pi_width} _pi_line)
-  message(NOTICE ${_pi_line})
-  list(APPEND CMAKE_MESSAGE_INDENT "${_pi_section_package}")
 
-  if(DEFINED _pi_HEADER)
-    foreach(line IN LISTS _pi_HEADER)
-      message(NOTICE "${line}")
-    endforeach()
+  if( NOT DEFINED _pi_NAME )
+    message(FATAL_ERROR "NAME argument to print_feature_info is required")
   endif()
-  list(APPEND CMAKE_MESSAGE_INDENT "  ")
   
   set(_pi_used "${_pi_REQUIRED}")
   set(_pi_available "${_pi_REQUIRED}")
@@ -45,6 +39,23 @@ function(print_feature_info)
       set(_pi_used "${_pi_available}")
     endif()
   endif()
+  # streamline-value to ON/OFF
+  if(_pi_used)
+    set(_pi_used "ON")
+  else()
+    set(_pi_used "OFF")
+  endif()
+
+  print_section_line("-" 4 " ${_pi_NAME} is ${_pi_used} " ${_pi_width})
+  list(APPEND CMAKE_MESSAGE_INDENT "${_pi_section_package}")
+
+  # Add the header print-out
+  if(DEFINED _pi_HEADER)
+    foreach(line IN LISTS _pi_HEADER)
+      message(NOTICE "${line}")
+    endforeach()
+  endif()
+  list(APPEND CMAKE_MESSAGE_INDENT "  ")
 
   if( _pi_used )
     if( _pi_REQUIRED )
@@ -123,7 +134,7 @@ function(print_feature_info)
       endforeach()
       list(POP_BACK CMAKE_MESSAGE_INDENT)
       
-      message(NOTICE "Empty or undefined variables (possibly not needed to be set!):")
+      message(NOTICE "Empty or undefined variables (only useful for developers!):")
       list(APPEND CMAKE_MESSAGE_INDENT "  - ")
       foreach(var IN LISTS _pi_VARIABLES)
         if("${${var}}" STREQUAL "")
@@ -165,15 +176,22 @@ function(print_feature_info)
 
   list(POP_BACK CMAKE_MESSAGE_INDENT)
   list(POP_BACK CMAKE_MESSAGE_INDENT)
-  message(NOTICE ${_pi_line})
+
+  print_section_line("-" 0 "" ${_pi_width})
 endfunction()
 
 # Section handlers
 
-function(print_section_line delim delim_pre_count msg delim_post_count)
-  string(REPEAT "${delim}" ${delim_pre_count} _pi_delim_pre)
-  string(REPEAT "${delim}" ${delim_post_count} _pi_delim_post)
-  message(NOTICE "${_pi_delim_pre}${msg}${_pi_delim_post}")
+function(print_section_line delim delim_pre_count msg delim_total_count)
+  # Create a message:
+  #   PRE MSG POST
+  # define PRE
+  string(REPEAT "${delim}" ${delim_pre_count} delim_pre)
+  string(LENGTH "${msg}" msg_length)
+  # Calculate POST
+  math(EXPR delim_post_count "${delim_total_count} - ${msg_length} - ${delim_pre_count}")
+  string(REPEAT "${delim}" ${delim_post_count} delim_post)
+  message(NOTICE "${delim_pre}${msg}${delim_post}")
 endfunction()
 
 
@@ -185,14 +203,9 @@ macro(print_start_section _pi_msg)
   # Append the section msg to the headers
   list(APPEND _pi_section_headers "${_pi_msg}")
 
-  # Calculate the filling of the delimiter
-  string(LENGTH "${_pi_msg}" _pi_section_msg_length)
-
-  math(EXPR _pi_section_delim_len "${_pi_width} - ${_pi_section_msg_length} - 8 - 2")
-
   # Print new section
   message(NOTICE "")
-  print_section_line("${_pi_section_delim}" 4 " ${_pi_msg} >>> " ${_pi_section_delim_len})
+  print_section_line("${_pi_section_delim}" 4 " ${_pi_msg} >>> " ${_pi_width})
 
   list(APPEND CMAKE_MESSAGE_INDENT "${_pi_section_delim} ")
 endmacro()
@@ -212,7 +225,7 @@ macro(print_end_section)
   # Do some arithmetic
   string(LENGTH "${_pi_msg}" _pi_section_msg_length)
   math(EXPR _pi_section_delim_len "${_pi_width} - ${_pi_section_msg_length} - 8 - 2")
-  print_section_line("${_pi_section_delim}" ${_pi_section_delim_len} " <<< ${_pi_msg} " 4)
+  print_section_line("${_pi_section_delim}" ${_pi_section_delim_len} " <<< ${_pi_msg} " ${_pi_width})
 
 endmacro()
 
@@ -230,7 +243,7 @@ message(NOTICE
 print_start_section("Parallel")
 
 print_feature_info(
-  HEADER "OpenMP (threaded) support"
+  NAME OpenMP
   MSGOFF
     "Can be used for extremely large systems to reduce memory requirements"
     "at the cost of some overhead since only some parts of the code is parallelized with OpenMP"
@@ -242,7 +255,7 @@ print_feature_info(
   )
 
 print_feature_info(
-  HEADER "MPI (parallel support)"
+  NAME MPI
   OPTION WITH_MPI
   FOUND MPI_Fortran_FOUND
   MSGOFF "Parallel support is highly advised to allow scalable and faster calculations"
@@ -255,15 +268,16 @@ print_end_section()
 print_start_section("Linear algebra")
 
 print_feature_info(
-  HEADER "BLAS support"
+  NAME BLAS
   VARIABLES
     BLAS_LIBRARY_DIR
     BLAS_LIBRARY
     BLAS_LIBRARIES
     BLAS_LINKER_FLAG
     BLAS_DETECTION
+    BLAS_HAS_GEMM3M
   FOUND BLAS_FOUND # will generally be TRUE since otherwise the build will crash
-  MSG "Required library for fast performance"
+  HEADER "Required library for fast performance"
   "Recommended libraries are:"
   "  - mkl"
   "  - openblas"
@@ -273,15 +287,17 @@ print_feature_info(
   )
 
 print_feature_info(REQUIRED
-  HEADER "LAPACK support"
+  NAME LAPACK
   VARIABLES
     LAPACK_LIBRARY_DIR
     LAPACK_LIBRARY
     LAPACK_LIBRARIES
     LAPACK_LINKER_FLAG
     LAPACK_DETECTION
+    LAPACK_HAS_MRRR
+    LAPACK_HAS_2STAGE
   FOUND LAPACK_FOUND # will generally be TRUE since otherwise the build will crash
-  MSG "Required library for fast performance"
+  HEADER "Required library for fast performance"
   "Recommended libraries are:"
   "  - mkl"
   "  - openblas (can have built-in LAPACK support)"
@@ -293,7 +309,7 @@ print_feature_info(REQUIRED
 print_start_section("Parallel")
 
 print_feature_info(
-  HEADER "ScaLAPACK library"
+  NAME ScaLAPACK
   OPTION WITH_MPI
   FOUND SCALAPACK_FOUND
   DEPENDENCIES "MPI"
@@ -303,11 +319,12 @@ print_feature_info(
     SCALAPACK_LIBRARIES
     SCALAPACK_LINKER_FLAG
     SCALAPACK_DETECTION
+    SCALAPACK_HAS_MRRR
   MSGOFF "Parallel support is highly advised to allow scalable and faster calculations"
   )
 
 print_feature_info(
-  HEADER "ELPA library support (faster diagonalizations)"
+  NAME ELPA
   OPTION WITH_ELPA
   FOUND ELPA_FOUND
   MSGOFF
@@ -333,7 +350,7 @@ print_end_section()
 print_start_section("Required dependencies")
   
 print_feature_info(REQUIRED
-  HEADER "LibGridXC support to calculate XC functionals on the grid"
+  NAME LibGridXC
   VARIABLES
     LIBGRIDXC_ALLOW_FETCH
     LIBGRIDXC_SOURCE_DIR # if submodule
@@ -343,8 +360,8 @@ print_feature_info(REQUIRED
   )
 
 print_feature_info(REQUIRED
-  HEADER "LibPSML allows reading PSML file format"
-  MSG "Allows using pseudo-potentials from pseudo-dojo.org"
+  NAME LibPSML
+  HEADER "Allows using pseudo-potentials from pseudo-dojo.org"
   FOUND LIBPSML_FOUND
   VARIABLES
     LIBPSML_LINK_LIBRARIES
@@ -360,7 +377,7 @@ print_end_section()
 print_start_section("Recommended dependencies")
 
 print_feature_info(
-  HEADER "Libxc for reference exchange-correlation functionals"
+  NAME Libxc
   MSGOFF
     "Users are advised to use the libxc library for full feature completeness"
     "using the libxc interaction with libgridxc."
@@ -387,7 +404,7 @@ print_feature_info(
   )
 
 print_feature_info(
-  HEADER "NetCDF output file support"
+  NAME NetCDF
   MSGOFF
     "Users are adviced to add support for NetCDF due to many functionalities"
     "relying on NetCDF file outputs."
@@ -413,7 +430,7 @@ print_end_section()
 print_start_section("Optional features")
 
 print_feature_info(
-  HEADER "Lua support through flook library"
+  NAME flook
   MSGON "Interaction with Lua can be enabled by adding"
   "  Lua.Script luafile.lua"
   "For molecular dynamics controlled in Lua, additionally define:"
@@ -428,7 +445,7 @@ print_feature_info(
   )
 
 print_feature_info(
-  HEADER "DFT-D3 corrections"
+  NAME DFTD3
   OPTION WITH_DFTD3
   VARIABLES
     S-DFTD3_SOURCE_DIR
@@ -440,7 +457,7 @@ print_feature_info(
 
 
 print_feature_info(
-  HEADER "Use FFTW where possible"
+  NAME FFTW
   MSGON
     "Only the STM/ol-stm utility will currently benefit from FFTW"
   OPTION WITH_FFTW

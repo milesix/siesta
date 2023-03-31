@@ -537,14 +537,40 @@ set_target_properties(
   ${PROJECT_NAME}-siesta
   PROPERTIES
   OUTPUT_NAME "siesta"
-)
+  )
+
+# Add diagonalization options
+# grep -e SIESTA__MRRR -e SIESTA__DIAG_2STAGE * | tr ':' ' ' | awk '{print $1}' | uniq
+set_property(
+  SOURCE diag.F90 diag_option.F90
+  APPEND PROPERTY COMPILE_DEFINITIONS
+  "$<$<BOOL:${HAS_MRRR}>:SIESTA__MRRR>"
+  "$<$<BOOL:${HAS_2STAGE}>:SIESTA__DIAG_2STAGE>"
+  )
+
+# Add 3m options
+# grep USE_GEMM3M * | tr ':' ' ' | awk '{print $1}' | uniq
+set_property(
+  SOURCE
+    m_io_yaml.F90
+    m_mat_invert.F90
+    m_trimat_invert.F90
+    m_ts_electrode.F90
+    m_ts_full_scat.F90
+    m_ts_mumps_scat.F90
+    m_ts_trimat_invert.F90
+    m_ts_tri_scat.F90
+    version.F90
+    version-info-template.inc
+  APPEND PROPERTY COMPILE_DEFINITIONS
+  "$<$<BOOL:${BLAS_HAS_GEMM3M}>:USE_GEMM3M>"
+  )
 
 target_compile_definitions(
   ${PROJECT_NAME}-libsiesta
   PUBLIC
   "$<$<BOOL:${WITH_MPI}>:MPI>"
   "$<$<BOOL:${WITH_GRID_SP}>:GRID_SP>"
-  "$<$<BOOL:${HAS_MRRR}>:SIESTA__MRRR>"
   "$<$<BOOL:${WITH_ELPA}>:SIESTA__ELPA>"
   "$<$<BOOL:${WITH_NETCDF}>:CDF>"
   "$<$<BOOL:${WITH_NCDF}>:NCDF>"
@@ -557,7 +583,7 @@ target_compile_definitions(
 target_link_libraries(
   ${PROJECT_NAME}-libsiesta
   PUBLIC
-  OpenMP::OpenMP_Fortran
+  $<$<BOOL:${WITH_OPENMP}>:OpenMP::OpenMP_Fortran>
   fdf
   xmlf90::xmlf90
   libpsml::libpsml

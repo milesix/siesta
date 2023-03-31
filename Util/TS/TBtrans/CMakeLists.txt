@@ -161,11 +161,9 @@ list(
   ${top_srcdir}/units.f90
 )
 
+
 add_executable(tbtrans ${sources})
 
-# -- Version information
-
-# 
 configure_file(
   version-info-template.inc
   ${CMAKE_CURRENT_BINARY_DIR}/generated/version-info.inc
@@ -181,35 +179,69 @@ target_include_directories(
 target_compile_definitions(
   tbtrans
   PRIVATE
-
-  TBTRANS   # Note this
-
+  TBTRANS # Notify about TBTRANS
   $<$<BOOL:${WITH_MPI}>:MPI>
-  $<$<BOOL:${HAS_MRRR}>:SIESTA__MRRR>     ## ???
-  $<$<BOOL:${WITH_ELPA}>:SIESTA__ELPA>    ## ???
+  $<$<BOOL:${HAS_MRRR}>:SIESTA__MRRR>
+  $<$<BOOL:${WITH_ELPA}>:SIESTA__ELPA>
   $<$<BOOL:${WITH_NETCDF}>:CDF>
   $<$<BOOL:${WITH_NCDF}>:NCDF>
   $<$<BOOL:${WITH_NCDF}>:NCDF_4>
   $<$<BOOL:${WITH_NCDF_PARALLEL}>:NCDF_PARALLEL>
 )
 
-TARGET_LINK_LIBRARIES(
+target_link_libraries(
   tbtrans
   PRIVATE
-  OpenMP::OpenMP_Fortran
+  $<$<BOOL:${WITH_OPENMP}>:OpenMP::OpenMP_Fortran>
   fdf
   $<$<BOOL:${WITH_MPI}>:mpi_siesta>
   $<$<BOOL:${WITH_NETCDF}>:NetCDF::NetCDF_Fortran>
   $<$<BOOL:${WITH_NCDF}>:${PROJECT_NAME}-libncdf>
   ${PROJECT_NAME}-libfdict     # Even if not using NCDF
-  $<$<BOOL:${WITH_ELPA}>:Elpa::elpa>     # ????
+  $<$<BOOL:${WITH_ELPA}>:Elpa::elpa>
+  $<$<BOOL:${WITH_MPI}>:SCALAPACK::SCALAPACK>
+  LAPACK::LAPACK
+)
+
+
+add_executable(phtrans ${sources})
+
+target_include_directories(
+  phtrans
+  PRIVATE
+    ${CMAKE_CURRENT_BINARY_DIR}/generated
+  )
+
+target_compile_definitions(
+  phtrans
+  PRIVATE
+  TBTRANS # Notify about TBTRANS
+  TBT_PHONON # Notify about phonon mode
+  $<$<BOOL:${WITH_MPI}>:MPI>
+  $<$<BOOL:${HAS_MRRR}>:SIESTA__MRRR>
+  $<$<BOOL:${WITH_ELPA}>:SIESTA__ELPA>
+  $<$<BOOL:${WITH_NETCDF}>:CDF>
+  $<$<BOOL:${WITH_NCDF}>:NCDF>
+  $<$<BOOL:${WITH_NCDF}>:NCDF_4>
+  $<$<BOOL:${WITH_NCDF_PARALLEL}>:NCDF_PARALLEL>
+)
+
+target_link_libraries(
+  phtrans
+  PRIVATE
+  $<$<BOOL:${WITH_OPENMP}>:OpenMP::OpenMP_Fortran>
+  fdf
+  $<$<BOOL:${WITH_MPI}>:mpi_siesta>
+  $<$<BOOL:${WITH_NETCDF}>:NetCDF::NetCDF_Fortran>
+  $<$<BOOL:${WITH_NCDF}>:${PROJECT_NAME}-libncdf>
+  ${PROJECT_NAME}-libfdict     # Even if not using NCDF
+  $<$<BOOL:${WITH_ELPA}>:Elpa::elpa>
   $<$<BOOL:${WITH_MPI}>:SCALAPACK::SCALAPACK>
   LAPACK::LAPACK
 )
 
 install(
-  TARGETS tbtrans
+  TARGETS tbtrans phtrans
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
   )
 
-     
