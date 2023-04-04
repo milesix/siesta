@@ -17,7 +17,7 @@
 set(_lib "libfdf")
 set(_pkg "LIBFDF")
 set(_url "https://gitlab.com/siesta-project/libraries/libfdf")
-set(_tag "units-handler-unary")
+set(_tag "master")
 
 if(NOT DEFINED "${_pkg}_FIND_METHOD")
   if(DEFINED "${PROJECT_NAME}-dependency-method")
