@@ -52,4 +52,5 @@ endif()
 
 if(WITH_WANNIER90)
   setup_test("w90_as_lib" "Sr.psf Ti.psf O.psf" "")
+  setup_test("w90-chem-h2" "H.psf" "")
 endif()
