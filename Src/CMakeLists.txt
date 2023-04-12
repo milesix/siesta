@@ -111,6 +111,9 @@ set(libsiesta_sources
   diagk.F
   diagk_file.F
   diagkp.F
+  diagkp_velocity.F90
+  diag2kp_velocity.F90
+  diag3kp_velocity.F90
   diagmemory.F
   diagon.F
   diagonalizeHk.F90
@@ -154,6 +157,7 @@ set(libsiesta_sources
   globalise.F
   gradient.F
   gradientlomem.F
+  grimme_dispersion_m.F90
   grdsam.F
   hamann.f90
   hsparse.F
@@ -399,14 +403,16 @@ set(libsiesta_sources
   parallel.F
   parallelsubs.F
   parsing.f
-  pdos.F
-  pdos2g.F
-  pdos2k.F
-  pdos3g.F
-  pdos3k.F
-  pdosg.F
-  pdosk.F
-  pdoskp.F
+  pdos.F90
+  pdos2g.F90
+  pdos2k.F90
+  pdos2kp.F90
+  pdos3g.F90
+  pdos3k.F90
+  pdos3kp.F90
+  pdosg.F90
+  pdosk.F90
+  pdoskp.F90
   periodic_table.f
   phirphi.f
   phirphi_opt.f
@@ -497,6 +503,7 @@ set(libsiesta_sources
   uncell.f
   units.f90
   vacuum_level.f90
+  velocity_shift.F90
   vmat.F90
   vmatsp.F90
   vmb.F
@@ -551,6 +558,7 @@ target_compile_definitions(
   "$<$<BOOL:${WITH_NCDF}>:NCDF_4>"
   "$<$<BOOL:${WITH_NCDF_PARALLEL}>:NCDF_PARALLEL>"
   "$<$<BOOL:${WITH_LUA}>:SIESTA__FLOOK>"
+  "$<$<BOOL:${WITH_DFTD3}>:SIESTA__DFTD3>"
   "$<$<BOOL:${WITH_WANNIER90}>:SIESTA__WANNIER90>"
 )
 
@@ -573,6 +581,7 @@ target_link_libraries(
   "$<$<BOOL:${WITH_NCDF}>:${PROJECT_NAME}-libfdict>"
    $<$<BOOL:${WITH_ELPA}>:Elpa::elpa>
   "$<$<BOOL:${WITH_MPI}>:Scalapack::Scalapack>"
+  "$<$<BOOL:${WITH_DFTD3}>:s-dftd3::s-dftd3>"
   LAPACK::LAPACK
 )
 

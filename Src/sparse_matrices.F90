@@ -160,7 +160,7 @@ module sparse_matrices
 
   !> Geometry density matrix history, see [here](|page|/implementation/1-auxiliary-supercell.html)
   type(Fstack_Pair_Geometry_dSpData2D), public :: DM_history
-      type(dSpData2D), public, save :: tight_binding_param_2D
+      type(dSpData2D), public :: tight_binding_param_2D
 
   !> MPI block distribution of the orbitals in the [sparse matrices](|page|/datastructures/2-sparse.html)
   type(OrbitalDistribution), public :: block_dist

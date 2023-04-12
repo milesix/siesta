@@ -85,7 +85,7 @@ sed "s#MAIN_OBJDIR=\.#MAIN_OBJDIR=${objdir}#g" > ${objdir}/Makefile
               -path *Reference -prune -o  \
               -path *Reference-xml -prune -o  \
               -path *work -prune      -o  \
-              -path *.mk -prune      -o  \
+              -path '*.mk' -prune      -o  \
               -path *.arch-ids  -prune -o -print \
               | tar -cf - --no-recursion -T- )   | ( cd ${objdir} ; tar xf -)
 (cd ${testdir};

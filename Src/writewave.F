@@ -240,7 +240,7 @@ C Check syntax
             if (nr .ne. 3) then
               write(msg,'(a,/,a)')
      .          'writewave: syntax ERROR in %block WaveFuncKPoints:',
-     .          trim(fdf_getline(bfdf%mark))
+     .          trim(pline%line)
               call die(msg)
             endif
 
@@ -257,7 +257,7 @@ C Check that line contains 'from', 'to' and maybe 'step'
               if ((nn .ne. 2) .and. (nn .ne. 3)) then
                 write(msg,'(a,/,a)')
      .            'writewave: syntax ERROR in %block WaveFuncKPoints:',
-     .            trim(fdf_getline(bfdf%mark))
+     .            trim(pline%line)
                 call die(msg)
               endif
               name1 = fdf_bnames(pline,1)
@@ -266,14 +266,14 @@ C Check that line contains 'from', 'to' and maybe 'step'
               if (name1 .ne. 'from' .or. name2 .ne. 'to') then
                 write(msg,'(a,/,a)')
      .            'writewave: syntax ERROR in %block WaveFuncKPoints:',
-     .            trim(fdf_getline(bfdf%mark))
+     .            trim(pline%line)
                 call die(msg)
               endif
               if (nn .eq. 3) then
                 if (name3 .ne. 'step') then
                   write(msg,'(a,/,a)')
      .             'writewave: syntax ERROR in %block WaveFuncKPoints:',
-     .             trim(fdf_getline(bfdf%mark))
+     .             trim(pline%line)
                   call die(msg)
                 endif
               endif
@@ -305,7 +305,7 @@ C #X.XXX #Y.YYY #Z.ZZZ
 C Bad syntax
             write(msg,'(a,/,a)')
      .        'writewave: syntax ERROR in %block WaveFuncKPoints:',
-     .        trim(fdf_getline(bfdf%mark))
+     .        trim(pline%line)
             call die(msg)
           endif
         enddo

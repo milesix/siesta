@@ -55,6 +55,7 @@ WITH_GRIDXC=1
 # WITH_GRID_SP=
 # WITH_LEGACY_GRIDXC_INSTALL=
 
+# WITH_DFTD3=1
 # WITH_EXTRA_FPPFLAGS=
 
 #===========================================================
@@ -99,8 +100,8 @@ WITH_GRIDXC=1
 # a lower optimization level.
 #
 #atom.o: atom.F
-#	$(FC) -c $(FFLAGS_DEBUG) $(INCFLAGS) $(FPPFLAGS) $(FPPFLAGS_fixed_F) $< 
-#state_analysis.o: 
+#	$(FC) -c $(FFLAGS_DEBUG) $(INCFLAGS) $(FPPFLAGS) $(FPPFLAGS_fixed_F) $<
+#state_analysis.o:
 #create_Sparsity_SC.o:
 
 # Note that simply using target-specific variables, such as:
@@ -110,7 +111,7 @@ WITH_GRIDXC=1
 #===========================================================
 # Support for idiosynchratic compilers
 #
-# In case your compiler does not understand the special meaning of 
+# In case your compiler does not understand the special meaning of
 # the .F and .F90 extensions ("files in need of preprocessing"), you
 # will need to use an explicit preprocessing step.
 #WITH_EXPLICIT_FPP = 1
@@ -140,7 +141,7 @@ SIESTA_INSTALL_DIRECTORY?=$(MAIN_OBJDIR)/local_install
 FC_ASIS=$(FC_SERIAL)
 
 # These are for initialization of variables added to below
-FPPFLAGS= $(DEFS_PREFIX)-DF2003 
+FPPFLAGS= $(DEFS_PREFIX)-DF2003
 LIBS=
 COMP_LIBS=
 
@@ -157,7 +158,7 @@ ifeq ($(WITH_POST_2020_ELPA),1)
 endif
 
 ifeq ($(WITH_EXTERNAL_ELPA),1)
-   ifndef ELPA_ROOT	
+   ifndef ELPA_ROOT
      $(error you need to define ELPA_ROOT in your arch.make)
    endif
    ifndef ELPA_INCLUDE_DIRECTORY
@@ -181,7 +182,7 @@ ifeq ($(WITH_EXTERNAL_ELPA),1)
    INCFLAGS += $(ELPA_INCFLAGS)
    FPPFLAGS += $(FPPFLAGS_ELPA)
    ELPA_LIB = -L$(ELPA_ROOT)/lib -lelpa
-   LIBS +=$(ELPA_LIB) 
+   LIBS +=$(ELPA_LIB)
 endif
 # ---- end of ELPA configuration -----------
 
@@ -208,7 +209,7 @@ ifeq ($(WITH_NETCDF),1)
    endif
 
    FPPFLAGS_CDF = $(DEFS_PREFIX)-DCDF
-   FPPFLAGS += $(FPPFLAGS_CDF) 
+   FPPFLAGS += $(FPPFLAGS_CDF)
    INCFLAGS += $(NETCDF_INCFLAGS)
    LIBS += $(NETCDF_LIBS)
 
@@ -232,7 +233,7 @@ ifeq ($(WITH_FLOOK),1)
  INCFLAGS += $(FLOOK_INCFLAGS)
  FLOOK_LIBS= -L$(FLOOK_ROOT)/lib -lflookall -ldl
  FPPFLAGS_FLOOK = $(DEFS_PREFIX)-DSIESTA__FLOOK
- FPPFLAGS += $(FPPFLAGS_FLOOK) 
+ FPPFLAGS += $(FPPFLAGS_FLOOK)
  LIBS += $(FLOOK_LIBS)
  COMP_LIBS += $(FDICT_LIBS)
 endif
@@ -243,7 +244,7 @@ ifeq ($(WITH_MPI),1)
  MPI_INCLUDE=.      # Note . for no-op
  FPPFLAGS_MPI = $(DEFS_PREFIX)-DMPI $(DEFS_PREFIX)-DMPI_TIMING
  LIBS += $(SCALAPACK_LIBS)
- FPPFLAGS += $(FPPFLAGS_MPI) 
+ FPPFLAGS += $(FPPFLAGS_MPI)
 else
  FC = $(FC_SERIAL)
 endif
@@ -288,7 +289,16 @@ endif
 
 ifeq ($(WITH_GRID_SP),1)
   FPPFLAGS_GRID= $(DEFS_PREFIX)-DGRID_SP
-  FPPFLAGS += $(FPPFLAGS_GRID) 
+  FPPFLAGS += $(FPPFLAGS_GRID)
+endif
+
+ifeq ($(WITH_DFTD3),1)
+ FPPFLAGS_DFTD3 = $(DEFS_PREFIX) -DSIESTA__DFTD3
+ FPPFLAGS += $(FPPFLAGS_DFTD3)
+ EXTLIBS += mctc-lib test-drive toml-f s-dftd3
+
+ DFTD3_INCFLAGS = $(shell PKG_CONFIG_PATH=$(PKG_PATH) pkg-config --cflags s-dftd3 mctc-lib)
+ DFTD3_LIBS = $(shell PKG_CONFIG_PATH=$(PKG_PATH) pkg-config --libs s-dftd3 mctc-lib)
 endif
 
 XMLF90_INCFLAGS=$(shell PKG_CONFIG_PATH=$(PKG_PATH)  pkg-config --cflags xmlf90)
@@ -314,7 +324,7 @@ ifeq ($(WITH_WANNIER90),1)
  LIBS += $(WANNIER90_LIBS)
 endif
 
-else        
+else
 
 #  Use of pre-installed required libraries
 
@@ -355,7 +365,27 @@ endif
 ifeq ($(WITH_MPI),1)
   GRIDXC_CONFIG_PREFIX:=$(GRIDXC_CONFIG_PREFIX)_mpi
 endif
-FPPFLAGS += $(FPPFLAGS_GRID) 
+FPPFLAGS += $(FPPFLAGS_GRID)
+
+# ------------- FLAGS for DFTD3 -----------
+ifeq ($(WITH_DFTD3),1)
+ ifndef DFTD3_ROOT
+   $(error You need to define DFTD3_ROOT in your arch.make or the environment)
+ else
+   #
+   # Assuming the (standard) installation is in DFTD3_ROOT, we can use the following to get the right symbols
+   #
+   DFTD3_INCFLAGS = $(shell PKG_CONFIG_PATH=$(DFTD3_ROOT)/lib/pkgconfig pkg-config --cflags s-dftd3 mctc-lib)
+   DFTD3_LIBS = $(shell PKG_CONFIG_PATH=$(DFTD3_ROOT)/lib/pkgconfig pkg-config --libs s-dftd3 mctc-lib)
+ endif
+
+ FPPFLAGS_DFTD3 = $(DEFS_PREFIX) -DSIESTA__DFTD3
+
+ FPPFLAGS += $(FPPFLAGS_DFTD3)
+ INCFLAGS += $(DFTD3_INCFLAGS)
+ LIBS     += $(DFTD3_LIBS)
+endif
+
 # -------------------------------------------------
 # A legacy libGridXC installation will have dual 'serial' and 'mpi' subdirectories,
 # whereas a modern one, generated with the 'multiconfig' option,  will have split
@@ -418,7 +448,7 @@ DO_FDF:
 #--------------------
 .PHONY: DO_NCPS
 NCPS=$(MAIN_OBJDIR)/Src/ncps/src/libncps.a
-NCPS_INCFLAGS=-I$(MAIN_OBJDIR)/Src/ncps/src
+NCPS_INCFLAGS=-I$(MAIN_OBJDIR)/Src/ncps/src -I$(MAIN_OBJDIR)/Src/ncps/src/libxc-compat
 $(NCPS): DO_NCPS
 DO_NCPS:
 	@echo "+++ Compiling internal ncps library"
@@ -492,10 +522,10 @@ DO_SIESTA_LIB:
 # Define default compilation methods
 ifeq ($(WITH_COMPACT_LOG),1)
 .c.o:
-	@$(CC) -c $(CFLAGS) $(INCFLAGS) $(CPPFLAGS) $< 
+	@$(CC) -c $(CFLAGS) $(INCFLAGS) $(CPPFLAGS) $<
 	@echo "   CC $<"
 .F.o:
-	@$(FC) -c $(FFLAGS) $(INCFLAGS) $(FPPFLAGS) $(FPPFLAGS_fixed_F)  $< 
+	@$(FC) -c $(FFLAGS) $(INCFLAGS) $(FPPFLAGS) $(FPPFLAGS_fixed_F)  $<
 	@echo "   FC $<"
 .F90.o:
 	@$(FC) -c $(FFLAGS) $(INCFLAGS) $(FPPFLAGS) $(FPPFLAGS_free_F90) $<
@@ -508,9 +538,9 @@ ifeq ($(WITH_COMPACT_LOG),1)
 	@echo "   FC $<"
 else
 .c.o:
-	$(CC) -c $(CFLAGS) $(INCFLAGS) $(CPPFLAGS) $< 
+	$(CC) -c $(CFLAGS) $(INCFLAGS) $(CPPFLAGS) $<
 .F.o:
-	$(FC) -c $(FFLAGS) $(INCFLAGS) $(FPPFLAGS) $(FPPFLAGS_fixed_F)  $< 
+	$(FC) -c $(FFLAGS) $(INCFLAGS) $(FPPFLAGS) $(FPPFLAGS_fixed_F)  $<
 .F90.o:
 	$(FC) -c $(FFLAGS) $(INCFLAGS) $(FPPFLAGS) $(FPPFLAGS_free_F90) $<
 .f.o:
@@ -521,7 +551,7 @@ endif
 
 # Some useful macros
 #
-# Change typical fortran extesions to .o 
+# Change typical fortran extesions to .o
 # Use as:
 #   OBJS:= $(call change_extensions $(SRCS))
 #

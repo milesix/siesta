@@ -85,7 +85,7 @@ else()
     if("${SCALAPACK_LIBRARY}" STREQUAL "")
 
       # Try Scalapack via CMake export file
-      find_package(scalapack)
+      find_package(scalapack QUIET)
       if(scalapack_FOUND)
         get_target_property(_scalapack_library scalapack INTERFACE_LINK_LIBRARIES)
         set(SCALAPACK_LIBRARY "${_scalapack_library}" CACHE STRING "ScaLAPACK library to link"
@@ -93,9 +93,27 @@ else()
         unset(_scalapack_library)
 	message(STATUS "Found Scalapack with find_package: ${SCALAPACK_LIBRARY}")
       else()
+
+	message(STATUS "Scalapack: Did not find a cmake package for it")
+
         # Very simple ScaLAPACK auto-detection: looking for a library called scalapack
-	message(STATUS "Scalapack: Falling back to searching dir: ${SCALAPACK_LIBRARY_DIR}")
-        find_library(SCALAPACK_LIBRARY scalapack HINTS ${SCALAPACK_LIBRARY_DIR})
+        # The following logic comes from SIRIUS, and we add our own SCALAPACK_LIBRARY_DIR
+	# to the list of hints
+	find_package(PkgConfig REQUIRED)
+
+        # If found, this command will set _SCALAPACK_LIBRARY_DIRS
+        pkg_search_module(_SCALAPACK scalapack)
+	message(STATUS "Scalapack: Finding libraries in sundry directories...")
+        find_library(SCALAPACK_LIBRARY
+         NAMES scalapack scalapack-openmpi
+         HINTS
+         ${SCALAPACK_LIBRARY_DIR}
+         ${_SCALAPACK_LIBRARY_DIRS}
+         ENV SCALAPACK_ROOT
+         /usr
+         PATH_SUFFIXES lib
+         DOC "scalapack library path")
+
       endif()
 
     elseif(NOT "${SCALAPACK_LIBRARY}" STREQUAL "NONE")

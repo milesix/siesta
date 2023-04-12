@@ -1,0 +1,64 @@
+LatticeConstant 1.0 Ang
+%block LatticeVectors
+ -1.39187300 1.39187300 1.39187300
+ 1.39187300 -1.39187300 1.39187300
+ 1.39187300 1.39187300 -1.39187300
+%endblock LatticeVectors
+
+NumberOfAtoms 1
+AtomicCoordinatesFormat Fractional
+%block AtomicCoordinatesAndAtomicSpecies
+ 0.00000000 0.00000000 0.00000000 1 # 1: Fe
+%endblock AtomicCoordinatesAndAtomicSpecies
+
+NumberOfSpecies 1
+%block ChemicalSpeciesLabel
+ 1 26 Fe_soc
+%endblock ChemicalSpeciesLabel
+# Basic system descriptors
+SystemLabel pdos_k_nc_fe
+
+# Basis set definition
+PAO.BasisSize DZP
+
+# K-mesh definition
+kgrid.MonkhorstPack [7 7 7]
+
+# XC functional
+XC.Functional GGA
+XC.Authors PBE
+
+# SCF parameters
+MaxSCFIterations 1000
+SCF.Mixer.Method Pulay
+SCF.Mixer.Weight 0.01    # Default is 0.25, for metals use something an order of magnitude smaller, i.e. 0.01
+SCF.Mixer.History 10
+DM.UseSaveDM false
+SCF.DM.Tolerance 1.0d-4
+SCF.H.Tolerance 1.0d-3 eV
+
+# Occupation of states
+ElectronicTemperature 10 meV
+
+# Set spin
+Spin non-colinear
+%block DM.InitSpin
+    1 + 25.0 65.0
+%endblock DM.InitSpin
+
+Diag.ParallelOverK false
+
+
+# Real space grid defintion
+Mesh.Cutoff 300 Ry
+
+# How to calculate PDOS
+PDOS.kgrid.MonkhorstPack [10 10 10]
+
+# NB: syntax of block is,
+# EF [low] [high] [broadening] [# points] eV
+# Here EF means that you want it wrt Fermi level,
+# [broadening] should be twice the ElectronicTemperature (in eV)
+%block ProjectedDensityOfStates
+EF -5.00 5.00 0.200000 1000 eV    # 1000 points for a resolution of ~10 meV in the DOS
+%endblock ProjectedDensityOfStates

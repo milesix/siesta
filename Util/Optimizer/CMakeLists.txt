@@ -17,7 +17,8 @@ add_executable( swarm
     swarm.f90
 )
 
-target_link_libraries(swarm PRIVATE OpenMP::OpenMP_Fortran)
+target_link_libraries(aux_optim PUBLIC OpenMP::OpenMP_Fortran)
+
 target_link_libraries(swarm PRIVATE aux_optim)
 target_link_libraries(simplex PRIVATE aux_optim)
 

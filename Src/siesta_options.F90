@@ -160,6 +160,9 @@ MODULE siesta_options
   real(dp):: dDtol            ! Tolerance in change of DM elements to finish SCF iteration
   logical :: converge_H       ! to finish SCF iteration?
   real(dp):: dHtol            ! Tolerance in change of H elements to finish SCF iteration
+
+  ! DFT-D3
+  logical :: want_dftd3_dispersion ! Whether to use DFT-D3
   
   logical :: broyden_optim ! Use Broyden method to optimize geometry?
   logical :: fire_optim    ! Use FIRE method to optimize geometry?

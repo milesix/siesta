@@ -74,7 +74,7 @@ module m_cite
   ! Increment this after having added a new
   ! citation!
   ! OTHERWISE YOU WILL EXPERIENCE A SEG-FAULT.
-  integer, parameter :: N_citations = 15
+  integer, parameter :: N_citations = 16
 
   private
 
@@ -235,6 +235,9 @@ contains
       case ( "10.1103/RevModPhys.84.1419" )
         ! MLWF review
         lID = 15
+      case ( "10.1103/PhysRevB.106.155401" )
+        ! Bulk-bias
+        lID = 16
       end select
 
     end if
@@ -423,7 +426,19 @@ contains
        cit%page = "1419"
        cit%cite_key = "MLWF-review"
        
-       
+    case ( 16 )
+      ! Bulk-bias
+      cit%comment = "Bulk-bias calculations"
+      cit%title = "Simple approach to current-induced bond weakening &
+          &in ballistic conductors"
+      cit%author = "Papior, N. and Leitherer, S. and Brandbyge, M."
+      cit%journal = "Physical Review B"
+      cit%year = 2022
+      cit%volume = "106"
+      cit%issue = "155401"
+      cit%cite_key = "Papior22BulkBias"
+      cit%doi = "10.1103/PhysRevB.106.155401"
+
 
     case default
       ! Not found

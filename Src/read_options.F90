@@ -32,7 +32,9 @@ subroutine read_options( na, ns, nspin )
 
   use m_charge_add, only : read_charge_add
   use m_hartree_add, only : read_hartree_add
-  
+
+  use velocity_shift_m, only : read_velocity_shift
+
   use m_mixing_scf, only: mixers_scf_init
   use m_mixing_scf, only: mixers_scf_print, mixers_scf_print_block
 
@@ -638,6 +640,26 @@ subroutine read_options( na, ns, nspin )
      end if
   end if
 
+  !------------------------
+  ! DFTD3
+  !
+  want_dftd3_dispersion = fdf_get('DFTD3',.false.)
+#ifdef SIESTA__DFTD3  
+  if (ionode) then
+     write(6,1) 'redata: Using DFT-D3 dispersion', want_dftd3_dispersion
+  endif
+  if (cml_p) then
+     call cmlAddParameter( xf=mainXML, name='DFTD3',   &
+          value=want_dftd3_dispersion, dictRef='siesta:dftd3')
+  end if
+#else
+  if (want_dftd3_dispersion) then
+     call die("Need to compile with DFTD3 support")
+  endif
+#endif
+
+  !------------------------
+  
   ! Use Saved Data
   usesaveddata = fdf_get('UseSaveData',.false.)
   if (ionode) then
@@ -1594,6 +1616,9 @@ subroutine read_options( na, ns, nspin )
   
   ! We read in the relevant data for HartreeGeometries block
   call read_hartree_add( )
+
+  ! Read in the bulk-bias options
+  call read_velocity_shift()
 
   ! Harris Forces?. Then DM.UseSaveDM should be false (use always
   ! Harris density in the first SCF step of each MD step), and
