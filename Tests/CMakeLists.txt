@@ -46,11 +46,12 @@ function(setup_test name extrafiles)
 
 endfunction()
 
-#
-#
-#
+
+
+
 setup_test("h2o" "")
 #setup_test("ch4" "")
+setup_test("si_pdos_kgrid" "")
 setup_test("wannier" "wannier.nnkp wannier.win")
 
 

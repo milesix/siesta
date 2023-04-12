@@ -6,9 +6,17 @@
 
       use m_ncps_froyen_ps_t,    only: pseudopotential_t => froyen_ps_t
 
+      private
+
       integer, parameter, private :: dp = selected_real_kind(14,100)
 
       public :: pseudo_read
+
+      interface
+         subroutine die(str)
+         character(len=*), intent(in), optional :: str
+         end subroutine die
+      end interface
 
       CONTAINS
 
@@ -216,12 +224,6 @@
 
       subroutine get_free_lun(lun)
       integer, intent(out) :: lun
-
-      interface
-         subroutine die(str)
-         character(len=*), intent(in), optional :: str
-         end subroutine die
-      end interface
 
       logical :: used
       integer :: iostat

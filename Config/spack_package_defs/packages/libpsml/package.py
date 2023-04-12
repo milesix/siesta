@@ -8,7 +8,7 @@ class Libpsml(CMakePackage):
 
     git = 'https://gitlab.com/siesta-project/libraries/libpsml.git'
 
-    version('master', branch='cmake')
+    version('master', branch='master')
     
     depends_on('cmake@3.14.0:', type='build')
 
