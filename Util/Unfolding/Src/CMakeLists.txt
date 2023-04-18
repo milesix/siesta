@@ -105,7 +105,7 @@ add_executable(unfold "${sources}")
  target_link_libraries(
   unfold
   PRIVATE
-  fdf
+  libfdf::libfdf
   libgridxc::libgridxc
   libpsml::libpsml
   ${PROJECT_NAME}-libncps

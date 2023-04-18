@@ -99,7 +99,7 @@ install(
  target_link_libraries(
   ol-stm
   PRIVATE
-  fdf
+  libfdf::libfdf
   libpsml::libpsml
   ${PROJECT_NAME}-libncps
   FFTW::Double

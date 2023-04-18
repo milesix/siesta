@@ -1,7 +1,5 @@
 Installation of Siesta with CMake
 
-This is a work-in-progress implementation. Please report problems and suggestions.
-
 It needs cmake >= 3.14, and (if used) the ninja (>=1.10) backend.
 Both cmake and ninja can be installed easily in most systems, in
 particular with conda.
@@ -14,7 +12,7 @@ available.
 A) Installation on-the-fly, using git submodules for the external
 libraries.
 
-- The xmlf90, libpsml, and libgridxc (required) libraries are
+- The xmlf90, libpsml, libfdf, and libgridxc (required) libraries are
   available as submodules in the External subdirectory, set to the
   appropriate branches and/or tags for use in the current version of
   Siesta. To use them, if you got your sources from the git repo, you
@@ -90,10 +88,10 @@ To have libgridxc compiled with libxc support, change the invocation to:
 
 B) The same mechanism would work without submodules, as long as there
    is network access through the https protocol. In this case (the
-   "fetch" scenario), cmake will download the source for the external
+   "fetch" scenario), CMake will download the source for the external
    libraries and compile them. The same flags as above apply.
 
-C) Pre-installed external libraries can be discovered using cmake packages or pkg-config.
+C) Pre-installed external libraries can be discovered using CMake packages or pkg-config.
    
    The basic incantation is:
 

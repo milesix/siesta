@@ -165,7 +165,7 @@ install(
  target_link_libraries(
   tscontour
   PRIVATE
-  fdf
+  libfdf::libfdf
   libpsml::libpsml
   libgridxc::libgridxc
   ${PROJECT_NAME}-libncps

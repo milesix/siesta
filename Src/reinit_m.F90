@@ -34,6 +34,7 @@ contains
     use files,       only : slabel, label_length
     use files,       only : stdin_file, stdout_file
     use siesta_master, only: input_file  ! fdf data file
+    use units,         only: inquire_unit
 
 #ifdef MPI
       use mpi_siesta, only: mpi_comm_world
@@ -195,6 +196,8 @@ contains
       call broadcast_fdf_struct(0,mpi_comm_world)
 #endif
 
+    call fdf_set_unit_handler(inquire_unit)
+    
     ! Define Name of the system ...
     sname = fdf_string('SystemName', ' ')
     if (Node.eq.0) then

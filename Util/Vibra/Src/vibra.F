@@ -23,7 +23,7 @@ c
 c **********************************************************************
 
       use fdf
-      use units, only: Pi, Ang
+      use units, only: Pi, Ang, inquire_unit
       use precision, only: dp
 
       implicit none
@@ -123,6 +123,7 @@ c Set up fdf ...
       filein = 'stdin'
       fileout = 'out.fdf'
       call fdf_init(filein,fileout)
+      call fdf_set_unit_handler(inquire_unit)
 c ...
 
 c Defile Name of the system ...
