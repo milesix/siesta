@@ -67,11 +67,11 @@ OBJS_IONCAT=$(DEPS_IONCAT) $(IONCAT_LOCAL_OBJS)
 XC = $(GRIDXC_LIBS)
 INCFLAGS:= $(INCFLAGS) $(GRIDXC_INCFLAGS)
 
-gen-basis: $(NCPS) $(PSOP) $(FDF_LIBS) $(OBJS_GEN-BASIS) $(COMP_LIBS)
+gen-basis: $(NCPS) $(PSOP) $(OBJS_GEN-BASIS) $(COMP_LIBS)
 	$(FC) -o gen-basis \
 	       $(LDFLAGS) $(OBJS_GEN-BASIS) $(FDF_LIBS) $(XC) \
               $(NCPS) $(PSOP) $(PSML_LIBS) $(XMLF90_LIBS) $(NETCDF_LIBS) $(COMP_LIBS) $(LIBS)
-ioncat:  $(NCPS) $(PSOP) $(FDF_LIBS) $(OBJS_IONCAT) $(COMP_LIBS)
+ioncat:  $(NCPS) $(PSOP) $(OBJS_IONCAT) $(COMP_LIBS)
 	$(FC) -o ioncat \
 	       $(LDFLAGS) $(OBJS_IONCAT) $(FDF_LIBS) \
               $(NCPS) $(PSOP) $(XC) $(PSML_LIBS) $(XMLF90_LIBS) $(NETCDF_LIBS) $(COMP_LIBS) $(LIBS)
@@ -129,7 +129,7 @@ spher_harm.o: alloc.o precision.o sys.o
 units.o: precision.o
 xml.o: precision.o
 gen-basis.o: atm_types.o atom.o atom_options.o basis_io.o basis_specs.o
-gen-basis.o: basis_types.o chemical.o dftu_specs.o sys.o
+gen-basis.o: basis_types.o chemical.o dftu_specs.o sys.o units.o
 ioncat.o: atm_types.o atmfuncs.o basis_io.o m_getopts.o precision.o
 aux_proj.o: atom.o
 gpfa_core_dp.o: m_fft_gpfa.o

@@ -34,12 +34,12 @@ SYSOBJ=$(SYS).o
 DEP_OBJS = precision.o parallel.o \
           chemical.o io.o m_io.o  \
           periodic_table.o \
-          atom_options.o $(SYSOBJ)
+          atom_options.o units.o $(SYSOBJ)
 
 LOCAL_OBJS= grimme.o handlers.o local_sys.o
 OBJS=$(LOCAL_OBJS) $(DEP_OBJS)
 
-$(EXE): $(FDF_LIBS) $(OBJS)
+$(EXE): $(OBJS)
 	$(FC) -o $(EXE) \
 	       $(LDFLAGS) $(OBJS) $(FDF_LIBS)
 
@@ -64,5 +64,5 @@ atom_options.o: local_sys.o
 chemical.o: local_sys.o parallel.o precision.o
 io.o: m_io.o
 m_io.o: local_sys.o
-grimme.o: chemical.o periodic_table.o precision.o
+grimme.o: chemical.o periodic_table.o precision.o units.o
 sys.o: local_sys.o

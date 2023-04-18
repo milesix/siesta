@@ -79,6 +79,7 @@ list(
   ${top_srcdir}/object_debug.F90
   ${top_srcdir}/class_Pair_Data1D.F90
   ${top_srcdir}/class_Fstack_Pair_Data1D.F90
+  ${top_srcdir}/units.f90
 )
 
 add_executable(denchar "${sources}")
@@ -86,7 +87,7 @@ add_executable(denchar "${sources}")
 target_link_libraries(
   denchar
   PRIVATE
-  fdf
+  libfdf::libfdf
   libpsml::libpsml
   ${PROJECT_NAME}-libncps
   )

@@ -126,7 +126,7 @@ ALL_OBJS_STM= $(SIESTA_OBJS) $(LOCAL_OBJS)
 # m_gridfunc is compiled through the Util/Grid VPATH component
 vacpot.o: m_gridfunc.o
 
-stm: $(FDF_LIBS)  $(NCPS) $(ALL_OBJS_STM)
+stm: $(NCPS) $(ALL_OBJS_STM)
 	$(FC) -o stm \
 	       $(LDFLAGS) $(ALL_OBJS_STM) $(FDF_LIBS) $(NCPS) \
                $(PSML_LIBS) $(XMLF90_LIBS) $(FFTW_LIBS) 

@@ -13,6 +13,7 @@
 program grimme_program
 
   use fdf
+  use units, only: inquire_unit   ! Note that fdf_convfac is called
   use periodic_table
   use chemical, only: read_chemical_types, number_of_species, species_label
   use chemical, only: atomic_number, is_floating
@@ -85,6 +86,7 @@ program grimme_program
 
   ! open the fdf file
   call fdf_init(filein,"grimme.log")
+  call fdf_set_unit_handler(inquire_unit)
 
   ! create the data for the species list
   call read_chemical_types(silent=.true.)
