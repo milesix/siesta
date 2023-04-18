@@ -62,7 +62,7 @@ SYSOBJ=$(SYS).o
 # Note that machine-specific files are now in top Src directory.
 SIESTA_OBJS =  bessph.o chkdim.o dismin.o \
                dot.o  io.o iodm.o memory.o memory_log.o\
-	       pxf.o radfft.o m_fft_gpfa.o volcel.o
+	       pxf.o radfft.o m_fft_gpfa.o volcel.o units.o
 
 SIESTA_OBJS += precision.o parallel.o debugmpi.o m_io.o alloc.o listsc.o  \
          atmparams.o atom_options.o atmfuncs.o atm_types.o \
@@ -91,7 +91,7 @@ LOCAL_OBJS= atompla.o colinear.o denchar.o length.o \
 
 ALL_OBJS_DENCHAR= $(SIESTA_OBJS) $(LOCAL_OBJS)
 
-denchar: $(FDF_LIBS) $(NCPS) $(ALL_OBJS_DENCHAR)
+denchar: $(NCPS) $(ALL_OBJS_DENCHAR)
 	$(FC) -o denchar \
 	       $(LDFLAGS) $(ALL_OBJS_DENCHAR) $(FDF_LIBS) $(NCPS) $(PSML_LIBS) \
                $(XMLF90_LIBS) $(METIS_LIB)
@@ -166,7 +166,7 @@ spher_harm.o: alloc.o local_sys.o precision.o
 xml.o: precision.o
 atompla.o: local_sys.o precision.o
 colinear.o: precision.o
-denchar.o: basis_io.o listsc.o m_getopts.o parallel.o precision.o
+denchar.o: basis_io.o listsc.o m_getopts.o parallel.o precision.o units.o
 length.o: precision.o
 local_reinit.o: files.o
 matvect.o: precision.o

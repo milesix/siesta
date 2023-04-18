@@ -197,7 +197,7 @@ TARGET_LINK_LIBRARIES(
   tbtrans
   PRIVATE
   OpenMP::OpenMP_Fortran
-  fdf
+  libfdf::libfdf
   $<$<BOOL:${WITH_MPI}>:mpi_siesta>
   $<$<BOOL:${WITH_NETCDF}>:NetCDF::NetCDF_Fortran>
   $<$<BOOL:${WITH_NCDF}>:${PROJECT_NAME}-libncdf>
