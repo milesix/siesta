@@ -20,9 +20,13 @@ add_executable(g2c_ng
 )
 
 # For future enabling of NetCDF in m_gridfunc
-target_link_libraries(g2c_ng PRIVATE $<$<BOOL:${WITH_NETCDF}>:NetCDF::NetCDF_Fortran>)
-target_link_libraries(g2c_ng PRIVATE aux_opts aux_gridfunc)
-target_compile_definitions(g2c_ng  PRIVATE $<$<BOOL:${WITH_NETCDF}>:CDF> )
+target_link_libraries(g2c_ng
+  PRIVATE $<$<BOOL:${WITH_NETCDF}>:NetCDF::NetCDF_Fortran>
+  PRIVATE aux_opts aux_gridfunc
+  PRIVATE ${PROJECT_NAME}-libunits
+  )
+target_compile_definitions(g2c_ng
+  PRIVATE $<$<BOOL:${WITH_NETCDF}>:CDF> )
 		     
 install(TARGETS g2c_ng RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} )
 #---------------------------------------------------------------------
@@ -30,8 +34,11 @@ install(TARGETS g2c_ng RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} )
 add_executable(v_info v_info.f90)
 
 # For future enabling of NetCDF in m_gridfunc
-target_link_libraries(v_info PRIVATE $<$<BOOL:${WITH_NETCDF}>:NetCDF::NetCDF_Fortran>)
-target_link_libraries(v_info PRIVATE aux_gridfunc)
+target_link_libraries(v_info
+  PRIVATE $<$<BOOL:${WITH_NETCDF}>:NetCDF::NetCDF_Fortran>
+  PRIVATE aux_gridfunc
+  PRIVATE ${PROJECT_NAME}-libunits
+  )
 target_compile_definitions(v_info  PRIVATE $<$<BOOL:${WITH_NETCDF}>:CDF> )
 		     
 install(TARGETS v_info RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} )

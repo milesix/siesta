@@ -173,6 +173,7 @@ C real*8  velo             : Velocity component
 C *************************************************************************
 
       use precision
+      use units, only: amu, Kelvin
 
       implicit none
 
@@ -242,7 +243,7 @@ C real*8 tempe          : Instantaneous system temperature
 C *****************************************************************************
 
       use precision, only : dp
-      use units, only: eV, Ang, amu
+      use units, only: eV, Ang, amu, Kelvin
       use sys,       only : die
 
       implicit none

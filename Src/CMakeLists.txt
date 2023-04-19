@@ -127,7 +127,7 @@ set(libsiesta_sources
   domain_decom.F
   doping_uniform.F
   dot.f
-  dynamics.f
+  dynamics.F
   egandd.F
   eggbox.F
   electrostatic.f
@@ -497,7 +497,6 @@ set(libsiesta_sources
   ts_show_regions.f90
   typecell.f
   uncell.f
-  units.f90
   vacuum_level.f90
   velocity_shift.F90
   vmat.F90
@@ -517,6 +516,8 @@ set(libsiesta_sources
   zmatrix.F
 
 )
+
+add_subdirectory(units)
 
 add_library(${PROJECT_NAME}-libsiesta "${libsiesta_sources}")
 set_target_properties(
@@ -566,6 +567,7 @@ target_link_libraries(
   ${PROJECT_NAME}-libncps
   ${PROJECT_NAME}-libpsop
   ${PROJECT_NAME}-libms
+  ${PROJECT_NAME}-libunits
   "$<$<BOOL:${WITH_LUA}>:flook::flook>"
   "$<$<BOOL:${WITH_MPI}>:mpi_siesta>"
   "$<$<BOOL:${WITH_NETCDF}>:NetCDF::NetCDF_Fortran>"
@@ -591,10 +593,10 @@ if(CMAKE_Fortran_COMPILER_ID MATCHES Intel)
   separate_arguments(DEBUG_OPTIONS_LIST)   # Turns empty space to ';'
   message(STATUS "Debug flags for some files in Src: ${DEBUG_OPTIONS_LIST}")
   set_source_files_properties(
-             atom.F
-	     state_analysis.F
-	     create_Sparsity_SC.F90
-             PROPERTIES  COMPILE_OPTIONS "${DEBUG_OPTIONS_LIST}")
+    atom.F
+	  state_analysis.F
+	  create_Sparsity_SC.F90
+    PROPERTIES  COMPILE_OPTIONS "${DEBUG_OPTIONS_LIST}")
 endif()
 
 # -- Version information

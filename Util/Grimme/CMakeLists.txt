@@ -9,13 +9,14 @@ add_executable(fdf2grimme
    ${top_src_dir}/io.f
    ${top_src_dir}/periodic_table.f
    ${top_src_dir}/precision.F
-   ${top_src_dir}/units.f90
    grimme.f90
    local_sys.f90
    handlers.f
 )
 
-target_link_libraries(fdf2grimme libfdf::libfdf)
+target_link_libraries(fdf2grimme
+  libfdf::libfdf
+  ${PROJECT_NAME}-libunits)
 
 install(
   TARGETS fdf2grimme

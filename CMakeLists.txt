@@ -50,7 +50,12 @@ option(WITH_LUA "Use the flook library for Lua scripting" FALSE)
 
 option(WITH_DFTD3 "Include support for DFT-D3" FALSE)
 
-# 
+
+set(WITH_UNITS_CONVENTION "CODATA2018"
+  CACHE STRING
+  "Decide which units ${PROJECT_NAME} should be compiled with [original,legacy,codata2018]"
+  )
+
 option(BUILD_DOCS "Create Doxygen-based documentation (wip)" FALSE)
 #--------------------------------------
 
@@ -63,6 +68,19 @@ include(GNUInstallDirs)
 
 # Use Pkg-Config if available
 find_package(PkgConfig)
+
+
+# Determine compile options (globally)
+string(TOLOWER "${WITH_UNITS_CONVENTION}" siesta_units_convention)
+if("${siesta_units_convention}" STREQUAL "original" OR
+   "${siesta_units_convention}" STREQUAL "legacy")
+  add_compile_definitions(SIESTA__UNITS_ORIGINAL)
+elseif("${siesta_units_convention}" STREQUAL "codata2018")
+  # pass - do nothing
+else()
+  message(FATAL_ERROR "Unknown argument for WITH_UNITS_CONVENTION; not one of [original,legacy,codata2018]")
+endif()
+
 
 if (WITH_MPI)
   if (NOT TARGET MPI::MPI_Fortran)

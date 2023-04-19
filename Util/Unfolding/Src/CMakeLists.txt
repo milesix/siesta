@@ -41,7 +41,6 @@ list(
   ${top_srcdir}/m_wallclock.f90
   ${top_srcdir}/diag_option.F90
   ${top_srcdir}/diag.F90
-  ${top_srcdir}/units.f90
   ${top_srcdir}/bloch_unfold.F90
   ${top_srcdir}/debugmpi.F
   ${top_srcdir}/find_kgrid.F
@@ -102,7 +101,7 @@ list(
 
 add_executable(unfold "${sources}")
 
- target_link_libraries(
+target_link_libraries(
   unfold
   PRIVATE
   libfdf::libfdf
@@ -110,6 +109,7 @@ add_executable(unfold "${sources}")
   libpsml::libpsml
   ${PROJECT_NAME}-libncps
   ${PROJECT_NAME}-libpsop
+  ${PROJECT_NAME}-libunits
   "$<$<BOOL:${WITH_MPI}>:mpi_siesta>"
   "$<$<BOOL:${WITH_NETCDF}>:NetCDF::NetCDF_Fortran>"
  ##  Unfold does not seem to depend on NCDF

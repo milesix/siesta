@@ -15,7 +15,6 @@ list(
    ${top_srcdir}/parallel.F
    ${top_srcdir}/alloc.F90
    ${top_srcdir}/pxf.F90
-   ${top_srcdir}/units.f90
    ${top_srcdir}/sys.F
    ${top_srcdir}/m_io.f
    ${top_srcdir}/memory_log.F90
@@ -49,10 +48,10 @@ install(
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
   )
 
-#
- target_link_libraries(
+target_link_libraries(
   tshs2tshs
   PRIVATE
+  ${PROJECT_NAME}-libunits
   $<$<BOOL:${WITH_NETCDF}>:NetCDF::NetCDF_Fortran>
   "$<$<BOOL:${WITH_NCDF}>:${PROJECT_NAME}-libncdf>"
   "$<$<BOOL:${WITH_NCDF}>:${PROJECT_NAME}-libfdict>"
