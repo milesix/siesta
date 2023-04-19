@@ -20,9 +20,12 @@ install(TARGETS
 
 if (WITH_NETCDF)
 
-  add_executable(wfsnc2wfsx  wfsnc2wfsx.F90)
+  add_executable(wfsnc2wfsx wfsnc2wfsx.F90)
 
-  target_link_libraries(wfsnc2wfsx PRIVATE NetCDF::NetCDF_Fortran )
+  target_link_libraries(wfsnc2wfsx PRIVATE
+    NetCDF::NetCDF_Fortran
+    ${PROJECT_NAME}-libunits
+    )
   target_compile_definitions(wfsnc2wfsx  PRIVATE CDF )
 		     
   install(TARGETS wfsnc2wfsx RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} )

@@ -14,7 +14,6 @@ add_library(vibra_top_objs OBJECT
    ${top_src_dir}/m_io.f
    ${top_src_dir}/precision.F
    ${top_src_dir}/reclat.f
-   ${top_src_dir}/units.f90
 )
 
 target_link_libraries(
@@ -42,11 +41,13 @@ target_link_libraries(fcbuild
     vibra_top_objs
     libfdf::libfdf
     ${PROJECT_NAME}-libsys
+    ${PROJECT_NAME}-libunits
     )
 target_link_libraries(vibra
     vibra_top_objs
     libfdf::libfdf
     ${PROJECT_NAME}-libsys
+    ${PROJECT_NAME}-libunits
     LAPACK::LAPACK
     )
     

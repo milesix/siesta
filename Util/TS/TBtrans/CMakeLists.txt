@@ -157,7 +157,6 @@ list(
   ${top_srcdir}/timer_tree.f90
   ${top_srcdir}/timestamp.f90
   ${top_srcdir}/ts_electrode.F90
-  ${top_srcdir}/units.f90
 )
 
 
@@ -196,8 +195,10 @@ target_link_libraries(
   $<$<BOOL:${WITH_MPI}>:mpi_siesta>
   $<$<BOOL:${WITH_NETCDF}>:NetCDF::NetCDF_Fortran>
   $<$<BOOL:${WITH_NCDF}>:${PROJECT_NAME}-libncdf>
+  ${PROJECT_NAME}-libunits
   ${PROJECT_NAME}-libfdict     # Even if not using NCDF
   ${PROJECT_NAME}-libsys
+  ${PROJECT_NAME}-libunits
   $<$<BOOL:${WITH_ELPA}>:Elpa::elpa>
   $<$<BOOL:${WITH_MPI}>:SCALAPACK::SCALAPACK>
   LAPACK::LAPACK

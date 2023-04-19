@@ -9,7 +9,6 @@ list(
     APPEND
     sources
 
-
     "${top_srcdir}/alloc.F90"
     "${top_srcdir}/arw.f"
     "${top_srcdir}/atm_types.f"
@@ -50,7 +49,6 @@ list(
     "${top_srcdir}/read_xc_info.F"
     "${top_srcdir}/siesta_geom.F90"
     "${top_srcdir}/sorting.f"
-    "${top_srcdir}/units.f90"
     "${top_srcdir}/xml.f"
      ${top_srcdir}/m_spin.F90
      ${top_srcdir}/m_vee_integrals.F90 
@@ -79,6 +77,7 @@ install(
   ${PROJECT_NAME}-libncps
   ${PROJECT_NAME}-libpsop
   ${PROJECT_NAME}-libsys
+  ${PROJECT_NAME}-libunits
   LAPACK::LAPACK
  )
 

@@ -9,15 +9,15 @@ add_executable(fdf2grimme
    ${top_src_dir}/io.f
    ${top_src_dir}/periodic_table.f
    ${top_src_dir}/precision.F
-   ${top_src_dir}/units.f90
    grimme.f90
    local_timer.f90
 )
 
 target_link_libraries(fdf2grimme
-                      PRIVATE
-		      libfdf::libfdf
-      		      ${PROJECT_NAME}-libsys
+  PRIVATE
+  libfdf::libfdf
+  ${PROJECT_NAME}-libsys
+  ${PROJECT_NAME}-libunits
 )
 
 install(

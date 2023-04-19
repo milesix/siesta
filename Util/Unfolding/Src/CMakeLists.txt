@@ -39,7 +39,6 @@ list(
   ${top_srcdir}/m_wallclock.f90
   ${top_srcdir}/diag_option.F90
   ${top_srcdir}/diag.F90
-  ${top_srcdir}/units.f90
   ${top_srcdir}/bloch_unfold.F90
   ${top_srcdir}/debugmpi.F
   ${top_srcdir}/find_kgrid.F
@@ -100,12 +99,14 @@ list(
 
 add_executable(unfold "${sources}")
 
-target_link_libraries(unfold
+target_link_libraries(
+  unfold
   PRIVATE
   $<$<BOOL:${WITH_NETCDF}>:NetCDF::NetCDF_Fortran>
   ${PROJECT_NAME}-libsys
   ${PROJECT_NAME}-libncps
   ${PROJECT_NAME}-libpsop
+  ${PROJECT_NAME}-libunits
   libfdf::libfdf
   libpsml::libpsml
   libgridxc::libgridxc

@@ -33,7 +33,23 @@ include(SiestaFlags)
 option(WITH_GRID_SP "Use single-precision for grid magnitudes" FALSE)
 
 option(BUILD_DOCS "Create Doxygen-based documentation (WIP)" FALSE)
-#--------------------------------------
+
+set(WITH_UNITS_CONVENTION "CODATA2018"
+  CACHE STRING
+  "Decide which units ${PROJECT_NAME} should be compiled with [original,legacy,codata2018]"
+  )
+
+# Determine compile options (globally)
+string(TOLOWER "${WITH_UNITS_CONVENTION}" siesta_units_convention)
+if("${siesta_units_convention}" STREQUAL "original" OR
+   "${siesta_units_convention}" STREQUAL "legacy")
+  add_compile_definitions(SIESTA__UNITS_ORIGINAL)
+elseif("${siesta_units_convention}" STREQUAL "codata2018")
+  # pass - do nothing
+else()
+  message(FATAL_ERROR "Unknown argument for WITH_UNITS_CONVENTION; not one of [original,legacy,codata2018]")
+endif()
+
 
 
 # Follow GNU conventions for installing directories

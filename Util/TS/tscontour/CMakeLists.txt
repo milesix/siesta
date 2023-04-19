@@ -14,7 +14,6 @@ list(
    ${top_srcdir}/parallel.F
    ${top_srcdir}/alloc.F90
    ${top_srcdir}/pxf.F90
-   ${top_srcdir}/units.f90
    ${top_srcdir}/m_io.f
    ${top_srcdir}/memory_log.F90
    ${top_srcdir}/memory.F
@@ -164,13 +163,14 @@ install(
  target_link_libraries(
   tscontour
   PRIVATE
+  $<$<BOOL:${WITH_NETCDF}>:NetCDF::NetCDF_Fortran>
   libfdf::libfdf
   libpsml::libpsml
   libgridxc::libgridxc
   ${PROJECT_NAME}-libncps
   ${PROJECT_NAME}-libpsop
   ${PROJECT_NAME}-libsys
-  $<$<BOOL:${WITH_NETCDF}>:NetCDF::NetCDF_Fortran>
+  ${PROJECT_NAME}-libunits
   "$<$<BOOL:${WITH_NCDF}>:${PROJECT_NAME}-libncdf>"
   "$<$<BOOL:${WITH_NCDF}>:${PROJECT_NAME}-libfdict>"
    LAPACK::LAPACK

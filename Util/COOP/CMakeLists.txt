@@ -8,7 +8,6 @@
 set(top_srcdir "${CMAKE_SOURCE_DIR}/Src")
 
 add_library(coop_common_objs OBJECT
-
         ${top_srcdir}/alloc.F90
         ${top_srcdir}/parallel.F
         ${top_srcdir}/m_io.f
@@ -17,13 +16,14 @@ add_library(coop_common_objs OBJECT
         ${top_srcdir}/precision.F
         io.f
         subs.f90
-        units.f90
         main_vars.f90
         io_hs.f90
         orbital_set.f90
         read_curves.f90
 	local_timer.f90
 )
+target_link_libraries(coop_common_objs
+  PUBLIC ${PROJECT_NAME}-libunits)
 
 target_link_libraries(
    coop_common_objs

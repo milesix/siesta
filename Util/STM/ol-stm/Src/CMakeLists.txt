@@ -76,7 +76,6 @@ list(
   ${top_srcdir}/qsort.F
   ${top_srcdir}/mmio.F
   ${top_srcdir}/pspltm1.F
-  ${top_srcdir}/units.f90
   ${top_srcdir}/m_uuid.f90
   ${top_srcdir}/object_debug.F90
   ${top_srcdir}/class_Pair_Data1D.F90
@@ -94,13 +93,14 @@ install(
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
   )
 
- target_link_libraries(
+target_link_libraries(
   ol-stm
   PRIVATE
   libfdf::libfdf
   libpsml::libpsml
   ${PROJECT_NAME}-libncps
   ${PROJECT_NAME}-libsys
+  ${PROJECT_NAME}-libunits
   FFTW::Double
  )
 

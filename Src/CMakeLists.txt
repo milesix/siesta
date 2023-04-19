@@ -124,7 +124,7 @@ set(libsiesta_sources
   domain_decom.F
   doping_uniform.F
   dot.f
-  dynamics.f
+  dynamics.F
   egandd.F
   eggbox.F
   electrostatic.f
@@ -493,7 +493,6 @@ set(libsiesta_sources
   ts_show_regions.f90
   typecell.f
   uncell.f
-  units.f90
   vacuum_level.f90
   velocity_shift.F90
   vmat.F90
@@ -513,6 +512,8 @@ set(libsiesta_sources
   zmatrix.F
 
 )
+
+add_subdirectory(units)
 
 add_library(${PROJECT_NAME}-libsiesta "${libsiesta_sources}")
 # this makes it easier to build using cmake --target libsiesta
@@ -557,6 +558,7 @@ target_link_libraries(${PROJECT_NAME}-libsiesta
   ${PROJECT_NAME}-libncps
   ${PROJECT_NAME}-libpsop
   ${PROJECT_NAME}-libms
+  ${PROJECT_NAME}-libunits
   libfdf::libfdf
   libpsml::libpsml
   libgridxc::libgridxc
