@@ -1,7 +1,6 @@
 add_library(
   ${PROJECT_NAME}-libunits
-  # Never do this a SHARED lib
-  STATIC
+  OBJECT
   units.F90
   units_legacy.f90
   units_codata2018.f90
