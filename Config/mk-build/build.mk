@@ -442,6 +442,14 @@ DO_MS:
 	(cd $(MAIN_OBJDIR)/Src/MatrixSwitch/src ; \
          $(MAKE) -j 1 FFLAGS="$(FFLAGS:$(IPO_FLAG)=)" module)
 #--------------------
+.PHONY: DO_UNITS
+UNITS=$(MAIN_OBJDIR)/Src/units/libunits.a
+UNITS_INCFLAGS=-I$(MAIN_OBJDIR)/Src/units 
+$(UNITS): DO_UNITS
+DO_UNITS:
+	@echo "+++ Compiling internal units library"
+	(cd $(MAIN_OBJDIR)/Src/units ; $(MAKE) -j 1 FFLAGS="$(FFLAGS:$(IPO_FLAG)=)" module)
+#--------------------
 .PHONY: DO_BUILTIN_LAPACK
 BUILTIN_LAPACK=$(MAIN_OBJDIR)/Src/Libs/libsiestaLAPACK.a
 $(BUILTIN_LAPACK): DO_BUILTIN_LAPACK
