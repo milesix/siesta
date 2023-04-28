@@ -21,8 +21,7 @@ override WITH_FLOOK=
 
 default: what unfold 
 
-VPATH=$(TOPDIR)/Util/Unfolding/Src:$(TOPDIR)/Src
-TOPSRC=$(TOPDIR)/Src
+VPATH=$(TOPDIR)/Util/Unfolding/Src:$(TOPDIR)/Src:$(TOPDIR)/Util/HSX
 
 ARCH_MAKE=$(MAIN_OBJDIR)/arch.make
 include $(ARCH_MAKE)
@@ -55,56 +54,34 @@ what:
 INCFLAGS += $(NETCDF_INCFLAGS) $(FDF_INCFLAGS) \
             $(NCPS_INCFLAGS) $(PSML_INCFLAGS) $(PSOP_INCFLAGS)
 INCFLAGS += $(MPI_WRAPPERS_INCFLAGS)
+INCFLAGS += $(UNITS_INCFLAGS)
 
 XC = $(GRIDXC_LIBS)
 INCFLAGS += $(GRIDXC_INCFLAGS)
 
-SYSOBJ=$(SYS).o
+SIESTA_SRCS=   precision.F  broadcast_fdf_struct.F90  sys.F  m_io.f  alloc.F90 \
+  parallel.F  memory_log.F90  memory.F  pxf.F90  moreParallelSubs.F90  m_mpi_utils.F \
+  interpolation.f90  xml.f  radial.f  atm_types.f  spher_harm.f  atmfuncs.f \
+  reclat.f  idiag.f  cellsubs.f  sorting.f  minvec.f  io.f  files.f  timestamp.f90 \
+  m_walltime.f90  m_wallclock.f90  diag_option.F90  diag.F90  bloch_unfold.F90  debugmpi.F \
+  find_kgrid.F  posix_calls.f90  atmparams.f  basis_types.f  atom_options.F90  chemical.f \
+  basis_io.F  siesta_geom.F90  get_kpoints_scale.f90  bessph.f  m_fft_gpfa.F \
+  radfft.f  periodic_table.f  basis_specs.f  hamann.f90  m_filter.f90  atom.F \
+  m_cite.F90  dftu_specs.f  broadcast_basis.F  m_cell.f  zmatrix.F  coor.F \
+  chkdim.f  volcel.f  digcel.f  arw.f  redcel.F  printmatrix.F  schecomm.F \
+  class_Geometry.F90  class_Data2D.F90  class_OrbitalDistribution.F90  class_Sparsity.F90 \
+  class_SpData2D.F90  class_Pair_Geometry_SpData2D.F90  class_Fstack_Pair_Geometry_SpData2D.F90 \
+  class_Data1D.F90  class_SpData1D.F90  sparse_matrices.F90  domain_decom.F  spatial.F \
+  parallelsubs.F  pspltm1.F  mmio.F  qsort.F  timer_tree.f90  m_timer.F90  timer.F90 \
+  m_uuid.f90  object_debug.F90  nag.f  m_spin.F90  m_vee_integrals.F90 
 
-SIESTA_OBJS= precision.o m_io.o alloc.o memory_log.o memory.o pxf.o \
-             moreParallelSubs.o m_mpi_utils.o atmfuncs.o atm_types.o \
-             radial.o reclat.o idiag.o minvec.o \
-             parallel.o io.o files.o cellsubs.o sorting.o \
-	     timestamp.o m_wallclock.o \
-             diag.o diag_option.o bloch_unfold.o \
-	     debugmpi.o find_kgrid.o units.o posix_calls.o xml.o \
-             interpolation.o spher_harm.o basis_types.o atmparams.o basis_io.o \
-             atom_options.o chemical.o \
-             get_kpoints_scale.o siesta_geom.o \
-             radfft.o bessph.o m_fft_gpfa.o \
-             broadcast_basis.o dftu_specs.o basis_specs.o \
-             atom.o hamann.o m_filter.o \
-             m_cite.o \
-             coor.o chkdim.o \
-             zmatrix.o m_cell.o  periodic_table.o volcel.o digcel.o \
-             arw.o redcel.o broadcast_fdf_struct.o \
-             sys.o parallelsubs.o spatial.o \
-             domain_decom.o printmatrix.o schecomm.o \
-             pspltm1.o mmio.o qsort.o \
-             sparse_matrices.o
-
-SIESTA_OBJS += m_walltime.o timer_tree.o m_timer.o timer.o
-SIESTA_OBJS += m_spin.o m_vee_integrals.o
-
-
-# Add specific class objects
-# class Objects
-SIESTA_OBJS += class_OrbitalDistribution.o \
-	class_Sparsity.o \
-	class_Data1D.o class_Data2D.o \
-	class_SpData1D.o class_SpData2D.o \
-        class_Fstack_Pair_Geometry_SpData2D.o \
-        class_Pair_Geometry_SpData2D.o \
-        class_Geometry.o \
-        m_uuid.o object_debug.o
-
-# As the classes are based on inputs we force the dependency to
-# alloc
-class_Sparsity.o class_Data1D.o class_Data2D.o: alloc.o
+SIESTA_OBJS= $(call change_extensions, $(SIESTA_SRCS))
 
 DEP_OBJS = $(SIESTA_OBJS) $(TS_OBJS) $(SYSOBJ) $(EXTRA)
 
-# To separate unfold objects from siesta/transiesta
+UNFOLD_SRCS = array.F90 unfold.F90 handlers.f
+HSX_SRCS= $(TOPDIR)/Util/HSX/hsx_m.f90
+
 UNFOLD_OBJS  = array.o hsx_m.o
 UNFOLD_OBJS += unfold.o 
 
@@ -116,10 +93,10 @@ UNFOLD_OBJS += handlers.o
 
 $(DEP_OBJS): $(COMP_LIBS) 
 
-unfold: $(MPI_INTERFACE) $(COMP_LIBS) $(NCPS) $(PSOP) $(DEP_OBJS) $(UNFOLD_OBJS) 
+unfold: $(MPI_INTERFACE) $(COMP_LIBS) $(NCPS) $(PSOP) $(UNITS) $(DEP_OBJS) $(UNFOLD_OBJS) 
 	$(FC) $(FFLAGS) $(LDFLAGS) -o unfold \
               $(DEP_OBJS) $(UNFOLD_OBJS) $(MPI_INTERFACE) \
-              $(XC) $(NCPS) $(PSOP) $(PSML_LIBS) $(XMLF90_LIBS) $(FDF_LIBS) $(COMP_LIBS) $(LIBS)
+              $(XC) $(NCPS) $(PSOP) $(UNITS) $(PSML_LIBS) $(XMLF90_LIBS) $(FDF_LIBS) $(COMP_LIBS) $(LIBS)
 
 .PHONY: clean
 clean: 
@@ -131,16 +108,11 @@ install: $(PROGS)
 	cp -p $(PROGS) $(SIESTA_INSTALL_DIRECTORY)/bin
 
 # Dependencies
+ABS_TOP_SRCS:= $(addprefix $(TOPDIR)/Src/,$(SIESTA_SRCS))
+ABS_LOCAL_SRCS:= $(addprefix $(TOPDIR)/Util/Unfolding/Src/,$(UNFOLD_SRCS))
 .PHONY: dep
 dep:
-	@sfmakedepend --depend=obj --modext=o \
-		$(addprefix $(TOPSRC)/,$(DEP_OBJS:.o=.f) $(DEP_OBJS:.o=.f90)) \
-		$(addprefix $(TOPSRC)/,$(DEP_OBJS:.o=.F) $(DEP_OBJS:.o=.F90)) \
-		$(TOPSRC)/class*.T90 \
-		$(UNFOLD_OBJS:.o=.f90) $(UNFOLD_OBJS:.o=.F90) \
-		$(UNFOLD_OBJS:.o=.f) $(UNFOLD_OBJS:.o=.F) || true
-
-	@sed -i -e 's/\.T90\.o:/.o:/g' Makefile
+	@sfmakedepend --depend=obj --modext=o $(ABS_TOP_SRCS) $(ABS_LOCAL_SRCS) $(HSX_SRCS) || true
 
 # DO NOT DELETE THIS LINE - used by make depend
 arw.o: alloc.o parallel.o precision.o sys.o
@@ -156,40 +128,32 @@ basis_specs.o: atom_options.o basis_types.o chemical.o periodic_table.o
 basis_specs.o: precision.o sys.o
 basis_types.o: alloc.o atmparams.o precision.o sys.o
 bessph.o: precision.o sys.o
-bloch_unfold.o: units.o
 broadcast_basis.o: atm_types.o chemical.o dftu_specs.o m_mpi_utils.o m_spin.o
 broadcast_basis.o: parallel.o radial.o
 cellsubs.o: precision.o
 chemical.o: parallel.o precision.o sys.o
 chkdim.o: sys.o
-class_Data1D.o: alloc.o
-class_Data2D.o: alloc.o
-class_Data3D.o: alloc.o
 class_Fstack_Pair_Geometry_SpData2D.o: class_Pair_Geometry_SpData2D.o
 class_Geometry.o: alloc.o
 class_Pair_Geometry_SpData2D.o: class_Geometry.o class_SpData2D.o
+class_SpData1D.o: class_Data1D.o class_Data1D.o class_Data1D.o class_Data1D.o
 class_SpData1D.o: class_Data1D.o
-class_SpData1D.o: class_OrbitalDistribution.o class_Sparsity.o
-class_SpData2D.o: class_Data2D.o
-class_SpData2D.o: class_OrbitalDistribution.o class_Sparsity.o
-class_SpData3D.o: class_OrbitalDistribution.o class_Sparsity.o
+class_SpData2D.o: class_Data2D.o class_Data2D.o class_Data2D.o
 class_Sparsity.o: alloc.o
-class_TriMat.o: alloc.o
-coor.o: alloc.o atmfuncs.o parallel.o precision.o siesta_geom.o sys.o units.o
-coor.o: zmatrix.o
+coor.o: alloc.o atmfuncs.o parallel.o precision.o siesta_geom.o sys.o zmatrix.o
 debugmpi.o: parallel.o
 dftu_specs.o: alloc.o atm_types.o atmparams.o atom.o atom_options.o
 dftu_specs.o: basis_specs.o basis_types.o interpolation.o m_cite.o m_spin.o
-dftu_specs.o: m_vee_integrals.o parallel.o precision.o radial.o sys.o units.o
+dftu_specs.o: m_vee_integrals.o parallel.o precision.o radial.o sys.o
 diag.o: alloc.o diag_option.o parallel.o precision.o sys.o
 diag_option.o: parallel.o precision.o
 domain_decom.o: alloc.o parallel.o precision.o printmatrix.o schecomm.o
 domain_decom.o: sparse_matrices.o sys.o
-find_kgrid.o: alloc.o minvec.o parallel.o precision.o units.o
-get_kpoints_scale.o: parallel.o siesta_geom.o units.o
+find_kgrid.o: alloc.o minvec.o parallel.o precision.o
+get_kpoints_scale.o: parallel.o siesta_geom.o
 idiag.o: parallel.o sys.o
 io.o: m_io.o
-m_cell.o: precision.o siesta_geom.o units.o
+m_cell.o: precision.o siesta_geom.o
 m_filter.o: bessph.o precision.o radfft.o sys.o
 m_io.o: sys.o
 m_mpi_utils.o: precision.o sys.o
@@ -213,12 +177,11 @@ sparse_matrices.o: class_OrbitalDistribution.o class_SpData1D.o
 sparse_matrices.o: class_SpData2D.o class_SpData2D.o class_Sparsity.o
 sparse_matrices.o: precision.o
 spatial.o: precision.o
-spher_harm.o: alloc.o precision.o sys.o units.o
+spher_harm.o: alloc.o precision.o sys.o
 timer.o: m_timer.o parallel.o sys.o timer_tree.o
 timer_tree.o: m_walltime.o
-units.o: precision.o
 xml.o: precision.o
-zmatrix.o: alloc.o m_cell.o parallel.o precision.o siesta_geom.o sys.o units.o
+zmatrix.o: alloc.o m_cell.o parallel.o precision.o siesta_geom.o sys.o
 array.o: precision.o sys.o
 unfold.o: alloc.o array.o atmfuncs.o basis_io.o basis_types.o cellsubs.o
 unfold.o: diag_option.o get_kpoints_scale.o hsx_m.o m_io.o m_mpi_utils.o

@@ -3,7 +3,7 @@ set(top_srcdir "${CMAKE_SOURCE_DIR}/Src" )
 set(sources
 
   array.F90
-  hsx_m.f90
+  ${CMAKE_SOURCE_DIR}/Util/HSX/hsx_m.f90
   unfold.F90
   handlers.f
 )
