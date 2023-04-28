@@ -39,26 +39,29 @@ FC:=$(FC_SERIAL)         # Make it non-recursive
 ### FPPFLAGS += -DVIBRA_DEBUG
 
 # Objects from Siesta
-SYSOBJ = $(SYS).o
-SIESTA_OBJS = local_sys.o precision.o units.o m_io.o io.o reclat.o $(SYSOBJ)
 
-COMMON_OBJS = recoor.o 
+SIESTA_SRCS = precision.F m_io.f io.f reclat.f 
+SIESTA_OBJS = $(call change_extensions, $(SIESTA_SRCS))
+
+COMMON_SRCS = recoor.f local_sys.f
+COMMON_OBJS = recoor.o local_sys.o
+
+BUILD_SRCS = fcbuild.f 
 BUILD_OBJS = fcbuild.o $(COMMON_OBJS)
+
+VIBRA_SRCS = vibra.F hermdp.F klines.f outbands.f
 VIBRA_OBJS = vibra.o hermdp.o klines.o outbands.o $(COMMON_OBJS)
 
-INCFLAGS+= $(FDF_INCFLAGS) 
+INCFLAGS+= $(FDF_INCFLAGS) $(UNITS_INCFLAGS)
 
-# Build dependencies
-$(BUILD_OBJS): $(SIESTA_OBJS)
-$(VIBRA_OBJS): $(SIESTA_OBJS)
 
-fcbuild: $(SIESTA_OBJS) $(BUILD_OBJS)
+fcbuild: $(SIESTA_OBJS) $(BUILD_OBJS) $(UNITS)
 	$(FC) -o fcbuild \
-	       $(LDFLAGS) $(BUILD_OBJS) $(SIESTA_OBJS) $(FDF_LIBS)
+	       $(LDFLAGS) $(BUILD_OBJS) $(SIESTA_OBJS) $(FDF_LIBS) $(UNITS)
 
-vibra:  $(COMP_LIBS) $(SIESTA_OBJS) $(VIBRA_OBJS)
+vibra:  $(COMP_LIBS) $(SIESTA_OBJS) $(VIBRA_OBJS) $(UNITS)
 	$(FC) -o vibra \
-	       $(LDFLAGS) $(VIBRA_OBJS) $(SIESTA_OBJS) $(FDF_LIBS) $(COMP_LIBS) $(LIBS)
+	       $(LDFLAGS) $(VIBRA_OBJS) $(SIESTA_OBJS) $(FDF_LIBS) $(UNITS) $(COMP_LIBS) $(LIBS)
 
 clean: 
 	@echo "==> Cleaning object and executable files"
@@ -69,20 +72,17 @@ install: $(PROGS)
 
 
 # Dependencies
-DEP_OBJS= $(SIESTA_OBJS)
-LOCAL_OBJS=$(VIBRA_OBJS) $(BUILD_OBJS)
+ABS_TOP_SRCS:= $(addprefix $(TOPDIR)/Src/,$(SIESTA_SRCS))
+ABS_LOCAL_SRCS:= $(addprefix $(TOPDIR)/Util/Vibra/Src/,$(COMMON_SRCS) $(VIBRA_SRCS) $(BUILD_SRCS))
 
+.PHONY: dep
 dep:
-	sfmakedepend --depend=obj --modext=o \
-		$(addprefix $(VPATH)/,$(DEP_OBJS:.o=.f) $(DEP_OBJS:.o=.f90)) \
-		$(addprefix $(VPATH)/,$(DEP_OBJS:.o=.F) $(DEP_OBJS:.o=.F90)) \
-		$(LOCAL_OBJS:.o=.f90) $(LOCAL_OBJS:.o=.F90) \
-		$(LOCAL_OBJS:.o=.f) $(LOCAL_OBJS:.o=.F) \
-                || true
+	sfmakedepend --depend=obj --modext=o $(ABS_TOP_SRCS) $(ABS_LOCAL_SRCS) || true
 
 
 # DO NOT DELETE THIS LINE - used by make depend
 io.o: m_io.o
-units.o: precision.o
-fcbuild.o: precision.o units.o
-vibra.o: precision.o units.o
+m_io.o: local_sys.o
+fcbuild.o: precision.o
+vibra.o: precision.o
+sys.o: local_sys.o
