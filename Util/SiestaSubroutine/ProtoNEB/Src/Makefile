@@ -45,7 +45,7 @@ SIESTA_LIB=$(MAIN_OBJDIR)/Src/libSiestaForces.a
 #
 ALL_LIBS= $(SIESTA_LIB) $(FDF_LIBS)  $(XC) $(LIBSYS) \
 	$(NCPS) $(PSML) $(XMLF90_LIBS) $(PSOP) $(MS)\
-	$(MPI_INTERFACE) $(COMP_LIBS) $(DFTD3_LIBS) $(LIBS)
+	$(MPI_INTERFACE) $(COMP_LIBS) $(DFTD3_LIBS) $(UNITS) $(LIBS)
 #
 protoNEB: $(SIESTA_LIB) protoNEB.o 
 	$(FC) $(LDFLAGS) -o protoNEB \
