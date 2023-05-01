@@ -39,11 +39,12 @@ FC_SERIAL?=$(FC_DEFAULT)
 FC:=$(FC_SERIAL)         # Make it non-recursive
 
 INCFLAGS:=$(INCFLAGS) $(NETCDF_INCFLAGS)
+INCFLAGS += $(UNITS_INCFLAGS)
 
 # Two ways of splitting the list of object files:
 # 1. By the needs of the three different programs
 SIESTA_OBJS = precision.o alloc.o parallel.o m_io.o pxf.o moreParallelSubs.o sys.o
-DEF_OBJS = m_getopts.o io.o subs.o units.o
+DEF_OBJS = m_getopts.o io.o subs.o 
 DEF_OBJS += io_hs.o
 DEF_OBJS += main_vars.o
 
@@ -55,7 +56,7 @@ TEXTURE_OBJS  = $(SIESTA_OBJS) $(DEF_OBJS) handlers.o
 
 # 2. By whether they are in VPATH or in the local directory (for deps processing)
 DEP_OBJS = $(SIESTA_OBJS)
-DEP_OBJS += m_getopts.o io.o  units.o iodm_netcdf.o write_dm.o
+DEP_OBJS += m_getopts.o io.o   iodm_netcdf.o write_dm.o
 LOCAL_OBJS= subs.o io_hs.o main_vars.o read_curves.o orbital_set.o handlers.o \
             mprop.o fat.o dm_creator.o spin_texture.o
 
@@ -69,14 +70,14 @@ dep:
 		$(addprefix $(TOPDIR)/Util/COOP/,$(LOCAL_OBJS:.o=.f) $(LOCAL_OBJS:.o=.F)) || true
 
 
-mprop: $(MPROP_OBJS) mprop.o
-	$(FC) -o $@ $(LDFLAGS) $(MPROP_OBJS) mprop.o
-fat: $(FAT_OBJS) fat.o
-	$(FC) -o $@ $(LDFLAGS) $(FAT_OBJS) fat.o
-dm_creator: $(DM_OBJS) dm_creator.o
-	$(FC) -o $@ $(LDFLAGS) $(DM_OBJS) dm_creator.o $(NETCDF_LIBS)
-spin_texture: $(TEXTURE_OBJS) spin_texture.o
-	$(FC) -o $@ $(LDFLAGS) $(TEXTURE_OBJS) spin_texture.o
+mprop: $(MPROP_OBJS) $(UNITS) mprop.o
+	$(FC) -o $@ $(LDFLAGS) $(MPROP_OBJS) mprop.o $(UNITS)
+fat: $(FAT_OBJS) fat.o $(UNITS)
+	$(FC) -o $@ $(LDFLAGS) $(FAT_OBJS) fat.o $(UNITS)
+dm_creator: $(DM_OBJS) dm_creator.o $(UNITS)
+	$(FC) -o $@ $(LDFLAGS) $(DM_OBJS) dm_creator.o $(NETCDF_LIBS) $(UNITS)
+spin_texture: $(TEXTURE_OBJS) spin_texture.o $(UNITS)
+	$(FC) -o $@ $(LDFLAGS) $(TEXTURE_OBJS) spin_texture.o $(UNITS)
 
 clean:
 	rm -f *.o *.mod mprop dm_creator fat spin_texture
@@ -89,11 +90,10 @@ io.o: m_io.o
 iodm_netcdf.o: alloc.o parallel.o precision.o sys.o
 m_io.o: sys.o
 moreParallelSubs.o: alloc.o m_io.o parallel.o precision.o sys.o
-units.o: precision.o
 dm_creator.o: io_hs.o iodm_netcdf.o main_vars.o subs.o
 fat.o: io_hs.o main_vars.o orbital_set.o read_curves.o
 io_hs.o: main_vars.o precision.o
-main_vars.o: m_getopts.o precision.o subs.o units.o
+main_vars.o: m_getopts.o precision.o subs.o 
 mprop.o: io_hs.o main_vars.o orbital_set.o read_curves.o subs.o
 orbital_set.o: main_vars.o subs.o
 read_curves.o: orbital_set.o precision.o
