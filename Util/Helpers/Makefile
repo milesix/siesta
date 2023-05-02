@@ -31,6 +31,7 @@ FC_SERIAL?=$(FC_DEFAULT)
 FC:=$(FC_SERIAL)         # Make it non-recursive
 
 INCFLAGS+=$(FDF_INCFLAGS)
+INCFLAGS+=$(UNITS_INCFLAGS)
 #
 SYSOBJ=$(SYS).o
 #
@@ -39,16 +40,16 @@ SYSOBJ=$(SYS).o
 SIESTA_OBJS=precision.o parallel.o \
           chemical.o io.o m_io.o alloc.o \
           memory_log.o memory.o periodic_table.o\
-          pxf.o atom_options.o  units.o \
+          pxf.o atom_options.o \
           $(SYSOBJ)
 
 LOCAL_OBJS=get_chem_labels.o handlers.o local_sys.o
 OBJS_GET_CHEM_LABELS=$(SIESTA_OBJS) $(LOCAL_OBJS)
 #
 #
-get_chem_labels: $(OBJS_GET_CHEM_LABELS)
+get_chem_labels: $(OBJS_GET_CHEM_LABELS) $(UNITS)
 	$(FC) -o get_chem_labels \
-	       $(LDFLAGS) $(OBJS_GET_CHEM_LABELS) $(FDF_LIBS) $(LIBS)
+	       $(LDFLAGS) $(OBJS_GET_CHEM_LABELS) $(UNITS) $(FDF_LIBS) $(LIBS)
 #
 clean:
 	@echo "==> Cleaning object, library, and executable files"
@@ -75,5 +76,5 @@ io.o: m_io.o
 m_io.o: local_sys.o
 memory.o: memory_log.o
 memory_log.o: m_io.o parallel.o precision.o
-get_chem_labels.o: chemical.o units.o
+get_chem_labels.o: chemical.o
 sys.o: local_sys.o

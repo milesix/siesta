@@ -14,7 +14,7 @@
 TOPDIR=.
 MAIN_OBJDIR=.
 
-VPATH=$(TOPDIR)/Util/Optical
+VPATH=$(TOPDIR)/Util/Optical:$(TOPDIR)/Src
 
 PROGS= optical_input optical
 default: $(PROGS)
@@ -24,11 +24,10 @@ include $(MAIN_OBJDIR)/check_for_build_mk.mk
 
 FC:=$(FC_SERIAL)         # Make it non-recursive
 
-optical_input.o: units.o
-units.o: precision.o
+INCFLAGS=$(UNITS_INCFLAGS)
 
-optical_input: optical_input.o precision.o units.o
-	$(FC) $(LDFLAGS) -o $@ $<
+optical_input: optical_input.o precision.o $(UNITS)
+	$(FC) $(LDFLAGS) -o $@ $< $(UNITS)
 
 optical: optical_cond.o
 	$(FC) $(LDFLAGS) -o $@ $<

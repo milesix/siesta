@@ -40,6 +40,8 @@ ifeq ($(WITH_NETCDF),1)
  PROGS+=  wfsnc2wfsx
 endif
 default: $(PROGS)
+
+INCFLAGS += $(UNITS_INCFLAGS)
 #
 # This is needed on some systems to avoid loading the parallel libraries, which
 # sometimes force running on queuing systems
@@ -58,9 +60,9 @@ wfs2wfsx: wfs2wfsx.o
 wfsx2wfs: wfsx2wfs.o
 	$(FC) $(LDFLAGS) -o $@ $<  
 
-wfsnc2wfsx.o: precision.o units.o
-wfsnc2wfsx: wfsnc2wfsx.o precision.o units.o
-	$(FC) $(LDFLAGS) -o $@ $< $(NETCDF_LIBS)
+wfsnc2wfsx.o: precision.o 
+wfsnc2wfsx: wfsnc2wfsx.o precision.o $(UNITS)
+	$(FC) $(LDFLAGS) -o $@ $< $(NETCDF_LIBS) $(UNITS)
 
 clean: 
 	rm -f *.o  *.*d $(PROGS)
