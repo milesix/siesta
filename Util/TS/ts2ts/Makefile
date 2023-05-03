@@ -37,6 +37,7 @@ FC_SERIAL?=$(FC_DEFAULT)
 FC:=$(FC_SERIAL)         # Make it non-recursive
 
 INCFLAGS:=$(NETCDF_INCFLAGS) $(FDF_INCFLAGS) $(INCFLAGS)
+INCFLAGS += $(UNITS_INCFLAGS)
 
 # Uncomment the following line for debugging support
 #FFLAGS=$(FFLAGS_DEBUG)
@@ -45,15 +46,15 @@ SYSOBJ=$(SYS).o
 
 # Note that machine-specific files are now in top Src directory.
 DEP_OBJS = precision.o parallel.o \
-          alloc.o m_io.o pxf.o units.o sys.o $(SYSOBJ)
+          alloc.o m_io.o pxf.o sys.o $(SYSOBJ)
 
 LOCAL_OBJS += ts2ts.o handlers.o
 
 OBJS = $(DEP_OBJS) $(LOCAL_OBJS)
 
-$(EXE): $(OBJS)
+$(EXE): $(OBJS) $(UNITS)
 	$(FC) -o $(EXE) \
-	       $(LDFLAGS) $(OBJS) $(FDF_LIBS)
+	       $(LDFLAGS) $(OBJS) $(UNITS) $(FDF_LIBS)
 
 clean:
 	@echo "==> Cleaning object, library, and executable files"
@@ -74,5 +75,4 @@ dep:
 
 # DO NOT DELETE THIS LINE - used by make depend
 m_io.o: sys.o
-units.o: precision.o
-ts2ts.o: precision.o units.o
+ts2ts.o: precision.o

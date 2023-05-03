@@ -40,6 +40,7 @@ FPPFLAGS += $(DEFS_PREFIX)-UMPI
 #FPPFLAGS += $(DEFS_PREFIX)-UNCDF_PARALLEL
 
 INCFLAGS:=$(NETCDF_INCFLAGS) $(INCFLAGS)
+INCFLAGS += $(UNITS_INCFLAGS)
 
 # Uncomment the following line for debugging support
 #FFLAGS=$(FFLAGS_DEBUG)
@@ -48,7 +49,7 @@ SYSOBJ=$(SYS).o
 
 # systematic siesta files
 DEP_OBJS = precision.o parallel.o \
-        alloc.o pxf.o units.o  \
+        alloc.o pxf.o  \
 	memory_log.o m_io.o io.o \
 	m_sparse.o intrinsic_missing.o geom_helper.o reclat.o \
 	io_sparse.o ncdf_io.o m_ts_io.o sys.o
@@ -83,9 +84,9 @@ COMP_LIBS := $(filter-out libsiestaBLAS.a,$(COMP_LIBS))
 INCFLAGS += $(FDICT_INCFLAGS) $(NCDF_INCFLAGS)
 #######################
 #
-$(EXE): $(COMP_LIBS) $(TSHS_COMP_LIBS) $(OBJS) 
+$(EXE): $(COMP_LIBS) $(TSHS_COMP_LIBS) $(UNITS) $(OBJS) 
 	$(FC) $(FFLAGS) $(LDFLAGS) -o $(EXE) \
-		$(OBJS) $(COMP_LIBS) $(TSHS_COMP_LIBS) $(LIBS) 
+		$(OBJS) $(COMP_LIBS) $(TSHS_COMP_LIBS) $(UNITS) $(LIBS) 
 
 clean:
 	@echo "==> Cleaning object, library, and executable files"
@@ -132,10 +133,9 @@ m_ts_io.o: m_sparse.o memory_log.o ncdf_io.o parallel.o precision.o sys.o
 memory_log.o: m_io.o parallel.o precision.o
 ncdf_io.o: class_OrbitalDistribution.o class_SpData1D.o class_SpData2D.o
 ncdf_io.o: class_Sparsity.o io_sparse.o parallel.o precision.o
-units.o: precision.o
 tshs2tshs.o: class_OrbitalDistribution.o class_SpData1D.o class_SpData2D.o
 tshs2tshs.o: class_Sparsity.o geom_helper.o m_sparse.o m_ts_io.o parallel.o
-tshs2tshs.o: precision.o units.o
+tshs2tshs.o: precision.o
 class_ddata1d.o: class_Data1D.o
 class_ddata2d.o: class_Data2D.o
 class_dspdata1d.o: class_SpData1D.o

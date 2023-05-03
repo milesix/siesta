@@ -90,45 +90,39 @@ INCFLAGS+=$(NETCDF_INCFLAGS) \
           $(PSML_INCFLAGS) $(FDF_INCFLAGS) 
 
 INCFLAGS+= $(FFTW_INCFLAGS) 
+INCFLAGS+= $(UNITS_INCFLAGS) 
 #
 
-LOCAL_OBJS = fftw3_mymod.o extrapolate.o \
-        mainstm.o neighb.o ranger.o \
-        readstm.o redata.o  reinitstm.o stm.o sts.o \
-	vacpot.o handlers.o local_sys.o
+LOCAL_SRCS=  local_sys.f  fftw3_mymod.f90  extrapolate.f  sts.f  mainstm.F \
+  neighb.f  ranger.f  readstm.f  redata.f  reinitstm.f  stm.f  vacpot.f  handlers.f
 
-SIESTA_OBJS= bessph.o chkdim.o dismin.o dot.o io.o iodm.o memory.o \
-             pxf.o radfft.o volcel.o
+SIESTA_SRCS=   precision.F  bessph.f  chkdim.f  dismin.f  dot.f \
+  m_io.f  io.f  alloc.F90  files.f  parallel.F  printmatrix.F \
+  schecomm.F  class_Geometry.F90  class_Data2D.F90 \
+  class_OrbitalDistribution.F90  class_Sparsity.F90  class_SpData2D.F90 \
+  class_Pair_Geometry_SpData2D.F90  class_Fstack_Pair_Geometry_SpData2D.F90 \
+  class_Data1D.F90  class_SpData1D.F90  sparse_matrices.F90 \
+  domain_decom.F  spatial.F  parallelsubs.F  iodm.F  memory_log.F90 \
+  memory.F  pxf.F90  m_fft_gpfa.F  radfft.f  volcel.f  listsc.f \
+  atmparams.f  atom_options.F90  interpolation.f90  xml.f  radial.f \
+  atm_types.f  spher_harm.f  atmfuncs.f  basis_types.f  chemical.f \
+  basis_io.F  qsort.F  mmio.F  pspltm1.F  m_uuid.f90  object_debug.F90 \
+  class_Pair_Data1D.F90  class_Fstack_Pair_Data1D.F90
 
-SIESTA_OBJS +=precision.o parallel.o m_io.o alloc.o listsc.o  \
-         atmparams.o atom_options.o atmfuncs.o atm_types.o \
-         radial.o spher_harm.o basis_io.o basis_types.o \
-         domain_decom.o schecomm.o printmatrix.o qsort.o mmio.o pspltm1.o \
-         sparse_matrices.o interpolation.o m_fft_gpfa.o \
-         files.o   chemical.o xml.o \
-         parallelsubs.o spatial.o memory_log.o m_gridfunc.o units.o
+GRID_SRCS= m_gridfunc.F90
 
-# Additional class objects
-# These are just needed because sparse_matrices has "delete" operations for
-# some pieces of data. (And sparse_matrices is needed because of the index arrays)
-SIESTA_OBJS += m_uuid.o object_debug.o class_Sparsity.o \
-	class_OrbitalDistribution.o \
-	class_Data1D.o class_Data2D.o \
-	class_SpData1D.o class_SpData2D.o \
-        class_Geometry.o \
-	class_Pair_Data1D.o \
-	class_Fstack_Pair_Data1D.o \
-	class_Pair_Geometry_SpData2D.o \
-	class_Fstack_Pair_Geometry_SpData2D.o
+LOCAL_OBJS = $(call change_extensions, $(LOCAL_SRCS))
+SIESTA_OBJS = $(call change_extensions, $(SIESTA_SRCS))
+GRID_OBJS = $(call change_extensions, $(GRID_SRCS))
 
-ALL_OBJS_STM= $(SIESTA_OBJS) $(LOCAL_OBJS)
+ALL_OBJS_STM= $(SIESTA_OBJS) $(LOCAL_OBJS) $(GRID_OBJS)
 
 # m_gridfunc is compiled through the Util/Grid VPATH component
 vacpot.o: m_gridfunc.o
 
-stm: $(NCPS) $(ALL_OBJS_STM)
+stm: $(NCPS) $(ALL_OBJS_STM) $(UNITS)
 	$(FC) -o stm \
-	       $(LDFLAGS) $(ALL_OBJS_STM) $(FDF_LIBS) $(NCPS) \
+	       $(LDFLAGS) $(ALL_OBJS_STM) $(UNITS) $(FDF_LIBS) $(NCPS) \
                $(PSML_LIBS) $(XMLF90_LIBS) $(FFTW_LIBS) 
 clean:
 	@echo "==> Cleaning object, library, and executable files"
@@ -140,16 +134,16 @@ install: $(PROGS)
 	cp -p $(PROGS) $(SIESTA_INSTALL_DIRECTORY)/bin
 	cp -p stm $(SIESTA_INSTALL_DIRECTORY)/bin/wfs2ldos
 
-# Dependencies
+
+ABS_TOP_SRCS:= $(addprefix $(TOPDIR)/Src/,$(SIESTA_SRCS))
+ABS_LOCAL_SRCS:= $(addprefix $(TOPDIR)/Util/STM/ol-stm/Src/,$(LOCAL_SRCS))
+ABS_GRID_SRCS:= $(addprefix $(TOPDIR)/Util/Grid/,$(GRID_SRCS))
+
 .PHONY: dep
 dep:
 	@sfmakedepend --depend=obj --modext=o \
-		$(addprefix $(VPATH)/,$(SIESTA_OBJS:.o=.f) $(SIESTA_OBJS:.o=.f90)) \
-		$(addprefix $(VPATH)/,$(SIESTA_OBJS:.o=.F) $(SIESTA_OBJS:.o=.F90)) \
-		$(VPATH)/class*.T90 \
-		$(LOCAL_OBJS:.o=.f90) $(LOCAL_OBJS:.o=.F90) \
-		$(LOCAL_OBJS:.o=.f) $(LOCAL_OBJS:.o=.F) || true
-	@sed -i -e 's/\.T90\.o:/.o:/g' Makefile
+            $(ABS_TOP_SRCS) $(ABS_LOCAL_SRCS) $(ABS_GRID_SRCS) || true
+
 
 # DO NOT DELETE THIS LINE - used by make depend
 atm_types.o: precision.o radial.o
@@ -161,9 +155,6 @@ basis_types.o: alloc.o atmparams.o local_sys.o precision.o
 bessph.o: local_sys.o precision.o
 chemical.o: local_sys.o parallel.o precision.o
 chkdim.o: local_sys.o
-class_Data1D.o: alloc.o
-class_Data2D.o: alloc.o
-class_Data3D.o: alloc.o
 class_Fstack_Pair_Data1D.o: class_Pair_Data1D.o class_Pair_Data1D.o
 class_Fstack_Pair_Geometry_SpData2D.o: class_Pair_Geometry_SpData2D.o
 class_Geometry.o: alloc.o
@@ -171,12 +162,8 @@ class_Pair_Data1D.o: class_Data1D.o class_Data1D.o
 class_Pair_Geometry_SpData2D.o: class_Geometry.o class_SpData2D.o
 class_SpData1D.o: class_Data1D.o class_Data1D.o class_Data1D.o class_Data1D.o
 class_SpData1D.o: class_Data1D.o
-class_SpData1D.o: class_OrbitalDistribution.o class_Sparsity.o
 class_SpData2D.o: class_Data2D.o class_Data2D.o class_Data2D.o
-class_SpData2D.o: class_OrbitalDistribution.o class_Sparsity.o
-class_SpData3D.o: class_OrbitalDistribution.o class_Sparsity.o
 class_Sparsity.o: alloc.o
-class_TriMat.o: alloc.o
 domain_decom.o: alloc.o local_sys.o parallel.o precision.o printmatrix.o
 domain_decom.o: schecomm.o sparse_matrices.o
 io.o: m_io.o
@@ -195,60 +182,7 @@ sparse_matrices.o: class_OrbitalDistribution.o class_SpData1D.o
 sparse_matrices.o: class_SpData2D.o class_SpData2D.o class_Sparsity.o
 sparse_matrices.o: precision.o
 spatial.o: precision.o
-spher_harm.o: alloc.o local_sys.o precision.o units.o
-spinorbit.o: atm_types.o atmfuncs.o atmparams.o basis_types.o m_mpi_utils.o
-spinorbit.o: parallel.o parallelsubs.o precision.o pseudopotential.o
-state_analysis.o: atomlist.o born_charge.o flook_siesta.o m_energies.o
-state_analysis.o: m_fixed.o m_forces.o m_ntm.o m_spin.o m_stress.o
-state_analysis.o: m_ts_global_vars.o m_wallclock.o parallel.o
-state_analysis.o: remove_intramol_pressure.o siesta_cml.o siesta_geom.o
-state_analysis.o: siesta_options.o sparse_matrices.o units.o write_subs.o
-state_analysis.o: zmatrix.o
-state_init.o: alloc.o atomlist.o class_Data2D.o
-state_init.o: class_Fstack_Pair_Geometry_SpData2D.o
-state_init.o: class_Pair_Geometry_SpData2D.o class_SpData1D.o class_SpData2D.o
-state_init.o: class_SpData2D.o class_Sparsity.o create_Sparsity_SC.o
-state_init.o: domain_decom.o files.o hsparse.o iodm_netcdf.o iodmhs_netcdf.o
-state_init.o: iotdxv.o ioxv.o kpoint_scf.o kpoint_t.o ldau_specs.o local_sys.o
-state_init.o: m_chess.o m_energies.o m_eo.o m_handle_sparse.o m_mixing.o
-state_init.o: m_mixing_scf.o m_mpi_utils.o m_ncdf_siesta.o m_new_dm.o m_os.o
-state_init.o: m_pivot_methods.o m_rmaxh.o m_sparse.o m_sparsity_handling.o
-state_init.o: m_spin.o m_steps.o m_supercell.o m_test_io.o m_ts_electype.o
-state_init.o: m_ts_global_vars.o m_ts_io.o m_ts_options.o m_ts_sparse.o
-state_init.o: m_ts_tri_init.o normalize_dm.o overlap.o overlap_gradient.o
-state_init.o: parallel.o proximity_check.o restructSpData2D.o siesta_cml.o
-state_init.o: siesta_dicts.o siesta_geom.o siesta_options.o sparse_matrices.o
-state_init.o: ts_dq.o ts_kpoint_scf.o units.o write_subs.o zmatrix.o
-struct_init.o: alloc.o atmfuncs.o atomlist.o files.o iotdxv.o ioxv.o
-struct_init.o: m_exp_coord.o m_iostruct.o m_mpi_utils.o m_steps.o parallel.o
-struct_init.o: periodic_table.o siesta_cml.o siesta_geom.o siesta_master.o
-struct_init.o: siesta_options.o units.o zmatrix.o
-sys.o: parallel.o siesta_cml.o
-timer.o: extrae_eventllist.o extrae_module.o local_sys.o m_timer.o parallel.o
-timer.o: timer_tree.o
-timer_tree.o: m_walltime.o
-transition_rate.o: alloc.o fermid.o local_sys.o parallel.o parallelsubs.o
-transition_rate.o: precision.o
-ts_charge.o: class_OrbitalDistribution.o class_Sparsity.o geom_helper.o
-ts_charge.o: m_ts_electype.o m_ts_method.o parallel.o precision.o
-ts_dq.o: alloc.o class_OrbitalDistribution.o class_Sparsity.o geom_helper.o
-ts_dq.o: m_interpolate.o m_ts_cctype.o m_ts_chem_pot.o m_ts_contour_eq.o
-ts_dq.o: m_ts_electype.o m_ts_method.o parallel.o precision.o sorting.o
-ts_dq.o: ts_charge.o units.o
-ts_energies.o: class_OrbitalDistribution.o class_SpData1D.o class_SpData2D.o
-ts_energies.o: class_Sparsity.o geom_helper.o m_energies.o m_spin.o
-ts_energies.o: m_ts_electype.o m_ts_method.o m_ts_options.o parallel.o
-ts_energies.o: precision.o sparse_matrices.o
-ts_init.o: kpoint_scf.o m_fixed.o m_os.o m_ts_cctype.o m_ts_electrode.o
-ts_init.o: m_ts_electype.o m_ts_gf.o m_ts_global_vars.o m_ts_method.o
-ts_init.o: m_ts_options.o parallel.o siesta_options.o ts_kpoint_scf.o
-ts_kpoint_scf.o: kpoint_scf.o kpoint_t.o m_spin.o m_ts_global_vars.o
-ts_kpoint_scf.o: m_ts_tdir.o parallel.o precision.o siesta_options.o
-ts_show_regions.o: m_region.o m_ts_electype.o m_ts_method.o parallel.o
-ts_show_regions.o: precision.o units.o
-typecell.o: precision.o
-uncell.o: precision.o
-units.o: precision.o
+spher_harm.o: alloc.o local_sys.o precision.o
 xml.o: precision.o
 extrapolate.o: fftw3_mymod.o precision.o
 handlers.o: memory_log.o
@@ -256,7 +190,7 @@ mainstm.o: basis_io.o listsc.o precision.o sts.o
 ranger.o: precision.o
 stm.o: atmfuncs.o chemical.o precision.o
 sts.o: atmfuncs.o chemical.o precision.o
-vacpot.o: precision.o units.o
+vacpot.o: m_gridfunc.o precision.o
 broadening.o: sts.o
 class_ddata1d.o: class_Data1D.o
 class_ddata2d.o: class_Data2D.o
