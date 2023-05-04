@@ -86,7 +86,7 @@ list(
    ${top}/precision.F   ${top}/pxf.F90  ${top}/radfft.f   ${top}/radial.f   ${top}/reclat.f
    ${top}/read_xc_info.F   ${top}/siesta_geom.F90   ${top}/sorting.f 
    ${top}/sys.F   ${top}/xml.f   ${top}/m_spin.F90  ${top}/posix_calls.f90
-   ${top}/m_vee_integrals.F90 ${top}/version.F90 ${top}/spher_harm.F
+   ${top}/m_vee_integrals.F90 ${top}/version.F90 ${top}/spher_harm.f
     
 )
 
