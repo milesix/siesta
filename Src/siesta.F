@@ -19,8 +19,10 @@
       use sys, only: set_die_handler, set_bye_handler
       use sys, only: set_message_handler, set_reset_message_handler
 
+      use alloc_handlers_m, only: alloc_memory_event
+      use alloc, only: set_alloc_event_handler
+
       USE m_steps, only: inicoor, fincoor
-      use alloc
       use siesta_options, only: td_elec_dyn
 
       use parallel, only: SIESTA_worker ! whether part of Siesta's communicator
@@ -62,6 +64,7 @@
       call set_bye_handler(bye)
       call set_message_handler(message)
       call set_reset_message_handler(reset_messages_file)
+      call set_alloc_event_handler(alloc_memory_event)
       
       call siesta_init()
 

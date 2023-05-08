@@ -3,8 +3,7 @@ set(libsiesta_sources
   Fstack.T90
   Pair.T90
   alloc.F90
-  alloc_error_report.F
-  alloc_memory_event.F
+  alloc_handlers_m.F90
   amn.F90
   arw.f
   atm_types.f
