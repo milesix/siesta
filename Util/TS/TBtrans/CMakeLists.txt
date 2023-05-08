@@ -2,7 +2,7 @@ set(top_srcdir "${CMAKE_SOURCE_DIR}/Src" )
 
 set(sources
 
- handlers.F
+ local_handlers_m.F90
  m_tbt_contour.F90
  m_tbt_dH.F90
  m_tbt_dSE.F90
@@ -23,6 +23,7 @@ set(sources
  m_tbt_trik.F90
  m_tbtrans.F90
  m_verbosity.f90
+ set_local_handlers.f90
  simple-version.F90
  sorted_search.F90
  tbt_end.F90
@@ -152,7 +153,6 @@ list(
   ${top_srcdir}/runinfo_m.F90
   ${top_srcdir}/siesta_geom.F90
   ${top_srcdir}/sorting.f
-  ${top_srcdir}/sys.F
   ${top_srcdir}/spin_subs.F90
   ${top_srcdir}/timer.F90
   ${top_srcdir}/timer_tree.f90
@@ -201,7 +201,8 @@ TARGET_LINK_LIBRARIES(
   $<$<BOOL:${WITH_MPI}>:mpi_siesta>
   $<$<BOOL:${WITH_NETCDF}>:NetCDF::NetCDF_Fortran>
   $<$<BOOL:${WITH_NCDF}>:${PROJECT_NAME}-libncdf>
-  ${PROJECT_NAME}-libfdict     # Even if not using NCDF
+  ${PROJECT_NAME}-libfdict    
+  ${PROJECT_NAME}-libsys
   $<$<BOOL:${WITH_ELPA}>:Elpa::elpa>     # ????
   $<$<BOOL:${WITH_MPI}>:Scalapack::Scalapack>
   LAPACK::LAPACK

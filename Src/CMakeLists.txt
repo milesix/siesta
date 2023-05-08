@@ -450,6 +450,7 @@ set(libsiesta_sources
   savepsi.F
   scfconvergence_test.F
   schecomm.F
+  set_handlers.f90
   setatomnodes.F
   setspatial.f
   setup_H0.F

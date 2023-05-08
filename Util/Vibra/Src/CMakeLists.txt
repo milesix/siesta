@@ -13,10 +13,15 @@ add_library(vibra_top_objs OBJECT
    ${top_src_dir}/io.f
    ${top_src_dir}/m_io.f
    ${top_src_dir}/precision.F
-   ${top_src_dir}/pxf.F90
    ${top_src_dir}/reclat.f
    ${top_src_dir}/units.f90
 )
+
+target_link_libraries(
+    vibra_top_objs
+    PRIVATE
+    ${PROJECT_NAME}-libsys
+    )
 
 add_executable(
     fcbuild

@@ -11,9 +11,7 @@ add_library(coop_common_objs OBJECT
 
         ${top_srcdir}/alloc.F90
         ${top_srcdir}/parallel.F
-        ${top_srcdir}/sys.F
         ${top_srcdir}/m_io.f
-        ${top_srcdir}/pxf.F90
         ${top_srcdir}/moreParallelSubs.F90
         ${top_srcdir}/m_getopts.f90
         ${top_srcdir}/precision.F
@@ -24,8 +22,14 @@ add_library(coop_common_objs OBJECT
         io_hs.f90
         orbital_set.f90
         read_curves.f90
-        handlers.f
+	local_timer.f90
 )
+
+target_link_libraries(
+   coop_common_objs
+   PRIVATE
+   ${PROJECT_NAME}-libsys
+   )
 
 set(sources_fat
         fat.f90
@@ -48,6 +52,7 @@ add_executable(
 )
 target_link_libraries(fat
    coop_common_objs
+   ${PROJECT_NAME}-libsys
    )
    
 add_executable(
@@ -55,7 +60,9 @@ add_executable(
    ${sources_mprop}
 )
 target_link_libraries(mprop
+   PRIVATE
    coop_common_objs
+   ${PROJECT_NAME}-libsys
    )
 
 add_executable(
@@ -63,7 +70,9 @@ add_executable(
    ${sources_spin_texture}
 )
 target_link_libraries(spin_texture
+   PRIVATE
    coop_common_objs
+   ${PROJECT_NAME}-libsys
    )
 
 add_executable(
@@ -72,6 +81,7 @@ add_executable(
 )
 target_link_libraries(dm_creator
    PRIVATE
+   ${PROJECT_NAME}-libsys
    coop_common_objs
    )
 

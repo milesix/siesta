@@ -27,6 +27,8 @@ program tbtrans
 
   implicit none
 
+  call set_local_handlers()
+  
   ! Initialize everything.
   call tbt_init()
 

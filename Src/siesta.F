@@ -15,13 +15,6 @@
       use m_siesta_tddft
       use m_ts_global_vars, only: onlyS
       
-      use handlers_m, only: die, bye, message, reset_messages_file
-      use sys, only: set_die_handler, set_bye_handler
-      use sys, only: set_message_handler, set_reset_message_handler
-
-      use alloc_handlers_m, only: alloc_memory_event
-      use alloc, only: set_alloc_event_handler
-
       USE m_steps, only: inicoor, fincoor
       use siesta_options, only: td_elec_dyn
 
@@ -38,6 +31,7 @@
 
       implicit none
 
+      external :: set_handlers
       
       integer :: istep
       logical :: relaxd
@@ -60,11 +54,7 @@
 !----------------------------------------------------------------- BEGIN
 !      if (ionode) call memory_snapshot("at start of program")
 
-      call set_die_handler(die)
-      call set_bye_handler(bye)
-      call set_message_handler(message)
-      call set_reset_message_handler(reset_messages_file)
-      call set_alloc_event_handler(alloc_memory_event)
+      call set_handlers()
       
       call siesta_init()
 

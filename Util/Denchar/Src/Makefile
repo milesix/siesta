@@ -44,6 +44,7 @@ FC := $(FC_SERIAL)         # Make it non-recursive
 #
 
 INCFLAGS:=$(NCPS_INCFLAGS) $(FDF_INCFLAGS) $(PSML_INCFLAGS) $(INCFLAGS)
+INCFLAGS+=$(LIBSYS_INCFLAGS) 
 
 DENCHAR_UNDEF  = $(DEFS_PREFIX)-UMPI
 DENCHAR_UNDEF += $(DEFS_PREFIX)-UCDF
@@ -84,16 +85,16 @@ SIESTA_OBJS += m_uuid.o object_debug.o class_Sparsity.o \
 	class_Fstack_Pair_Geometry_SpData2D.o
 
 LOCAL_OBJS= atompla.o colinear.o denchar.o length.o \
-            local_die.o local_reinit.o local_sys.o matvect.o neighb.o \
+            local_reinit.o matvect.o neighb.o \
             planed.o ranger.o readpla.o \
             redata_denchar.o rhoofr.o \
 	    timer_local.o wavofr.o wrout.o alloc_handlers.o
 
 ALL_OBJS_DENCHAR= $(SIESTA_OBJS) $(LOCAL_OBJS)
 
-denchar: $(NCPS) $(ALL_OBJS_DENCHAR)
+denchar: $(NCPS) $(LIBSYS) $(ALL_OBJS_DENCHAR)
 	$(FC) -o denchar \
-	       $(LDFLAGS) $(ALL_OBJS_DENCHAR) $(FDF_LIBS) $(NCPS) $(PSML_LIBS) \
+	       $(LDFLAGS) $(ALL_OBJS_DENCHAR) $(FDF_LIBS) $(NCPS) $(LIBSYS) $(PSML_LIBS) \
                $(XMLF90_LIBS) $(METIS_LIB)
 
 clean:
