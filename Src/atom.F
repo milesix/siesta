@@ -1067,7 +1067,7 @@ c       endif
         if (rmax.gt.rint) then 
           write(6,*) 'POLARIZATION: Rc for the polarization orbitals'
           write(6,*) 'must be smaller than ',rint,' Bohr'
-          call die()
+          call die("stopping program")
         endif
 
         do ir = nrc+1,nrval 
@@ -1303,7 +1303,7 @@ C Under certain circunstances the algorithm is not going to work
           write(6,'(/,A,/,A)')
      .    'parabola: The program failed in finding a SPLIT orbital ',
      .    'parabola: with the desired splitnorm'
-          call die()
+          call die("stopping program")
         endif
 
         valmin=(splnorm-rnrmin)**2
@@ -2138,7 +2138,7 @@ C
           write(6,"(2a,i4)") 
      .      'new_specie: ERROR: Parameter lmaxd must be increased ',
      .      'to at least ', lmax 
-          call die()
+          call die("stopping program")
         endif                
 
         nzetamax=0
@@ -2155,14 +2155,14 @@ C
           write(6,"(2a,i4)")
      .      'new_specie: ERROR: Parameter nsmx must be increased ',
      .      'to at least ', nsm_max-1
-          call die
+          call die("stopping program")
         endif
 
         if (nzetamax.gt.nzetmx) then 
           write(6,"(2a,i4)") 
      .      'new_specie: ERROR: Parameter nzetmx must be increased ',
      .      'to at least ', nzetamax
-          call die
+          call die("stopping program")
         endif                
 !
         nkblmx= maxval(nkbl(0:lmxkb))
@@ -2171,7 +2171,7 @@ C
           write(6,"(2a,i4)")
      .      'new_specie: ERROR: Parameter nkbmx must be increased ',
      .      'to at least ', nkblmx
-          call die
+          call die("stopping program")
         endif
 
 
@@ -2289,7 +2289,7 @@ C
         if (nrval.gt.nrmax) then
           write(6,'(a,i4)')
      .     'read_vps: ERROR: Nrmax must be increased to at least',nrval
-          call die
+          call die("stopping program")
         endif
 
 !=======
@@ -2314,7 +2314,7 @@ C
      .        'read_vps: Pseudo-core for hartree and xc-correction'
             write(6,'(a)') 'Siesta cannot use this pseudopotential'
             write(6,'(a)') 'Use option pe instead of ph in ATOM program'
-            call die()
+            call die("stopping program")
           elseif(nicore.eq.'fcec') then
             write(6,'(a)') 'read_vps: Full-core for xc-correction'
           elseif(nicore.eq.'fche') then
@@ -2322,7 +2322,7 @@ C
      .        'read_vps: Full-core for hartree and xc-correction'
             write(6,'(a)') 'Siesta cannot use this pseudopotential'
             write(6,'(a)') 'Use option pe instead of ph in ATOM program'
-            call die()
+            call die("stopping program")
           endif
 
         endif
@@ -3420,7 +3420,7 @@ C
      .       ' not bound in the atom'
                   write(6,'(a)')
      .     'FILTERET: ERROR a cut off radius must be explicitly given' 
-                  call die
+                  call die("stopping program")
                 endif 
                 if (abs(eshift).gt.1.0d-5) then
                   el = eigen(l) + eshift
@@ -3909,7 +3909,7 @@ C
      .       ' not bound in the atom'
                       write(6,'(A)')
      .       'SPLIT: ERROR a cut off radius must be explicitly given' 
-                      call die()
+                      call die("stopping program")
                    else
                       ! Use this rc
                       rco(1,l,nsm) = user_set_rc
@@ -4060,7 +4060,7 @@ C
                         write(6,'(/,A,I2,A,I2,A,I2)')
      .            'SPLIT: WARNING: Split-orbital with zeta=',izeta,
      .            ' and zeta=',i,' are identical for l=',l
-                        call die()
+                        call die("stopping program")
                       endif
                     enddo
 
@@ -4500,7 +4500,7 @@ C
      .       ' not bound in the atom'
                   write(6,'(A)')
      .       'NODES: ERROR a cut off radius must be explicitly given' 
-                  call die
+                  call die("stopping program")
                 endif 
  
                 if (abs(eshift).gt.1.0d-5) then
@@ -4747,7 +4747,7 @@ C
      .       ' not bound in the atom'
                   write(6,'(A)')
      .       'NONODES: ERROR a cut off radius must be explicitly given'
-                  call die
+                  call die("stopping program")
                 endif 
  
                 if (abs(eshift).gt.1.0d-5) then
@@ -4779,7 +4779,7 @@ C If the compression factor is negative or zero the orbitals are untouched
      .  'NONODES: WARNING: PAO base function with zeta=',izeta,
      .  ' and zeta=',i,' are identical for ',cnfigtb(l,nsm,is),
      .       sym(l),' state'
-                    call die
+                    call die("stopping program")
                   endif
                 enddo
 
@@ -5100,7 +5100,7 @@ C
      .       ' not bound in the atom'
                   write(6,'(A)')
      .  'SPLITGAUSS: ERROR a cut off radius must be explicitly given' 
-                  call die
+                  call die("stopping program")
                 endif 
  
                 if (abs(eshift).gt.1.0d-5) then
@@ -5135,7 +5135,7 @@ C
      .'SPLITGAUSS: ERROR: with SPLITGAUSS option the compression ',
      .'SPLITGAUSS: ERROR: factors for all the augmentation functions',
      .   ' must be explicitly specified' 
-                    call die
+                    call die("stopping program")
                   endif
                   gexp=abs(lambda(izeta,l,nsm))
                   gexp=1.0d0/(gexp**2)
@@ -7057,7 +7057,7 @@ C
      .     'Bessel: ERROR Cut-off radius must be explicitly specified'
                 write(6,'(a)')
      .     'Bessel: ERROR using Z=-100 (Floating Bessel functions)'
-                call die
+                call die("stopping program")
               endif
 C
               if (abs(lambda(izeta,l,nsm)).lt.1.0d-3) 
@@ -7158,7 +7158,7 @@ C Written by D. Sanchez-Portal, Aug. 1998.
      .      'NODES','SPLIT','USER','SPLITGAUSS',
      .      'NONODES','FILTERET'
 
-          call die
+          call die("stopping program")
 
         endif
 
@@ -7474,7 +7474,7 @@ c    .              ,'        # scaleFactor(izeta=1,Nzeta)'
      $         "Split-norm parameter is too small, "
      $         // "(degenerate 2nd zeta): ",
      $          spln
-          call die()
+          call die("stopping program")
        endif
        if (nsp <= 2) then
           call die("Cannot find split_valence match point")

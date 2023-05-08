@@ -32,7 +32,6 @@ set(libsiesta_sources
   broadcast_projections.F
   broyden_optim.F
   bsc_cellxc.F
-  bye.F
   byte_count.F90
   cart2frac.f
   cell_broyden_optim.F
@@ -118,7 +117,6 @@ set(libsiesta_sources
   diagon.F
   diagonalizeHk.F90
   diagpol.f
-  die.F
   digcel.f
   dipole.F90
   dismin.f
@@ -483,7 +481,6 @@ set(libsiesta_sources
   state_analysis.F
   state_init.F
   struct_init.F
-  sys.F
   timer.F90
   timer_tree.f90
   timestamp.f90
@@ -574,6 +571,7 @@ target_link_libraries(
    $<$<BOOL:${WITH_ELPA}>:Elpa::elpa>
   "$<$<BOOL:${WITH_MPI}>:Scalapack::Scalapack>"
   "$<$<BOOL:${WITH_DFTD3}>:s-dftd3::s-dftd3>"
+  ${PROJECT_NAME}-libsys
   LAPACK::LAPACK
 )
 

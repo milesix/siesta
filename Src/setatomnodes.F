@@ -588,7 +588,7 @@ C The lok[xyz] variable below are only necessary when using buffers.
               write(6,*) "Try specifying a number of nodes that is ",
      .                   "an exact factor of the number of cells:"
      .                   ,product(nspcell)
-              call die()
+              call die("stopping program")
            endif
         endif
         call de_alloc( ncellpernodelist, 'ncellpernodelist',

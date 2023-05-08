@@ -122,7 +122,7 @@ contains
       if (Node == 0) then
         write(6,*) "Nominal npt: ", nmesh, " /= assigned npt:", ntot
       end if
-      call die()
+      call die("stopping program")
     end if
 
   end subroutine cdf_init_mesh

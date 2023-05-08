@@ -214,6 +214,7 @@ if( WITH_MPI )
   add_library(Siesta::MPI ALIAS mpi_siesta)
 endif()
 
+add_subdirectory("Src/libsys")
 add_subdirectory("Src/easy-fdict")
 add_subdirectory("Src/ncps/src/libxc-compat")
 add_subdirectory("Src/ncps/src")
