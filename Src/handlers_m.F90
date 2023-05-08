@@ -6,6 +6,15 @@
 ! See Docs/Contributors.txt for a list of contributors.
 ! ---
 !--------------------------------------------------
+module handlers_m
+
+  public :: die
+  public :: bye
+  public :: message
+  public :: reset_messages_file
+
+CONTAINS
+  
 ! Stand-alone 'die' routine for use by libraries and
 ! low-level modules.
 !
@@ -65,8 +74,8 @@
 !!                                       endif
       if (Node .eq. 0) then
          call io_assign( lun )
-         open(lun,file="MESSAGES",status="unknown",
-     $        position="append",action="write")
+         open(lun,file="MESSAGES",status="unknown",  &
+             position="append",action="write")
          write(lun,"(a)") 'FATAL: ' // trim(str)
          call io_close(lun)
          call pxfflush(6)
@@ -100,8 +109,8 @@
          write(6,'(a)') trim(str)
          write(0,'(a)') trim(str)
          call io_assign(lun)
-         open(lun,file="MESSAGES",status="unknown",
-     $        position="append",action="write")
+         open(lun,file="MESSAGES",status="unknown",   &
+              position="append",action="write")
          write(lun,"(a)") trim(level) // ": " // trim(str)
          call io_close(lun)
          call pxfflush(6)
@@ -119,9 +128,48 @@
       if (Node .eq. 0) then
          call io_assign(lun)
          ! Open with 'replace' to clear content
-         open(lun,file="MESSAGES",status="replace",
-     $        position="rewind",action="write")
+         open(lun,file="MESSAGES",status="replace",  &
+              position="rewind",action="write")
          call io_close(lun)
       endif
       end subroutine reset_messages_file
       
+!---------------------------------------------------------
+      subroutine bye(str)
+
+      use siesta_cml
+#ifdef MPI
+      use mpi_siesta
+#endif
+
+      character(len=*), intent(in)  :: str
+
+      integer  :: Node
+      external :: pxfflush
+#ifdef MPI
+      integer rc, MPIerror
+#endif
+
+#ifdef MPI
+      call MPI_Comm_Rank(MPI_Comm_World,Node,MPIerror)
+#else
+      Node = 0
+#endif
+
+      if (Node.eq.0) then
+         write(6,'(a)') trim(str)
+         write(6,'(a)') 'Requested End of Run. Bye!!'
+         call pxfflush(6)
+         If (cml_p) Then
+            Call cmlFinishFile(mainXML)
+         Endif                  !cml_p
+      endif
+
+#ifdef MPI
+      call MPI_Finalize(rc)
+#endif
+      stop
+      
+    end subroutine bye
+    
+    end module handlers_m

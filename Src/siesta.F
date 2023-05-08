@@ -14,7 +14,10 @@
       use m_siesta_forces
       use m_siesta_tddft
       use m_ts_global_vars, only: onlyS
-      use sys, only: bye
+      
+      use handlers_m, only: die, bye, message, reset_messages_file
+      use sys, only: set_die_handler, set_bye_handler
+      use sys, only: set_message_handler, set_reset_message_handler
 
       USE m_steps, only: inicoor, fincoor
       use alloc
@@ -33,6 +36,7 @@
 
       implicit none
 
+      
       integer :: istep
       logical :: relaxd
 
@@ -54,6 +58,11 @@
 !----------------------------------------------------------------- BEGIN
 !      if (ionode) call memory_snapshot("at start of program")
 
+      call set_die_handler(die)
+      call set_bye_handler(bye)
+      call set_message_handler(message)
+      call set_reset_message_handler(reset_messages_file)
+      
       call siesta_init()
 
 #ifdef TRACING_SOLVEONLY

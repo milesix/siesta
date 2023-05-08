@@ -158,6 +158,7 @@ set(libsiesta_sources
   grimme_dispersion_m.F90
   grdsam.F
   hamann.f90
+  handlers_m.F90
   hsparse.F
   idiag.f
   init_output.f90
