@@ -23,6 +23,15 @@ CONTAINS
     use alloc_handlers_m, only: alloc_memory_event
     use alloc, only: set_alloc_event_handler
 
+    ! libgridxc handlers
+    use gridxc, only: gridxc_set_timer_start_handler
+    use gridxc, only: gridxc_set_timer_stop_handler
+    use gridxc, only: gridxc_set_error_handler
+    use gridxc, only: gridxc_set_alloc_event_handler
+
+    ! psml handlers
+    use m_psml, only: ps_set_error_handler
+    
     call set_die_handler(die)
     call set_bye_handler(bye)
     call set_message_handler(message)
@@ -32,6 +41,13 @@ CONTAINS
 #ifdef MPI
     call set_mpi_timer_handler(timer_mpi)
 #endif
+
+    call gridxc_set_error_handler(die)
+    call gridxc_set_alloc_event_handler(alloc_memory_event)
+    call gridxc_set_timer_start_handler(gridxc_timer_start)
+    call gridxc_set_timer_stop_handler(gridxc_timer_stop)
+
+    call ps_set_error_handler(die)
   
 end subroutine siesta_set_handlers
 
@@ -47,15 +63,6 @@ end subroutine siesta_set_handlers
 !   - The use of a Siesta-specific 'mpi_siesta' module.
 !   - The need to have the pxf functionality.
 !   - The use of 'unit 6' as output.
-!
-! Routines using this functionality should include
-! the following
-!
-!     interface
-!      subroutine die(str)
-!      character(len=*), intent(in)  :: str
-!      end subroutine die
-!     end interface
 !
 !------------------------------------------------------
 
@@ -204,5 +211,16 @@ end subroutine siesta_set_handlers
 #endif
 
   END SUBROUTINE timer_mpi
+
+  !----------
+  subroutine gridxc_timer_start(str)
+    character(len=*), intent(in)  :: str
+    call timer("gridxc@"//trim(str),1)
+  end subroutine gridxc_timer_start
+  !
+  subroutine gridxc_timer_stop(str)
+    character(len=*), intent(in)  :: str
+    call timer("gridxc@"//trim(str),2)
+  end subroutine gridxc_timer_stop
 
   end module siesta_handlers_m

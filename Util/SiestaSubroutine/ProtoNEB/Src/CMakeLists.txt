@@ -7,7 +7,6 @@ if (WITH_MPI)
 #
 add_executable(protoNEB
     protoNEB.F90
-    handlers.f
  
    ${top_srcdir}/reinit_m.F90
    ${top_srcdir}/siesta_cmlsubs.F90

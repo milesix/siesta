@@ -53,7 +53,7 @@ target_include_directories(mpi-siesta-dispatch
 #
 # Phonons: Uses the MPI dispatch
 #
-add_executable(phonons phonons.f90  handlers.f)
+add_executable(phonons phonons.f90)
 target_link_libraries(phonons PRIVATE mpi-siesta-dispatch)
 
 install(
@@ -65,7 +65,6 @@ install(
 
 add_executable(mpi_driver
     simple_mpi_parallel.f90
-    handlers.f
 )
 target_link_libraries(mpi_driver PRIVATE mpi-siesta-dispatch)
 

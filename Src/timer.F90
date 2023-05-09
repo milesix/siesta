@@ -134,13 +134,3 @@ function use_walltime_in_timer()
   logical :: use_walltime_in_timer
   use_walltime_in_timer = use_walltime
 end function use_walltime_in_timer
-
-subroutine gridxc_timer_start(str)
-  character(len=*), intent(in)  :: str
-  call timer("gridxc@"//trim(str),1)
-end subroutine gridxc_timer_start
-!
-subroutine gridxc_timer_stop(str)
-  character(len=*), intent(in)  :: str
-  call timer("gridxc@"//trim(str),2)
-end subroutine gridxc_timer_stop

@@ -224,3 +224,16 @@ CONTAINS
           
 #endif /* ! NO_MPI_INTERFACES */
 END MODULE MPI_SIESTA
+
+!
+! external version
+!
+SUBROUTINE timer_mpi( name, opt )
+  use mpi_siesta, timer_mpi_module => timer_mpi
+  character(len=*), intent(in):: name
+  integer,          intent(in):: opt
+
+  call timer_mpi_module( name, opt )
+
+END SUBROUTINE timer_mpi
+

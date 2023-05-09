@@ -170,7 +170,7 @@ OBJS =  automatic_cell.o atom_options.o \
         bsc_cellxc.o \
 	vacuum_level.o \
 	write_orb_indx.o \
-	handlers_m.o \
+	siesta_handlers_m.o \
         m_pexsi.o m_pexsi_driver.o m_pexsi_dos.o m_pexsi_local_dos.o\
 	m_chess.o \
         m_redist_spmatrix.o \

@@ -5,6 +5,7 @@ set(sources
   array.F90
   hsx_m.f90
   unfold.F90
+  unfold_handlers_m.F90
 )
 
 list(
