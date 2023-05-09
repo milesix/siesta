@@ -6,13 +6,16 @@
 ! See Docs/Contributors.txt for a list of contributors.
 ! ---
 
+! This is a lightweight wrapper layer to offer a set of handlers for termination
+! and messaging (there could be more).
+! The main entries are actually procedure pointers, with defaults appropriate to
+! 'small, serial' clients. Larger programs might use the handler setters to change
+! the functionality. (See examples in siesta_handlers_m.F90 and tbt_handlers_m.F90)
+
       module sys
 !
 !     Termination and messaging routines, MPI aware
-!     This module is being progressively emptied out      
-!     of functionality, relying instead in properly
-!     adapted external functions
-      
+!      
       implicit none
 
       public :: die      ! Prints an error message and terminates the program
@@ -78,7 +81,6 @@
           reset_messages_file => func
         end subroutine set_reset_message_handler
 
-        
 ! auxiliary routine to provide a non-zero exit code
   subroutine exit(code)
     use iso_c_binding, only: C_INT
@@ -106,6 +108,7 @@
     ! stop
     ! In F2018:
     ! error stop 1
+    ! or 'C' abort to get a traceback
   end subroutine simple_die_routine
 ! --------------------------------
   subroutine simple_bye_routine(str)
