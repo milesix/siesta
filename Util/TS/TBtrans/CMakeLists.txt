@@ -2,7 +2,7 @@ set(top_srcdir "${CMAKE_SOURCE_DIR}/Src" )
 
 set(sources
 
- local_handlers_m.F90
+ tbt_handlers_m.F90
  m_tbt_contour.F90
  m_tbt_dH.F90
  m_tbt_dSE.F90
@@ -23,7 +23,6 @@ set(sources
  m_tbt_trik.F90
  m_tbtrans.F90
  m_verbosity.f90
- set_local_handlers.f90
  simple-version.F90
  sorted_search.F90
  tbt_end.F90

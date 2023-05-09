@@ -22,12 +22,13 @@ program tbtrans
 
   use m_tbt_options, only : kT
   use m_tbt_hs, only : TSHS
-
+  use tbt_handlers_m, only: tbt_set_handlers
+  
   use m_tbtrans
 
   implicit none
 
-  call set_local_handlers()
+  call tbt_set_handlers()
   
   ! Initialize everything.
   call tbt_init()

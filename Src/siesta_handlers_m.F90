@@ -6,15 +6,36 @@
 ! See Docs/Contributors.txt for a list of contributors.
 ! ---
 !--------------------------------------------------
-module handlers_m
+module siesta_handlers_m
 
-  public :: die
-  public :: bye
-  public :: message
-  public :: reset_messages_file
-
-CONTAINS
+  public :: siesta_set_handlers
   
+CONTAINS
+
+  subroutine siesta_set_handlers()
+
+#ifdef MPI
+    use mpi_siesta, only: set_mpi_timer_handler
+#endif
+    use sys, only: set_die_handler, set_bye_handler
+    use sys, only: set_message_handler, set_reset_message_handler
+
+    use alloc_handlers_m, only: alloc_memory_event
+    use alloc, only: set_alloc_event_handler
+
+    call set_die_handler(die)
+    call set_bye_handler(bye)
+    call set_message_handler(message)
+    call set_reset_message_handler(reset_messages_file)
+    call set_alloc_event_handler(alloc_memory_event)
+
+#ifdef MPI
+    call set_mpi_timer_handler(timer_mpi)
+#endif
+  
+end subroutine siesta_set_handlers
+
+
 ! Stand-alone 'die' routine for use by libraries and
 ! low-level modules.
 !
@@ -55,7 +76,7 @@ CONTAINS
       integer MPIerror
 #endif
 
-      external :: pxfflush, pxfabort
+      external :: pxfabort
 #ifdef MPI
       call MPI_Comm_Rank(MPI_Comm_World,Node,MPIerror)
 #else
@@ -78,8 +99,8 @@ CONTAINS
              position="append",action="write")
          write(lun,"(a)") 'FATAL: ' // trim(str)
          call io_close(lun)
-         call pxfflush(6)
-         call pxfflush(0)
+         flush(6)
+         flush(0)
          If (cml_p) Then
             Call cmlFinishFile(mainXML)
          Endif                  !cml_p
@@ -113,8 +134,8 @@ CONTAINS
               position="append",action="write")
          write(lun,"(a)") trim(level) // ": " // trim(str)
          call io_close(lun)
-         call pxfflush(6)
-         call pxfflush(0)
+         flush(6)
+         flush(0)
       endif
 
       end subroutine message
@@ -159,7 +180,7 @@ CONTAINS
       if (Node.eq.0) then
          write(6,'(a)') trim(str)
          write(6,'(a)') 'Requested End of Run. Bye!!'
-         call pxfflush(6)
+         flush(6)
          If (cml_p) Then
             Call cmlFinishFile(mainXML)
          Endif                  !cml_p
@@ -171,5 +192,17 @@ CONTAINS
       stop
       
     end subroutine bye
-    
-    end module handlers_m
+
+!------------------------
+  SUBROUTINE timer_mpi( name, opt )
+    character(len=*), intent(in):: name
+    integer,          intent(in):: opt
+
+#ifdef MPI_TIMING
+    external timer
+    call timer( name, opt )
+#endif
+
+  END SUBROUTINE timer_mpi
+
+  end module siesta_handlers_m

@@ -128,19 +128,6 @@ end if
 
 end subroutine timer
 
-subroutine timer_mpi( prog, iOpt )
- use timer_options, only : time_mpi_calls
-
-  implicit none
-  character(len=*),intent(in):: prog   ! Name of program to time
-  integer,         intent(in):: iOpt   ! Action option
-
-  if (time_mpi_calls) then
-     call timer(prog,iOpt)
-  endif
-
-end subroutine timer_mpi
-
 function use_walltime_in_timer()
   use timer_options, only: use_walltime
 

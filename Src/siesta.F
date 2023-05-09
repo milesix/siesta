@@ -17,7 +17,8 @@
       
       USE m_steps, only: inicoor, fincoor
       use siesta_options, only: td_elec_dyn
-
+      use siesta_handlers_m, only: siesta_set_handlers
+      
       use parallel, only: SIESTA_worker ! whether part of Siesta's communicator
       use parallel, only: ionode
 #ifdef MPI      
@@ -31,7 +32,6 @@
 
       implicit none
 
-      external :: set_handlers
       
       integer :: istep
       logical :: relaxd
@@ -54,7 +54,7 @@
 !----------------------------------------------------------------- BEGIN
 !      if (ionode) call memory_snapshot("at start of program")
 
-      call set_handlers()
+      call siesta_set_handlers()
       
       call siesta_init()
 

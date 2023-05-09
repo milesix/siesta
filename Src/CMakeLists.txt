@@ -157,7 +157,6 @@ set(libsiesta_sources
   grimme_dispersion_m.F90
   grdsam.F
   hamann.f90
-  handlers_m.F90
   hsparse.F
   idiag.f
   init_output.f90
@@ -450,7 +449,6 @@ set(libsiesta_sources
   savepsi.F
   scfconvergence_test.F
   schecomm.F
-  set_handlers.f90
   setatomnodes.F
   setspatial.f
   setup_H0.F
@@ -466,6 +464,7 @@ set(libsiesta_sources
   siesta_end.F
   siesta_forces.F90
   siesta_geom.F90
+  siesta_handlers_m.F90
   siesta_init.F
   siesta_master.f90
   siesta_move.F
