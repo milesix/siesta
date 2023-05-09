@@ -85,6 +85,13 @@ install_utils: MODE=install
 install_utils: $(EXTLIBS) $(UTILS)
 
 $(UTILS):
+	@echo "This revision cannot build all the programs in Util"
+	@echo "using the makefile-based build system".
+	@echo "Only TBtrans and Unfold are enabled..."
+	@echo "Use the CMake build system if you want a full installation."
+	@echo
+	@echo "Hit ^C to abort..."
+	@sleep 4
 	$(MAKE) -C $@ $(MODE)
 
 install_siesta: create_install_directory 
