@@ -22,7 +22,11 @@ MAIN_OBJDIR=.
 include $(MAIN_OBJDIR)/arch.make
 include $(MAIN_OBJDIR)/check_for_build_mk.mk
 
-UTILS = Util/Denchar/Src \
+UTILS = Util/Unfolding/Src \
+        Util/TS/TBtrans
+
+# These pending...
+UTILS_FULL = Util/Denchar/Src \
         Util/VCA \
         Util/Eig2DOS \
 	Util/Grid \
