@@ -37,6 +37,9 @@ UTILS = Util/Unfolding/Src \
 	Util/DensityMatrix \
         Util/HSX \
         Util/TS/TBtrans \
+        Util/TS/tscontour \
+	Util/TS/tshs2tshs \
+	Util/TS/ts2ts \
 	Util/ON \
 	Util/Optical \
 	Util/Optimizer \
@@ -49,17 +52,14 @@ UTILS = Util/Unfolding/Src \
 	Util/pdosxml \
 	Util/Sockets \
         Pseudo/converters/psml2psf \
+	Util/Projections \
         Pseudo/vnl-operator
 
 # These pending...
-UTILS_PENDING =		Util/TS/tscontour \
-	Util/TS/tshs2tshs \
-	Util/TS/ts2ts \
-	Util/Vibra/Src \
+UTILS_PENDING =	Util/Vibra/Src \
         Util/SiestaSubroutine/SimpleTest/Src \
 	Util/SiestaSubroutine/FmixMD/Src \
-	Util/SiestaSubroutine/ProtoNEB/Src \
-	Util/Projections
+	Util/SiestaSubroutine/ProtoNEB/Src
 
 .PHONY: utils clean_utils install_utils siesta $(UTILS)
 .PHONY: install_siesta create_install_directory
