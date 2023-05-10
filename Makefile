@@ -28,18 +28,26 @@ UTILS = Util/Unfolding/Src \
 	Util/Grid \
 	Util/WFS \
         Util/Eig2DOS \
+	Util/COOP \
         Util/Denchar/Src \
-        Util/TS/TBtrans 
+	Util/DensityMatrix \
+        Util/TS/TBtrans \
+	Util/Optical \
+	Util/Optimizer \
+        Util/Contrib/APostnikov \
+        Util/Contour \
+	Util/JobList/Src \
+	Util/pdosxml \
+	Util/Sockets \
+        Pseudo/converters/psml2psf \
+        Pseudo/vnl-operator
 
 # These pending...
 UTILS_PENDING =	Util/HSX \
-	Util/DensityMatrix \
 	Util/Bands \
 	Util/Gen-basis \
 	Util/Grimme \
 	Util/Helpers \
-	Util/COOP \
-	Util/Sockets \
 	Util/TS/tscontour \
 	Util/TS/tshs2tshs \
 	Util/TS/ts2ts \
@@ -48,18 +56,10 @@ UTILS_PENDING =	Util/HSX \
 	Util/STM/ol-stm/Src \
 	Util/STM/simple-stm \
 	Util/SpPivot \
-        Pseudo/converters/psml2psf \
-        Pseudo/vnl-operator \
         Util/SiestaSubroutine/SimpleTest/Src \
 	Util/SiestaSubroutine/FmixMD/Src \
 	Util/SiestaSubroutine/ProtoNEB/Src \
-        Util/Contrib/APostnikov \
-        Util/Contour \
-	Util/JobList/Src \
-	Util/Optical \
-	Util/Optimizer \
-	Util/Projections \
-	Util/pdosxml
+	Util/Projections
 
 .PHONY: utils clean_utils install_utils siesta $(UTILS)
 .PHONY: install_siesta create_install_directory
