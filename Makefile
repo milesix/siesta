@@ -24,15 +24,15 @@ include $(MAIN_OBJDIR)/check_for_build_mk.mk
 
 UTILS = Util/Unfolding/Src \
 	Util/Macroave/Src \
+        Util/VCA \
+	Util/Grid \
+	Util/WFS \
+        Util/Eig2DOS \
+        Util/Denchar/Src \
         Util/TS/TBtrans 
 
 # These pending...
-UTILS_PENDING = Util/Denchar/Src \
-        Util/VCA \
-        Util/Eig2DOS \
-	Util/Grid \
-	Util/WFS \
-	Util/HSX \
+UTILS_PENDING =	Util/HSX \
 	Util/DensityMatrix \
 	Util/Bands \
 	Util/Gen-basis \
@@ -89,7 +89,7 @@ $(UTILS):
 	@echo "Use the CMake build system if you want a full installation."
 	@echo
 	@echo "Hit ^C to abort..."
-	@sleep 4
+	@sleep 1
 	$(MAKE) -C $@ $(MODE)
 
 install_siesta: create_install_directory 
