@@ -28,14 +28,21 @@ UTILS = Util/Unfolding/Src \
 	Util/Grid \
 	Util/WFS \
         Util/Eig2DOS \
+	Util/Bands \
+	Util/Helpers \
 	Util/COOP \
 	Util/Gen-basis \
 	Util/Grimme \
         Util/Denchar/Src \
 	Util/DensityMatrix \
+        Util/HSX \
         Util/TS/TBtrans \
+	Util/ON \
 	Util/Optical \
 	Util/Optimizer \
+	Util/STM/ol-stm/Src \
+	Util/STM/simple-stm \
+	Util/SpPivot \
         Util/Contrib/APostnikov \
         Util/Contour \
 	Util/JobList/Src \
@@ -45,17 +52,10 @@ UTILS = Util/Unfolding/Src \
         Pseudo/vnl-operator
 
 # These pending...
-UTILS_PENDING =	Util/HSX \
-	Util/Bands \
-	Util/Helpers \
-	Util/TS/tscontour \
+UTILS_PENDING =		Util/TS/tscontour \
 	Util/TS/tshs2tshs \
 	Util/TS/ts2ts \
 	Util/Vibra/Src \
-	Util/ON \
-	Util/STM/ol-stm/Src \
-	Util/STM/simple-stm \
-	Util/SpPivot \
         Util/SiestaSubroutine/SimpleTest/Src \
 	Util/SiestaSubroutine/FmixMD/Src \
 	Util/SiestaSubroutine/ProtoNEB/Src \
