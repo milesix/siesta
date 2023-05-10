@@ -51,15 +51,13 @@ UTILS = Util/Unfolding/Src \
 	Util/JobList/Src \
 	Util/pdosxml \
 	Util/Sockets \
-        Pseudo/converters/psml2psf \
+        Util/Vibra/Src \
 	Util/Projections \
-        Pseudo/vnl-operator
-
-# These pending...
-UTILS_PENDING =	Util/Vibra/Src \
         Util/SiestaSubroutine/SimpleTest/Src \
 	Util/SiestaSubroutine/FmixMD/Src \
-	Util/SiestaSubroutine/ProtoNEB/Src
+	Util/SiestaSubroutine/ProtoNEB/Src \
+        Pseudo/converters/psml2psf \
+        Pseudo/vnl-operator
 
 .PHONY: utils clean_utils install_utils siesta $(UTILS)
 .PHONY: install_siesta create_install_directory
@@ -83,13 +81,6 @@ install_utils: MODE=install
 install_utils: $(EXTLIBS) $(UTILS)
 
 $(UTILS):
-	@echo "This revision cannot build all the programs in Util"
-	@echo "using the makefile-based build system".
-	@echo "Only TBtrans and Unfold are enabled..."
-	@echo "Use the CMake build system if you want a full installation."
-	@echo
-	@echo "Hit ^C to abort..."
-	@sleep 1
 	$(MAKE) -C $@ $(MODE)
 
 install_siesta: create_install_directory 

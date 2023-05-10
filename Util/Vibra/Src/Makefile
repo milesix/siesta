@@ -40,25 +40,28 @@ FC:=$(FC_SERIAL)         # Make it non-recursive
 
 # Objects from Siesta
 SYSOBJ = $(SYS).o
-SIESTA_OBJS = local_sys.o precision.o units.o m_io.o io.o reclat.o $(SYSOBJ)
+SIESTA_OBJS = precision.o units.o m_io.o io.o reclat.o $(SYSOBJ)
 
 COMMON_OBJS = recoor.o 
 BUILD_OBJS = fcbuild.o $(COMMON_OBJS)
 VIBRA_OBJS = vibra.o hermdp.o klines.o outbands.o $(COMMON_OBJS)
 
 INCFLAGS+= $(FDF_INCFLAGS) 
+INCFLAGS+= $(LIBSYS_INCFLAGS) 
 
 # Build dependencies
 $(BUILD_OBJS): $(SIESTA_OBJS)
 $(VIBRA_OBJS): $(SIESTA_OBJS)
 
+fcbuild vibra: $(LIBSYS)
+
 fcbuild: $(SIESTA_OBJS) $(BUILD_OBJS)
 	$(FC) -o fcbuild \
-	       $(LDFLAGS) $(BUILD_OBJS) $(SIESTA_OBJS) $(FDF_LIBS)
+	       $(LDFLAGS) $(BUILD_OBJS) $(SIESTA_OBJS) $(LIBSYS) $(FDF_LIBS)
 
 vibra:  $(COMP_LIBS) $(SIESTA_OBJS) $(VIBRA_OBJS)
 	$(FC) -o vibra \
-	       $(LDFLAGS) $(VIBRA_OBJS) $(SIESTA_OBJS) $(FDF_LIBS) $(COMP_LIBS) $(LIBS)
+	       $(LDFLAGS) $(VIBRA_OBJS) $(SIESTA_OBJS) $(LIBSYS) $(FDF_LIBS) $(COMP_LIBS) $(LIBS)
 
 clean: 
 	@echo "==> Cleaning object and executable files"
