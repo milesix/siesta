@@ -29,6 +29,8 @@ UTILS = Util/Unfolding/Src \
 	Util/WFS \
         Util/Eig2DOS \
 	Util/COOP \
+	Util/Gen-basis \
+	Util/Grimme \
         Util/Denchar/Src \
 	Util/DensityMatrix \
         Util/TS/TBtrans \
@@ -45,8 +47,6 @@ UTILS = Util/Unfolding/Src \
 # These pending...
 UTILS_PENDING =	Util/HSX \
 	Util/Bands \
-	Util/Gen-basis \
-	Util/Grimme \
 	Util/Helpers \
 	Util/TS/tscontour \
 	Util/TS/tshs2tshs \
