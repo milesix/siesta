@@ -7,9 +7,6 @@ SIESTA can be built:
 streamlined and made more user-friendly. Alas, its maintenance
 is much more costly than that of the CMake system, and it might
 be deprecated soon.
-(In particular, the version you are seeing now can build only
-Siesta itself and the TBtrans and Unfold utilities. To get a
-full installation you need to use the CMake approach.)
 
   mkdir _build
   cd _build
