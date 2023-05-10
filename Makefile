@@ -23,10 +23,11 @@ include $(MAIN_OBJDIR)/arch.make
 include $(MAIN_OBJDIR)/check_for_build_mk.mk
 
 UTILS = Util/Unfolding/Src \
-        Util/TS/TBtrans
+	Util/Macroave/Src \
+        Util/TS/TBtrans 
 
 # These pending...
-UTILS_FULL = Util/Denchar/Src \
+UTILS_PENDING = Util/Denchar/Src \
         Util/VCA \
         Util/Eig2DOS \
 	Util/Grid \
@@ -39,17 +40,14 @@ UTILS_FULL = Util/Denchar/Src \
 	Util/Helpers \
 	Util/COOP \
 	Util/Sockets \
-	Util/TS/TBtrans \
 	Util/TS/tscontour \
 	Util/TS/tshs2tshs \
 	Util/TS/ts2ts \
 	Util/Vibra/Src \
-	Util/Macroave/Src \
 	Util/ON \
 	Util/STM/ol-stm/Src \
 	Util/STM/simple-stm \
 	Util/SpPivot \
-	Util/Unfolding/Src \
         Pseudo/converters/psml2psf \
         Pseudo/vnl-operator \
         Util/SiestaSubroutine/SimpleTest/Src \

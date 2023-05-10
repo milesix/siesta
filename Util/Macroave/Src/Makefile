@@ -20,6 +20,7 @@ VPATH=$(TOPDIR)/Util/Macroave/Src:$(TOPDIR)/Src
 include $(MAIN_OBJDIR)/arch.make
 include $(MAIN_OBJDIR)/check_for_build_mk.mk
 
+INCFLAGS += $(LIBSYS_INCFLAGS)
 #
 FC_DEFAULT:=$(FC)
 FC_SERIAL?=$(FC_DEFAULT)
@@ -28,17 +29,17 @@ FC:=$(FC_SERIAL)         # Make it non-recursive
 TOP_SRCS:= interpolation.f90 m_fft_gpfa.F
 LOCAL_SRCS:= defs_basis.f90 defs_common.f90  io.f \
   iorho.f  macroave.f thetaft.f surpla.f \
-  volcel.f hdr_io.f90 local_die.f dpnint1.f90
+  volcel.f hdr_io.f90 dpnint1.f90
 #
 ALL_SRCS:=$(TOP_SRCS) $(LOCAL_SRCS)
 # Generate local .o file list
 ALL_OBJS:=$(call change_extensions, $(ALL_SRCS))
 #
 #
-macroave: $(ALL_OBJS)
-	$(FC) $(FFLAGS) $(LDFLAGS) -o macroave $(ALL_OBJS) 
+macroave: $(ALL_OBJS) $(LIBSYS)
+	$(FC) $(FFLAGS) $(LDFLAGS) -o macroave $(ALL_OBJS) $(LIBSYS)
 #
-permute:   permute.o 
+permute:   permute.o
 	$(FC) $(FFLAGS) $(LDFLAGS) -o permute permute.o
 #
 # Dependencies
