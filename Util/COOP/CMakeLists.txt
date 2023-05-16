@@ -51,6 +51,14 @@ target_link_libraries(fat
    )
    
 add_executable(
+   fat_atomic
+   fat_atomic.f90
+)
+target_link_libraries(fat_atomic
+   coop_common_objs
+   )
+   
+add_executable(
    mprop
    ${sources_mprop}
 )
@@ -88,6 +96,6 @@ if(WITH_NETCDF)
 endif()
 
 install(
-  TARGETS fat mprop spin_texture dm_creator
+  TARGETS fat fat_atomic mprop spin_texture dm_creator
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
   )
