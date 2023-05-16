@@ -1,3 +1,4 @@
+set(BLAS_LIBRARY "-lveclibfort" CACHE STRING "blas library chosen")
 set(LAPACK_LIBRARY "-lveclibfort" CACHE STRING "lapack library chosen")
 set(SCALAPACK_LIBRARY "$ENV{SCALAPACK_LIBS}" CACHE STRING "scalapack library chosen")
 set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "build_type")
