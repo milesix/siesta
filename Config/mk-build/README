@@ -25,6 +25,9 @@ override directly the NETCDF_LIBS and NETCDF_INCFLAGS in hard cases.
 
 C) Compiler names and options
 
+It is also possible to select 'pkg-config' or 'pkgconf' as the installation metadata search program,
+by defining the variable PKG_CONFIG_EXECUTABLE in arch.make
+
 D) Specific needs for certain files (for example, compilation without optimization)
 
 -------------------
@@ -47,7 +50,7 @@ take precedence and confuse the building process. As an example:
     include $(MAIN_OBJDIR)/check_for_build_mk.mk
     # ...
 
-or, if targets need to be built from information in aarch.make:
+or, if targets need to be built from information in arch.make:
 
     dummy: default
     #...

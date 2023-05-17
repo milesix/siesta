@@ -188,6 +188,10 @@ endif()
 
 # Handle external dependencies
 # Use proper order for xmlf90 and libpsml dependencies
+if (NOT TARGET libfdf::libfdf)
+  find_package(libfdf REQUIRED)
+endif()
+
 if (NOT TARGET xmlf90::xmlf90)
   find_package(xmlf90 REQUIRED)
 endif()
@@ -253,10 +257,7 @@ if( WITH_MPI )
   add_library(Siesta::MPI ALIAS mpi_siesta)
 endif()
 
-# FDF
-add_subdirectory("Src/fdf")
-add_library(Siesta::libfdf ALIAS fdf)
-
+add_subdirectory("Src/libsys")
 add_subdirectory("Src/easy-fdict")
 add_subdirectory("Src/ncps/src/libxc-compat")
 add_subdirectory("Src/ncps/src")

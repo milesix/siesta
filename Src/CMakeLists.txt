@@ -3,8 +3,7 @@ set(libsiesta_sources
   Fstack.T90
   Pair.T90
   alloc.F90
-  alloc_error_report.F
-  alloc_memory_event.F
+  alloc_handlers_m.F90
   amn.F90
   arw.f
   atm_types.f
@@ -32,7 +31,6 @@ set(libsiesta_sources
   broadcast_projections.F
   broyden_optim.F
   bsc_cellxc.F
-  bye.F
   byte_count.F90
   cart2frac.f
   cell_broyden_optim.F
@@ -118,7 +116,6 @@ set(libsiesta_sources
   diagon.F
   diagonalizeHk.F90
   diagpol.f
-  die.F
   digcel.f
   dipole.F90
   dismin.f
@@ -467,6 +464,7 @@ set(libsiesta_sources
   siesta_end.F
   siesta_forces.F90
   siesta_geom.F90
+  siesta_handlers_m.F90
   siesta_init.F
   siesta_master.f90
   siesta_move.F
@@ -483,7 +481,6 @@ set(libsiesta_sources
   state_analysis.F
   state_init.F
   struct_init.F
-  sys.F
   timer.F90
   timer_tree.f90
   timestamp.f90
@@ -584,7 +581,7 @@ target_link_libraries(
   ${PROJECT_NAME}-libsiesta
   PUBLIC
   $<$<BOOL:${WITH_OPENMP}>:OpenMP::OpenMP_Fortran>
-  fdf
+  libfdf::libfdf
   xmlf90::xmlf90
   libpsml::libpsml
   libgridxc::libgridxc
@@ -600,6 +597,7 @@ target_link_libraries(
    $<$<BOOL:${WITH_ELPA}>:Elpa::elpa>
   "$<$<BOOL:${WITH_MPI}>:SCALAPACK::SCALAPACK>"
   "$<$<BOOL:${WITH_DFTD3}>:s-dftd3::s-dftd3>"
+  ${PROJECT_NAME}-libsys
   LAPACK::LAPACK
 )
 

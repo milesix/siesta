@@ -587,19 +587,19 @@
       lmax = max(lmax,lmaxkb)
       if (lmax .gt. lmaxd) then
          write(6,*) "Increment lmaxd to ", lmax
-         call die()
+         call die("lmaxd too small")
       endif
       if (nzeta_max .gt. nzetmx) then
          write(6,*) "Increment nzetmx to ", nzeta_max
-         call die()
+         call die("nzetmx too small")
       endif
       if (nsemi_max .gt. nsemx) then
          write(6,*) "Increment nsemx to ", nsemi_max
-         call die()
+         call die("nsemx too small")
       endif
       if (nkb_max .gt. nkbmx) then
          write(6,*) "Increment nkbmx to ", nkb_max
-         call die()
+         call die("nkbmx too small")
       endif
 !
 !     ALLOCATE old arrrays

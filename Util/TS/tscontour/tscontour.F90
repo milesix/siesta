@@ -1,10 +1,10 @@
 program tscontour
 
-  use units, only: Kelvin, eV
+  use units, only: Kelvin, eV, inquire_unit
   use files, only: slabel, stdin_file
   use precision, only: dp
   use siesta_options, only : Temp
-  use fdf, only : fdf_init, fdf_get, leqi
+  use fdf
 
   use m_ts_options, only: read_ts_chem_pot, IsVolt, Volt, ts_kT, N_Elec, Elecs, N_mu, mus
   use m_ts_contour, only: read_contour_options, io_contour, ts_contour_reset
@@ -57,6 +57,7 @@ program tscontour
 
   ! Initialize the fdf
   call fdf_init(stdin_file, "tscontour.log")
+  call fdf_set_unit_handler(inquire_unit)
 
   ! Fake transiesta mode (ensures ts-read methods does not crash)
   TSmode = .true.

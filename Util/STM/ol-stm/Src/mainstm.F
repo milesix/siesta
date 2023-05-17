@@ -34,6 +34,7 @@
       USE BASIS_IO, only: read_basis_ascii
       USE LISTSC_MODULE, ONLY: LISTSC_INIT
       USE FDF
+      use units, only: inquire_unit
       use broadening, only: width, gaussian_broadener
 
       IMPLICIT NONE
@@ -104,6 +105,7 @@ C REAL*8  ARMUNI              : Conversion factors for the charge density
       FILEIN  = 'stdin'
       FILEOUT = 'out.fdf'
       CALL FDF_INIT(FILEIN,FILEOUT)
+      call fdf_set_unit_handler(inquire_unit)
 
       WRITE(6,*)
       WRITE(6,*) 'STM/STS Simulation program' //

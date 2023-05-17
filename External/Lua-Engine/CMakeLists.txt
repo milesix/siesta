@@ -158,6 +158,10 @@ ExternalProject_Add(flook
  ## INSTALL_COMMAND ${MAKE_EXECUTABLE} DESTDIR=<INSTALL_DIR> install
  INSTALL_COMMAND ""
  TEST_COMMAND ""
+ #
+ # See https://stackoverflow.com/questions/54866067/cmake-and-ninja-missing-and-no-known-rule-to-make-it
+ #
+ BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/flook-prefix/src/flook-build/libflookall.a
 )
 
 #

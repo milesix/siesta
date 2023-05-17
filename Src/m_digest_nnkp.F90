@@ -119,7 +119,7 @@ subroutine read_nnkp( seedname, latvec, reclatvec, numkpoints,          &
      if( .not. have_nnkp ) then
        write(6,'(/,a)')  &
  &       'read_nnkp: Could not find the file '//trim(seedname)//'.nnkp'
-       call die()
+       call die("stopping program")
      endif
 
      call io_assign( iu )
@@ -151,7 +151,7 @@ subroutine read_nnkp( seedname, latvec, reclatvec, numkpoints,          &
            if(abs(latvec(i,j)-ucell(i,j))>eps4) then
              write(6,*)  'read_nnkp: Something wrong with the real lattice! '
              write(6,*)  ' latvec(i,j) =',latvec(i,j),' ucell(i,j)=',ucell(i,j)
-             call die()
+             call die("stopping program")
            endif
          enddo
        enddo
@@ -179,7 +179,7 @@ subroutine read_nnkp( seedname, latvec, reclatvec, numkpoints,          &
              write(6,*)'read_nnkp: Something wrong with the reciprocal lattice!'
              write(6,*)' reclatvec(i,j)=',reclatvec(i,j), &
  &                     ' rcell(i,j)=',rcell(i,j)
-             call die()
+             call die("stopping program")
            endif
          enddo 
        enddo 

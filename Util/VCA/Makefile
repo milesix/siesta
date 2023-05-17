@@ -51,32 +51,30 @@ FC:=$(FC_SERIAL)         # Make it non-recursive
 INCFLAGS:=$(NETCDF_INCFLAGS)\
           $(NCPS_INCFLAGS) \
           $(PSML_INCFLAGS) \
-          $(FDF_INCFLAGS) \
+          $(LIBSYS_INCFLAGS) \
           $(INCFLAGS)
-
-SYSOBJ=$(SYS).o
 
 #------------------------------------------------------------------------
 
-MIXPS_DEPS= interpolation.o atom_options.o \
-            m_io.o io.o alloc.o periodic_table.o  precision.o
-MIXPS_LOCAL_OBJS= mixps.o handlers.o local_sys.o
+MIXPS_DEPS= interpolation.o  \
+            m_io.o io.o periodic_table.o  precision.o
+MIXPS_LOCAL_OBJS= mixps.o 
 MIXPS_OBJS= $(MIXPS_DEPS) $(MIXPS_LOCAL_OBJS)
 #
 
-mixps:  $(FDF_LIBS) $(NCPS) $(MIXPS_OBJS)
+mixps:  $(NCPS) $(MIXPS_OBJS) $(LIBSYS)
 	$(FC) -o mixps \
-	       $(LDFLAGS) $(MIXPS_OBJS) $(NCPS) $(FDF_LIBS) $(PSML_LIBS) $(XMLF90_LIBS)
+	       $(LDFLAGS) $(MIXPS_OBJS) $(NCPS) $(LIBSYS) $(PSML_LIBS) $(XMLF90_LIBS) 
 
 #----------------------------------------------------------------------------
-FRACTIONAL_DEPS= m_io.o alloc.o interpolation.o \
-                 atom_options.o io.o periodic_table.o precision.o
-FRACTIONAL_LOCAL_OBJS= fractional.o handlers.o local_sys.o
+FRACTIONAL_DEPS= m_io.o interpolation.o \
+                 io.o periodic_table.o precision.o
+FRACTIONAL_LOCAL_OBJS= fractional.o
 FRACTIONAL_OBJS= $(FRACTIONAL_DEPS) $(FRACTIONAL_LOCAL_OBJS)
 
-fractional: $(FDF_LIBS)  $(NCPS) $(FRACTIONAL_OBJS)
+fractional: $(NCPS) $(FRACTIONAL_OBJS) $(LIBSYS)
 	$(FC) -o fractional \
-	       $(LDFLAGS) $(FRACTIONAL_OBJS) $(NCPS) $(PSML) $(FDF_LIBS)\
+	       $(LDFLAGS) $(FRACTIONAL_OBJS) $(NCPS) $(LIBSYS) $(PSML) \
                $(PSML_LIBS) $(XMLF90_LIBS)
 clean:
 	@echo "==> Cleaning object, library, and executable files"
@@ -98,9 +96,6 @@ dep:
                 || true
 
 # DO NOT DELETE THIS LINE - used by make depend
-atom_options.o: local_sys.o
 io.o: m_io.o
-m_io.o: local_sys.o
 fractional.o: periodic_table.o precision.o
 mixps.o: interpolation.o periodic_table.o precision.o
-sys.o: local_sys.o

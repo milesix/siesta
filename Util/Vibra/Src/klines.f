@@ -77,6 +77,7 @@ C     If only given points (not lines) are desired, simply specify 1 as
 C     the number of points along the line.
 C     *********************************************************************
       use fdf
+      use units, only: Pi, Ang
 
       implicit          none
 
@@ -99,7 +100,7 @@ C     Internal variables
 
       double precision
      .     alat, 
-     .     pi, rcell(3,3), reals(4),
+     .     rcell(3,3), reals(4),
      .     ucell(3,3), values(4)
 
       character 
@@ -126,7 +127,7 @@ C     Find if there are band-lines data
 
 
 C     Find lattice constant
-      alat = fdf_physical( 'LatticeConstant', 0.d0, 'Bohr' )
+      alat = fdf_physical( 'LatticeConstant', Ang, 'Bohr' )
       if (alat .eq. 0.d0) then
          call die('klines: ERROR: Lattice constant required')
       endif
@@ -134,7 +135,7 @@ C     Find lattice constant
 C     Find scale used in k point data
       scale = fdf_string( 'BandLinesScale', 'pi/a' )
       if (scale .eq. 'pi/a') then
-         pi = 4.d0 * atan(1.d0)
+        ! do nothing
       elseif (scale .eq. 'ReciprocalLatticeVectors') then
          if ( fdf_block('LatticeVectors',bfdf) ) then
             do i = 1,3
