@@ -75,6 +75,8 @@ function(siesta_test)
         message(WARNING "Reducing number of OpenMP ranks in test ${_stest_NAME} to ${ENV{OMP_NUM_THREADS}}<${_stest_OMP_NPROC}")
         set(_stest_OMP_NPROC ${ENV{OMP_NUM_THREADS}})
       endif()
+    else()
+      set(_stest_OMP_NPROC 1)
     endif()
     message(VERBOSE "using OpenMP with ${_stest_OMP_NPROC} processors")
   else()
@@ -126,11 +128,18 @@ function(siesta_test)
   endif()
 
   # Now add the test
+
+if (WITH_MPI AND (NOT _stest_SERIAL) )
   add_test(
     NAME "siesta-${_stest_test}"
-    COMMAND ${_stest_pre} $<TARGET_FILE:siesta-siesta> -out OUT ${_stest_NAME}.fdf ${_stest_post}
-    WORKING_DIRECTORY "${_stest_wdir})"
-    )
+    COMMAND ${MPIEXEC_EXECUTABLE} ${_stest_pre} $<TARGET_FILE:siesta-siesta> -out OUT ${_stest_NAME}.fdf ${_stest_post}
+    WORKING_DIRECTORY "${_stest_wdir}"  )
+else(WITH_MPI)
+  add_test(
+    NAME "siesta-${_stest_test}"
+    COMMAND $<TARGET_FILE:siesta-siesta> -out OUT ${_stest_NAME}.fdf ${_stest_post}
+    WORKING_DIRECTORY "${_stest_wdir}"  )
+endif(WITH_MPI)
 
   # Add environment variables to the test
   foreach(_env IN LISTS _stest_env)
