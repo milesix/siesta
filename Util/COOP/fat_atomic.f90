@@ -33,7 +33,7 @@ program fatband_atomic
 
   logical, allocatable   :: mask2(:)
   integer, allocatable   :: num_red(:), ptr(:), list_io2(:), list_ind(:)
-  real(dp), allocatable  :: eig(:,:), fat(:,:)
+  real(dp), allocatable  :: eig(:,:), fat(:,:,:,:)
 
 
   integer  :: nwfmx, nwfmin
@@ -52,6 +52,8 @@ program fatband_atomic
 
   integer  :: ib, nbands, nspin_blocks
   logical  :: non_coll
+
+  integer :: proj_u
 
   !
   !     Process options
@@ -353,7 +355,7 @@ program fatband_atomic
 
   ! nspin has been read in iohs
   nbands = max_band - min_band + 1
-  allocate(eig(nbands,nspin_blocks), fat(nbands,nspin_blocks))
+  allocate(eig(nbands,nspin_blocks), fat(nbands,nspin_blocks,nkp,ncb))
 
      ! The first dimension is the number of real numbers per orbital
      ! 1 for real wfs, 2 for complex, and four for the two spinor components
@@ -488,7 +490,7 @@ program fatband_atomic
            do is=1,nspin_blocks
 
               ib = 0
-              fat(:,is) = 0.0_dp
+              fat(:,is,ik,ic) = 0.0_dp
 
               read(wfs_u) 
               read(wfs_u) 
@@ -551,14 +553,14 @@ program fatband_atomic
                              ! Common factor computed here
                              factor =  (qcos*cos(alfa)-qsin*sin(alfa))
 
-                             fat(ib,is) = fat(ib,is) + Sover(ind)*factor
+                             fat(ib,is,ik,ic) = fat(ib,is,ik,ic) + Sover(ind)*factor
 
                         enddo   ! i2
                     enddo  ! i1
 
                  enddo   ! iwf
                  write(fat_u,"(4(4x,f10.4,f9.5))")   &
-                      (eig(ib,is),fat(ib,is),ib=1,nbands)
+                      (eig(ib,is),fat(ib,is,ik,ic),ib=1,nbands)
               enddo      ! is
 
            enddo         ! ik
@@ -572,6 +574,58 @@ program fatband_atomic
 
         enddo    ! ic
 
+! Now, write in a more common format
+! Use the structure of the file to get the wavefunctions per k-point, etc
+
+        open(newunit=proj_u,file=trim(mflnm)// '.projs')
+        write(proj_u,"(a,2i5)") "# " // trim(sflnm) // " min_band, max_band: ", min_band, max_band
+        write(proj_u,"(3i6)")   nbands, nspin_blocks, nkp
+
+        rewind(wfs_u)
+
+        read(wfs_u) 
+        read(wfs_u) 
+        read(wfs_u) 
+        read(wfs_u) 
+     
+        do ik=1,nkp
+
+           write(proj_u,"(//,a,i4,3(1x,f10.5))") 'K-point: ', ik, pk(1:3,ik)
+
+           do is=1,nspin_blocks
+              if (nspin_blocks > 1) then
+                 write(proj_u,"(/a,i1)") 'Spin: ', is
+              endif
+              ib = 0 ! for counting wfs in set...
+              read(wfs_u) 
+              read(wfs_u) 
+              read(wfs_u)  number_of_wfns
+              do iw=1,number_of_wfns
+                 read(wfs_u) 
+                 read(wfs_u) eigval
+
+                 ! Use only the specified band set
+                 if ( (iw<min_band) .or. (iw>max_band)) then
+                    read(wfs_u)   ! Still need to read this
+                    CYCLE
+                 endif
+
+                 ib = ib + 1
+                 write(proj_u,"(/,a,i4,f12.6,a,i3,a)") 'Wf: ', iw, eigval, " (in set: ", ib, ")"
+
+                 read(wfs_u) 
+
+                 write(proj_u,"(/,3x,9(1x,a6))") "s", "py", "pz", "px", &
+                      "dxy", "dyz", "dz2", "dxz", "dx2-z2"
+                 write(proj_u,"(i3,9f7.4,2x,f7.4)") 1, (fat(ib,is,ik,ic),ic=1,ncb), sum(fat(ib,is,ik,:))
+              enddo   ! iwf
+           enddo      ! is
+
+        enddo         ! ik
+        
+           
+
+ 
  CONTAINS
 
       subroutine manual()

@@ -35,4 +35,17 @@ The process in more detail:
 plot "3s.dat" using 1:2:(4*$3) with points pt 6 ps variable  
 replot "3p.dat" using 1:2:(4*$3) with points pt 6 ps variable 
 
+** fat_atomic example
+
+There is another version of the 'fat' program, called 'fat_atomic', which
+is geared towards mimicking the behavior of the "projection to local orbitals"
+programs in plane-wave suites (for example, projwfc in the Quantum Espresso suite).
+
+For now, fat_atomic reuses the mprop/fat-style input, but for proper behavior the
+"orbital sets" must be those specified for example in the 'atom_proj.mpr' file (this example
+will give the projections of the wavefunctions on "lm local orbitals" in the first Si atom.
+In the future there will be a more appropriate input.
+
+A file with extension .projs is produced, in a format resembling the one used by VASP and
+understood by Pyprocar.
 
