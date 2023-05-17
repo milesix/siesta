@@ -77,7 +77,7 @@ install(
   PRIVATE
   fdf
   libgridxc::libgridxc
-  Siesta::libpsml
+  libpsml::libpsml
   ${PROJECT_NAME}-libncps
   ${PROJECT_NAME}-libpsop
   LAPACK::LAPACK

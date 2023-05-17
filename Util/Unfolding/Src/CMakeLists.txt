@@ -102,12 +102,12 @@ list(
 
 add_executable(unfold "${sources}")
 
-target_link_libraries(
+ target_link_libraries(
   unfold
   PRIVATE
   fdf
   libgridxc::libgridxc
-  Siesta::libpsml
+  libpsml::libpsml
   ${PROJECT_NAME}-libncps
   ${PROJECT_NAME}-libpsop
   "$<$<BOOL:${WITH_MPI}>:mpi_siesta>"

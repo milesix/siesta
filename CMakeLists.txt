@@ -197,29 +197,6 @@ if (NOT TARGET libpsml::libpsml)
   find_package(libpsml REQUIRED)
 endif()
 
-# We need to patch the psml library to enforce the use of a die routine
-# The psml_die routine must be *after* the psml library
-# But this causes some other problems we need to work around here
-# So we create the object library, and directly use the objects
-# no intermediate library.
-# Note that this is generated at the top-level to ensure
-# it can be used in subsequent libraries
-# TODO check that it actually works with different flags
-# in different utilities.
-# NOTE: this *hack* is only necessary for shared libraries
-# else the static objects will be *understood as one entity* upon linking.
-add_library(${PROJECT_NAME}-psml_die
-  OBJECT
-  ${CMAKE_CURRENT_SOURCE_DIR}/Src/psml_die.F90
-  )
-add_library(Siesta::libpsml INTERFACE IMPORTED)
-target_link_libraries(Siesta::libpsml
-  INTERFACE
-  libpsml::libpsml
-  $<TARGET_OBJECTS:${PROJECT_NAME}-psml_die>
-  )
-
-
 if (NOT TARGET libxc::XC_Fortran)
   find_package(CustomLibxc)
 endif()

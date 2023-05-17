@@ -205,10 +205,6 @@ target_link_libraries(
 
 
 add_executable(phtrans ${sources})
-# we add a dependency to not block parallel compilation
-# This does nothing but preventing phtrans from being built before tbtrans
-# has completed.
-add_dependencies(phtrans tbtrans)
 
 target_include_directories(
   phtrans

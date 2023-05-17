@@ -95,7 +95,7 @@ SIESTA_OBJS += class_OrbitalDistribution.o \
 	class_SpData1D.o class_SpData2D.o \
         class_Fstack_Pair_Geometry_SpData2D.o \
         class_Pair_Geometry_SpData2D.o \
-        class_Geometry.o psml_die.o \
+        class_Geometry.o \
         m_uuid.o object_debug.o
 
 # As the classes are based on inputs we force the dependency to
