@@ -32,6 +32,7 @@ program fatband_atomic
   real(dp), parameter  :: tol_overlap = 1.0e-10_dp
 
   logical, allocatable   :: mask2(:)
+  logical, allocatable   :: orb_mask_atomic(:,:)
   integer, allocatable   :: num_red(:), ptr(:), list_io2(:), list_ind(:)
   real(dp), allocatable  :: eig(:,:), fat(:,:,:,:)
 
@@ -53,14 +54,15 @@ program fatband_atomic
   integer  :: ib, nbands, nspin_blocks
   logical  :: non_coll
 
-  integer :: proj_u
+  integer :: proj_u, nc_p
+  logical :: new_scheme = .false.
 
   !
   !     Process options
   !
   n_opts = 0
   do
-     call getopts('dhls:n:m:M:R:b:B:',opt_name,opt_arg,n_opts,iostat)
+     call getopts('dhlnR:b:B:',opt_name,opt_arg,n_opts,iostat)
      if (iostat /= 0) exit
      select case(opt_name)
      case ('d')
@@ -76,6 +78,8 @@ program fatband_atomic
      case ('B')
         read(opt_arg,*) max_band
         max_band_set = .true.
+     case ('n')
+        new_scheme = .true.
      case ('h')
         call manual()
      case ('?',':')
@@ -240,24 +244,61 @@ program fatband_atomic
 
   ! ==================================
 
-!
-! Process orbital sets
-!
-  allocate(orb_mask(no_u,2,ncbmx))
-  allocate (koc(ncbmx,2,no_u))
+  ! Process orbital sets
 
-  ! Give values to flags for reuse of the reading routine
-  dos = .true.
-  coop = .false.
-  call read_curve_information(.true.,.false.,  &
+  ! Here we should implement new code to generate "orbital sets" for
+  ! each lm pair and for each atom involved 
+
+  if (new_scheme) then
+
+     ! There are 9 "curves" per atom
+     ncb = 9*na_u
+     allocate(orb_mask_atomic(no_u,ncb))
+     allocate (koc(ncb,2,no_u))
+     orb_mask_atomic(:,:) = .false.
+     nc_p = 0
+     nao = 0
+     do ia=1,na_u
+        it = isa(ia)
+        do io = 1, no(it) 
+           lorb = lquant(it,io)
+           do ko = 1, 2*lorb + 1
+              nao = nao + 1
+              select case (lorb)
+              case (0)
+                 orb_mask_atomic(nao,nc_p+1) = .true.
+                 write(tit(nc_p+1),"(a,i3)") "s on atom", ia
+              case (1)
+                 orb_mask_atomic(nao,nc_p+1+ko) = .true.
+                 write(tit(nc_p+1+ko),"(a,i1,a,i3)") "p ", ko," on atom", ia
+              case (2) 
+                 orb_mask_atomic(nao,nc_p+4+ko) = .true.
+                 write(tit(nc_p+4+ko),"(a,i1,a,i3)") "d ", ko," on atom", ia
+              end select
+           enddo
+        enddo
+        nc_p = nc_p + 9
+     enddo
+
+     call mask_to_arrays(ncb,orb_mask_atomic(:,:),noc(:,1),koc(:,1,:))
+     call mask_to_arrays(ncb,orb_mask_atomic(:,:),noc(:,2),koc(:,2,:))
+        
+  else
+!
+     allocate(orb_mask(no_u,2,ncbmx))
+     allocate (koc(ncbmx,2,no_u))
+     ! Give values to flags for reuse of the reading routine
+     dos = .true.
+     coop = .false.
+     call read_curve_information(.true.,.false.,  &
                                     mpr_u,no_u,ncbmx,ncb,tit,orb_mask,dtc)
 
-  !  orb_mask(:,2,1:ncb) = .true.       ! All orbitals considered
-  orb_mask(:,2,1:ncb) = orb_mask(:,1,1:ncb)  ! Just the same set as I
+     !  orb_mask(:,2,1:ncb) = .true.       ! All orbitals considered
+     orb_mask(:,2,1:ncb) = orb_mask(:,1,1:ncb)  ! Just the same set as I
 
-  call mask_to_arrays(ncb,orb_mask(:,1,:),noc(:,1),koc(:,1,:))
-  call mask_to_arrays(ncb,orb_mask(:,2,:),noc(:,2),koc(:,2,:))
-
+     call mask_to_arrays(ncb,orb_mask(:,1,:),noc(:,1),koc(:,1,:))
+     call mask_to_arrays(ncb,orb_mask(:,2,:),noc(:,2),koc(:,2,:))
+  endif
 !!
   write(6,"('Writing files: ',a,'.stt ...')") trim(mflnm)
   open(stt_u,file=trim(mflnm)//'.info')
@@ -614,10 +655,20 @@ program fatband_atomic
                  write(proj_u,"(/,a,i4,f12.6,a,i3,a)") 'Wf: ', iw, eigval, " (in set: ", ib, ")"
 
                  read(wfs_u) 
-
-                 write(proj_u,"(/,3x,9(1x,a6))") "s", "py", "pz", "px", &
+                 if (new_scheme) then
+                    write(proj_u,"(/,3x,9(1x,a6))") "s", "py", "pz", "px", &
                       "dxy", "dyz", "dz2", "dxz", "dx2-z2"
-                 write(proj_u,"(i3,9f7.4,2x,f7.4)") 1, (fat(ib,is,ik,ic),ic=1,ncb), sum(fat(ib,is,ik,:))
+                    nc_p = 0
+                    do ia = 1, na_u
+                       write(proj_u,"(i3,9f7.4,2x,f7.4)") ia, &
+                            (fat(ib,is,ik,ic),ic=nc_p+1,nc_p+9), sum(fat(ib,is,ik,nc_p+1:nc_p+9))
+                       nc_p = nc_p + 9
+                    end do
+                 else
+                    write(proj_u,"(/,3x,9(1x,a6))") "s", "py", "pz", "px", &
+                      "dxy", "dyz", "dz2", "dxz", "dx2-z2"
+                    write(proj_u,"(i3,9f7.4,2x,f7.4)") 1, (fat(ib,is,ik,ic),ic=1,ncb), sum(fat(ib,is,ik,:))
+                 endif
               enddo   ! iwf
            enddo      ! is
 
