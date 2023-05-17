@@ -260,22 +260,30 @@ program fatband_atomic
      nao = 0
      do ia=1,na_u
         it = isa(ia)
-        do io = 1, no(it) 
+        io = 0
+        do
+           io = io + 1
+           if (io > no(it)) exit
            lorb = lquant(it,io)
            do ko = 1, 2*lorb + 1
               nao = nao + 1
+              print *, "ia, io, nao, lorb, ko: ", ia, io, nao, lorb, ko
               select case (lorb)
               case (0)
                  orb_mask_atomic(nao,nc_p+1) = .true.
                  write(tit(nc_p+1),"(a,i3)") "s on atom", ia
+                 print *, "s on atom", ia, " put in set", nc_p+1
               case (1)
                  orb_mask_atomic(nao,nc_p+1+ko) = .true.
                  write(tit(nc_p+1+ko),"(a,i1,a,i3)") "p ", ko," on atom", ia
+                 print *, "p ", ko, "on atom", ia, " put in set", nc_p+1+ko
               case (2) 
                  orb_mask_atomic(nao,nc_p+4+ko) = .true.
                  write(tit(nc_p+4+ko),"(a,i1,a,i3)") "d ", ko," on atom", ia
+                 print *, "d ", ko, "on atom", ia, " put in set", nc_p+1+ko
               end select
            enddo
+           io = io + 2*lorb
         enddo
         nc_p = nc_p + 9
      enddo
