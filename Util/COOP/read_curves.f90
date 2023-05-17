@@ -31,6 +31,8 @@ use orbital_set, only: get_orbital_set
   character(len=512) :: line
   real(dp) :: dm
 
+  orb_mask(:,:,:) = .false.
+  
   ncb=0
   do
      read(mpr_u,"(a)",iostat=iostat,end=1300) line
