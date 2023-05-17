@@ -250,7 +250,8 @@ program fatband_atomic
   call read_curve_information(.true.,.false.,  &
                                     mpr_u,no_u,ncbmx,ncb,tit,orb_mask,dtc)
 
-  orb_mask(:,2,1:ncb) = .true.       ! All orbitals considered
+  !  orb_mask(:,2,1:ncb) = .true.       ! All orbitals considered
+  orb_mask(:,2,1:ncb) = orb_mask(:,1,1:ncb)  ! Just the same set as I
 
   call mask_to_arrays(ncb,orb_mask(:,1,:),noc(:,1),koc(:,1,:))
   call mask_to_arrays(ncb,orb_mask(:,2,:),noc(:,2),koc(:,2,:))
@@ -351,8 +352,8 @@ program fatband_atomic
   ! * Fatband weights
 
   ! nspin has been read in iohs
-     nbands = max_band - min_band + 1
-     allocate(eig(nbands,nspin_blocks), fat(nbands,nspin_blocks))
+  nbands = max_band - min_band + 1
+  allocate(eig(nbands,nspin_blocks), fat(nbands,nspin_blocks))
 
      ! The first dimension is the number of real numbers per orbital
      ! 1 for real wfs, 2 for complex, and four for the two spinor components
@@ -395,20 +396,23 @@ program fatband_atomic
 
               if ( .not. mask2(ii2)) Cycle    ! Is not one of Set II
 
-              ! No distance restrictions for PDOS or FATBANDS, just an overlap check
-              ! NEW criterion: we might want to remove interactions which are not in
-              ! the same shell (e.g. 3s: 3s_1st_z 3s_2nd_z)
+              ! For the new fatbands, we use a NEW criterion: we do 
+              ! not consider interactions which are not in the same
+              ! shell (e.g. 3s: 3s_1st_z 3s_2nd_z)
 
               ! The easiest thing for now is to request that the distance between
-              ! the centers of the orbitals is zero:
+              ! the centers of the orbitals is zero, and that the quantum numbers
+              ! are the same. However, this is implicitly taken care of when
+              ! setting the II set equal to the I set, 
+              ! ASSUMING that we are *only* using orbital set specifications that
+              ! include a single shell (For example, 1_3s).
 
               if (dij(ind) > 0.0_dp) CYCLE
+              if (zl(io1) /= zl(ii2) ) CYCLE   ! Force same 'l' quantum number
+              if (zx(io1) /= zx(ii2) ) CYCLE   ! Force same 'm' quantum number
 
-              ! ASSUMING that we are *only* using orbital set specifications that
-              ! include a single shell.
+              
               ! (what to do with semicore states??)
-
-              !!!  if ( abs(Sover(ind)) < tol_overlap) CYCLE  ! Not overlapping
 
               num_red(i1) = num_red(i1) + 1
            enddo
@@ -436,22 +440,23 @@ program fatband_atomic
 
               if ( .not. mask2(ii2)) Cycle
 
-              ! No distance restrictions for PDOS or FATBANDS, just an overlap check
-              ! NEW criterion: we might want to remove interactions which are not in
-              ! the same shell (e.g. 3s: 3s_1st_z 3s_2nd_z)
+              ! For the new fatbands, we use a NEW criterion: we do 
+              ! not consider interactions which are not in the same
+              ! shell (e.g. 3s: 3s_1st_z 3s_2nd_z)
 
               ! The easiest thing for now is to request that the distance between
-              ! the centers of the orbitals is zero:
+              ! the centers of the orbitals is zero, and that the quantum numbers
+              ! are the same. However, this is implicitly taken care of when
+              ! setting the II set equal to the I set, 
+              ! ASSUMING that we are *only* using orbital set specifications that
+              ! include a single shell (For example, 1_3s).
 
               if (dij(ind) > 0.0_dp) CYCLE
+              if (zl(io1) /= zl(ii2) ) CYCLE   ! Force same 'l' quantum number
+              if (zx(io1) /= zx(ii2) ) CYCLE   ! Force same 'm' quantum number
 
-              ! ASSUMING that we are *only* using orbital set specifications that
-              ! include a single shell.
               ! (what to do with semicore states??)
 
-              !!!! (old)    if ( abs(Sover(ind)) < tol_overlap) CYCLE  ! Not overlapping
-
-             
               n_int = n_int + 1
               list_io2(n_int) = ii2
               list_ind(n_int) = ind
