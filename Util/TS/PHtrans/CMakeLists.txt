@@ -1,4 +1,5 @@
 set(top_srcdir "${CMAKE_SOURCE_DIR}/Src" )
+set(tbtrans_srcdir "${CMAKE_SOURCE_DIR}/Util/TS/TBtrans" )
 
 set(sources
 
@@ -32,16 +33,22 @@ set(sources
  tbtrans.F90
 
 )
+
+set(phtrans_sources)
+foreach(_file IN LISTS sources)
+   list(APPEND phtrans_sources ${tbtrans_srcdir}/${_file})
+endforeach()
+
  
 list(
   APPEND
-  sources
+  phtrans_sources
 
   ${top_srcdir}/alloc.F90
   ${top_srcdir}/basic_func.inc
   ${top_srcdir}/basic_type.inc
   ${top_srcdir}/bloch_unfold.F90
-   ${top_srcdir}/broadcast_fdf_struct.F90
+  ${top_srcdir}/broadcast_fdf_struct.F90
   ${top_srcdir}/byte_count.F90
   ${top_srcdir}/cellsubs.f
   ${top_srcdir}/class_Data1D.F90
@@ -161,7 +168,7 @@ list(
 )
 
 
-add_executable(tbtrans ${sources})
+add_executable(phtrans ${phtrans_sources})
 
 configure_file(
   version-info-template.inc
@@ -170,15 +177,16 @@ configure_file(
   )
 
 target_include_directories(
-  tbtrans
+  phtrans
   PRIVATE
     ${CMAKE_CURRENT_BINARY_DIR}/generated
   )
 
 target_compile_definitions(
-  tbtrans
+  phtrans
   PRIVATE
   TBTRANS # Notify about TBTRANS
+  TBT_PHONON # Notify about phonon mode
   $<$<BOOL:${WITH_MPI}>:MPI>
   $<$<BOOL:${HAS_MRRR}>:SIESTA__MRRR>
   $<$<BOOL:${WITH_ELPA}>:SIESTA__ELPA>
@@ -189,23 +197,22 @@ target_compile_definitions(
 )
 
 target_link_libraries(
-  tbtrans
+  phtrans
   PRIVATE
   $<$<BOOL:${WITH_OPENMP}>:OpenMP::OpenMP_Fortran>
   libfdf::libfdf
   $<$<BOOL:${WITH_MPI}>:mpi_siesta>
   $<$<BOOL:${WITH_NETCDF}>:NetCDF::NetCDF_Fortran>
   $<$<BOOL:${WITH_NCDF}>:${PROJECT_NAME}-libncdf>
-  ${PROJECT_NAME}-libfdict     # Even if not using NCDF
+  ${PROJECT_NAME}-libfdict    
   ${PROJECT_NAME}-libsys
   $<$<BOOL:${WITH_ELPA}>:Elpa::elpa>
   $<$<BOOL:${WITH_MPI}>:SCALAPACK::SCALAPACK>
   LAPACK::LAPACK
 )
 
-
 install(
-  TARGETS tbtrans 
+  TARGETS phtrans
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
   )
 
