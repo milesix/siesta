@@ -37,6 +37,7 @@ UTILS = Util/Unfolding/Src \
 	Util/DensityMatrix \
         Util/HSX \
         Util/TS/TBtrans \
+        Util/TS/PHtrans \
         Util/TS/tscontour \
 	Util/TS/tshs2tshs \
 	Util/TS/ts2ts \
@@ -64,14 +65,14 @@ UTILS = Util/Unfolding/Src \
 
 extlibs: $(EXTLIBS)
 
-siesta: $(EXTLIBS) 
+siesta: $(EXTLIBS) $(LIBSYS) 
 	(cd Src; $(MAKE) siesta )
 
 clean_siesta:
 	(cd Src; $(MAKE) clean)
 #
 utils:  MODE= 
-utils:  $(EXTLIBS) $(UTILS)
+utils:  $(EXTLIBS) $(LIBSYS) $(UTILS)
 
 clean_utils: MODE=clean
 clean_utils: $(UTILS)
