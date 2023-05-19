@@ -185,7 +185,7 @@ integer, parameter :: sp = selected_real_kind(5,10)
   read(wfs_u) nspin_flag
   read(wfs_u) nuotot
 
-  if (nspin_flag == 4) then
+  if (nspin_flag >= 4) then
      non_coll = .true.
      nspin_blocks = 1
   else
