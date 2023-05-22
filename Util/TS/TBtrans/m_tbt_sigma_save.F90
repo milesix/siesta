@@ -15,7 +15,7 @@
 ! Creation of the hssigma files.
 module m_tbt_sigma_save
 
-  use units, only : dp
+  use precision, only : dp
 
   use m_tbt_hs, only : tTSHS
   use m_tbt_save, only : tNodeE

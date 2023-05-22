@@ -36,19 +36,20 @@ INCFLAGS+= $(FDF_INCFLAGS)
 INCFLAGS+= $(MPI_WRAPPERS_INCFLAGS)
 INCFLAGS+= $(DFTD3_INCFLAGS)
 INCFLAGS+= $(SIESTA_LIB_INCFLAGS)
+INCFLAGS+= $(LIBSYS_INCFLAGS)
 #
 # The "Siesta library" is used by this MPI-based driver
-SIESTA_LIB=$(MAIN_OBJDIR)/Src/libSiestaForces.a $(MAIN_OBJDIR)/Src/psml_die.o
+SIESTA_LIB=$(MAIN_OBJDIR)/Src/libSiestaForces.a
 #
 # Link-time dependencies (could be handled by SIESTA_LIB logic...)
 #
-ALL_LIBS= $(SIESTA_LIB) $(FDF_LIBS)  $(XC) \
+ALL_LIBS= $(SIESTA_LIB) $(FDF_LIBS)  $(XC) $(LIBSYS) \
 	$(NCPS) $(PSML) $(XMLF90_LIBS) $(PSOP) $(MS)\
 	$(MPI_INTERFACE) $(COMP_LIBS) $(DFTD3_LIBS) $(LIBS)
 #
-protoNEB: $(SIESTA_LIB) protoNEB.o handlers.o
+protoNEB: $(SIESTA_LIB) protoNEB.o 
 	$(FC) $(LDFLAGS) -o protoNEB \
-	      protoNEB.o handlers.o $(ALL_LIBS)
+	      protoNEB.o  $(ALL_LIBS)
 #
 intermediate: 
 	@echo "==> Cleaning intermediate files ONLY"

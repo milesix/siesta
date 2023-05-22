@@ -2,7 +2,7 @@ set(top_srcdir "${CMAKE_SOURCE_DIR}/Src" )
 
 set(sources
 
- handlers.F
+ tbt_handlers_m.F90
  m_tbt_contour.F90
  m_tbt_dH.F90
  m_tbt_dSE.F90
@@ -152,7 +152,6 @@ list(
   ${top_srcdir}/runinfo_m.F90
   ${top_srcdir}/siesta_geom.F90
   ${top_srcdir}/sorting.f
-  ${top_srcdir}/sys.F
   ${top_srcdir}/spin_subs.F90
   ${top_srcdir}/timer.F90
   ${top_srcdir}/timer_tree.f90
@@ -193,59 +192,20 @@ target_link_libraries(
   tbtrans
   PRIVATE
   $<$<BOOL:${WITH_OPENMP}>:OpenMP::OpenMP_Fortran>
-  fdf
+  libfdf::libfdf
   $<$<BOOL:${WITH_MPI}>:mpi_siesta>
   $<$<BOOL:${WITH_NETCDF}>:NetCDF::NetCDF_Fortran>
   $<$<BOOL:${WITH_NCDF}>:${PROJECT_NAME}-libncdf>
   ${PROJECT_NAME}-libfdict     # Even if not using NCDF
+  ${PROJECT_NAME}-libsys
   $<$<BOOL:${WITH_ELPA}>:Elpa::elpa>
   $<$<BOOL:${WITH_MPI}>:SCALAPACK::SCALAPACK>
   LAPACK::LAPACK
 )
 
-
-add_executable(phtrans ${sources})
-# we add a dependency to not block parallel compilation
-# This does nothing but preventing phtrans from being built before tbtrans
-# has completed.
-add_dependencies(phtrans tbtrans)
-
-target_include_directories(
-  phtrans
-  PRIVATE
-    ${CMAKE_CURRENT_BINARY_DIR}/generated
-  )
-
-target_compile_definitions(
-  phtrans
-  PRIVATE
-  TBTRANS # Notify about TBTRANS
-  TBT_PHONON # Notify about phonon mode
-  $<$<BOOL:${WITH_MPI}>:MPI>
-  $<$<BOOL:${HAS_MRRR}>:SIESTA__MRRR>
-  $<$<BOOL:${WITH_ELPA}>:SIESTA__ELPA>
-  $<$<BOOL:${WITH_NETCDF}>:CDF>
-  $<$<BOOL:${WITH_NCDF}>:NCDF>
-  $<$<BOOL:${WITH_NCDF}>:NCDF_4>
-  $<$<BOOL:${WITH_NCDF_PARALLEL}>:NCDF_PARALLEL>
-)
-
-target_link_libraries(
-  phtrans
-  PRIVATE
-  $<$<BOOL:${WITH_OPENMP}>:OpenMP::OpenMP_Fortran>
-  fdf
-  $<$<BOOL:${WITH_MPI}>:mpi_siesta>
-  $<$<BOOL:${WITH_NETCDF}>:NetCDF::NetCDF_Fortran>
-  $<$<BOOL:${WITH_NCDF}>:${PROJECT_NAME}-libncdf>
-  ${PROJECT_NAME}-libfdict     # Even if not using NCDF
-  $<$<BOOL:${WITH_ELPA}>:Elpa::elpa>
-  $<$<BOOL:${WITH_MPI}>:SCALAPACK::SCALAPACK>
-  LAPACK::LAPACK
-)
 
 install(
-  TARGETS tbtrans phtrans
+  TARGETS tbtrans 
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
   )
 

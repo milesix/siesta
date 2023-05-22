@@ -5,7 +5,7 @@ set(sources
   array.F90
   hsx_m.f90
   unfold.F90
-  handlers.f
+  unfold_handlers_m.F90
 )
 
 list(
@@ -14,7 +14,6 @@ list(
 
   ${top_srcdir}/precision.F
   ${top_srcdir}/broadcast_fdf_struct.F90
-  ${top_srcdir}/sys.F
   ${top_srcdir}/m_io.f
   ${top_srcdir}/alloc.F90
   ${top_srcdir}/parallel.F
@@ -102,14 +101,15 @@ list(
 
 add_executable(unfold "${sources}")
 
-target_link_libraries(
+ target_link_libraries(
   unfold
   PRIVATE
-  fdf
+  libfdf::libfdf
   libgridxc::libgridxc
-  Siesta::libpsml
+  libpsml::libpsml
   ${PROJECT_NAME}-libncps
   ${PROJECT_NAME}-libpsop
+  ${PROJECT_NAME}-libsys
   "$<$<BOOL:${WITH_MPI}>:mpi_siesta>"
   "$<$<BOOL:${WITH_NETCDF}>:NetCDF::NetCDF_Fortran>"
  ##  Unfold does not seem to depend on NCDF

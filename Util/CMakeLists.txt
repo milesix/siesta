@@ -1,6 +1,7 @@
 # Utilities
 
   add_subdirectory("TS/TBtrans")
+  add_subdirectory("TS/PHtrans")
   add_subdirectory("TS/tscontour")
   add_subdirectory("TS/ts2ts")
   add_subdirectory("TS/tshs2tshs")

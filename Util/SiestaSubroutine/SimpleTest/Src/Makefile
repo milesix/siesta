@@ -54,7 +54,7 @@ FSIESTA_SOCKETS= posix_calls.o fsockets.o sockets.o fsiesta_sockets.o
 #
 # Siesta libraries used by MPI version
 #
-SIESTA_LIB=$(MAIN_OBJDIR)/Src/libSiestaForces.a $(MAIN_OBJDIR)/Src/psml_die.o
+SIESTA_LIB=$(MAIN_OBJDIR)/Src/libSiestaForces.a
 
 XMLPARSER=$(XMLF90_LIBS)
 XC=$(GRIDXC_LIBS)
@@ -66,8 +66,9 @@ INCFLAGS+=$(NETCDF_INCFLAGS) $(FDF_INCFLAGS) $(MS_INCFLAGS) \
 INCFLAGS+= $(MPI_WRAPPERS_INCFLAGS)
 INCFLAGS+= $(DFTD3_INCFLAGS)
 INCFLAGS+= $(SIESTA_LIB_INCFLAGS)
+INCFLAGS+= $(LIBSYS_INCFLAGS)
 #
-ALL_LIBS= $(SIESTA_LIB) $(FDF_LIBS) $(XC) \
+ALL_LIBS= $(SIESTA_LIB) $(FDF_LIBS) $(XC) $(LIBSYS) \
 	$(NCPS) $(PSML) $(XMLF90_LIBS) $(PSOP) $(MS) \
 	$(MPI_INTERFACE) $(COMP_LIBS) $(DFTD3_LIBS) $(LIBS)
 #
@@ -92,15 +93,15 @@ simple_sockets_parallel: $(FSIESTA_SOCKETS) simple_parallel.o
 #
 # MPI version
 #
-phonons: $(SIESTA_LIB) phonons.o handlers.o
-	$(FC) $(LDFLAGS) -o phonons phonons.o handlers.o $(ALL_LIBS)
+phonons: $(SIESTA_LIB) phonons.o
+	$(FC) $(LDFLAGS) -o phonons phonons.o  $(ALL_LIBS)
 #
-simple_mpi_serial: $(SIESTA_LIB) simple_serial.o  handlers.o
-	$(FC) $(LDFLAGS) -o simple_mpi_serial simple_serial.o handlers.o $(ALL_LIBS)
+simple_mpi_serial: $(SIESTA_LIB) simple_serial.o 
+	$(FC) $(LDFLAGS) -o simple_mpi_serial simple_serial.o  $(ALL_LIBS)
 #
-simple_mpi_parallel: $(SIESTA_LIB) simple_mpi_parallel.o handlers.o
+simple_mpi_parallel: $(SIESTA_LIB) simple_mpi_parallel.o 
 	$(FC) $(LDFLAGS) -o simple_mpi_parallel \
-	      simple_mpi_parallel.o handlers.o $(ALL_LIBS)
+	      simple_mpi_parallel.o  $(ALL_LIBS)
 #
 intermediate: 
 	@echo "==> Cleaning intermediate files ONLY"

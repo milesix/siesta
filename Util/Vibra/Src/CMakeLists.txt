@@ -13,17 +13,20 @@ add_library(vibra_top_objs OBJECT
    ${top_src_dir}/io.f
    ${top_src_dir}/m_io.f
    ${top_src_dir}/precision.F
-   ${top_src_dir}/pxf.F90
    ${top_src_dir}/reclat.f
-   ${top_src_dir}/sys.F
    ${top_src_dir}/units.f90
 )
+
+target_link_libraries(
+    vibra_top_objs
+    PRIVATE
+    ${PROJECT_NAME}-libsys
+    )
 
 add_executable(
     fcbuild
     fcbuild.f
     recoor.f
-    sys_externals.f90
 )
 
 add_executable(
@@ -32,17 +35,18 @@ add_executable(
    klines.f
    outbands.f
    recoor.f
-   sys_externals.f90
    vibra.F
 )
 
 target_link_libraries(fcbuild
     vibra_top_objs
-    fdf
+    libfdf::libfdf
+    ${PROJECT_NAME}-libsys
     )
 target_link_libraries(vibra
     vibra_top_objs
-    fdf
+    libfdf::libfdf
+    ${PROJECT_NAME}-libsys
     LAPACK::LAPACK
     )
     

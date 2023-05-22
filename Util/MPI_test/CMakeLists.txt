@@ -22,7 +22,6 @@ endfunction()
 
 add_executable(pi3
   pi3.F
-  handlers.f
   )
 
 target_link_libraries(pi3 PRIVATE mpi_siesta)
@@ -39,7 +38,6 @@ setup_test(pi3)
 #
 add_executable(newcomm
   newcomm.F
-  handlers.f
   )
 
 target_link_libraries(newcomm PRIVATE mpi_siesta)

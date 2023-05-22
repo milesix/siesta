@@ -26,7 +26,11 @@ if (WITH_MPI)
 # Note that this library does NOT use mpi_siesta... We need the
 # standard MPI dependency, for itself and any users
 
- target_link_libraries(${PROJECT_NAME}-libms PUBLIC MPI::MPI_Fortran)
+ target_link_libraries(${PROJECT_NAME}-libms
+                       PUBLIC
+		       SCALAPACK::SCALAPACK
+		       LAPACK::LAPACK
+		       MPI::MPI_Fortran)
 
  # Note that the variables below are already incorporated as
  # properties of the MPI::MPI_Fortran target by the FindMPI module. For

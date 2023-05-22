@@ -1135,7 +1135,7 @@ C           Wait for received data and move it to the destination buffer
           if (Node.eq.0) then
             write(*,*)'ERROR: Wrong parameter for function distMeshData'
           endif
-          call die()
+          call die("stopping program")
         endif
 
         call de_alloc( JS,      'JS',      'distmeshdata' )
@@ -1557,7 +1557,7 @@ C             We should receive data from process src(icom)-1
           if (Node.eq.0) then
             write(*,*)'ERROR: Wrong parameter for function distMeshData'
           endif
-          call die()
+          call die("stopping program")
         endif
 
         if ( MaxSize > 0 ) then
@@ -1740,7 +1740,7 @@ C             We should receive data from process src(icom)-1
           if (Node.eq.0) then
             write(*,*)'ERROR: Wrong parameter for function distMeshData'
           endif
-          call die()
+          call die("stopping program")
         endif
 
         if (MaxSize.gt.0) then
@@ -2014,12 +2014,12 @@ C     Local variables
       if (.not.associated(mcomm%dst)) then
         write(6,*) 'ERROR: Trying to communicate extencil ',
      &             'with an uninitialized mesh distribution'
-        call die()
+        call die("stopping program")
       endif
       if (.not.associated(mcomm%src)) then
         write(6,*) 'ERROR: Trying to communicate extencil ',
      &             'with an uninitialized mesh distribution'
-        call die()
+        call die("stopping program")
       endif
 
       nullify(SBUF,RBUF)

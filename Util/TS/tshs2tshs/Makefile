@@ -40,6 +40,7 @@ FPPFLAGS += $(DEFS_PREFIX)-UMPI
 #FPPFLAGS += $(DEFS_PREFIX)-UNCDF_PARALLEL
 
 INCFLAGS:=$(NETCDF_INCFLAGS) $(INCFLAGS)
+INCFLAGS+=$(LIBSYS_INCFLAGS)
 
 # Uncomment the following line for debugging support
 #FFLAGS=$(FFLAGS_DEBUG)
@@ -51,7 +52,7 @@ DEP_OBJS = precision.o parallel.o \
         alloc.o pxf.o units.o  \
 	memory_log.o m_io.o io.o \
 	m_sparse.o intrinsic_missing.o geom_helper.o reclat.o \
-	io_sparse.o ncdf_io.o m_ts_io.o sys.o
+	io_sparse.o ncdf_io.o m_ts_io.o
 
 # Add class objects
 DEP_OBJS += m_uuid.o object_debug.o \
@@ -63,9 +64,9 @@ DEP_OBJS += m_uuid.o object_debug.o \
 DEP_OBJS += $(SYSOBJ)
 
 DEP_OBJS += m_os.o
-DEP_OBJS += m_ts_io_version.o psml_die.o
+DEP_OBJS += m_ts_io_version.o
 
-LOCAL_OBJS = tshs2tshs.o handlers.o 
+LOCAL_OBJS = tshs2tshs.o
 
 OBJS=$(DEP_OBJS) $(LOCAL_OBJS)
 
@@ -83,9 +84,9 @@ COMP_LIBS := $(filter-out libsiestaBLAS.a,$(COMP_LIBS))
 INCFLAGS += $(FDICT_INCFLAGS) $(NCDF_INCFLAGS)
 #######################
 #
-$(EXE): $(COMP_LIBS) $(TSHS_COMP_LIBS) $(OBJS) 
+$(EXE): $(COMP_LIBS) $(TSHS_COMP_LIBS) $(OBJS) $(LIBSYS)
 	$(FC) $(FFLAGS) $(LDFLAGS) -o $(EXE) \
-		$(OBJS) $(COMP_LIBS) $(TSHS_COMP_LIBS) $(LIBS) 
+		$(OBJS) $(COMP_LIBS) $(TSHS_COMP_LIBS) $(LIBSYS) $(LIBS) 
 
 clean:
 	@echo "==> Cleaning object, library, and executable files"
@@ -122,13 +123,12 @@ geom_helper.o: intrinsic_missing.o
 io.o: m_io.o
 io_sparse.o: class_OrbitalDistribution.o class_SpData1D.o class_SpData2D.o
 io_sparse.o: class_Sparsity.o precision.o
-m_io.o: sys.o
 m_sparse.o: alloc.o class_OrbitalDistribution.o class_SpData2D.o
 m_sparse.o: class_Sparsity.o geom_helper.o intrinsic_missing.o parallel.o
 m_sparse.o: precision.o
 m_ts_io.o: alloc.o class_OrbitalDistribution.o class_SpData1D.o
 m_ts_io.o: class_SpData2D.o class_Sparsity.o geom_helper.o io_sparse.o m_os.o
-m_ts_io.o: m_sparse.o memory_log.o ncdf_io.o parallel.o precision.o sys.o
+m_ts_io.o: m_sparse.o memory_log.o ncdf_io.o parallel.o precision.o 
 memory_log.o: m_io.o parallel.o precision.o
 ncdf_io.o: class_OrbitalDistribution.o class_SpData1D.o class_SpData2D.o
 ncdf_io.o: class_Sparsity.o io_sparse.o parallel.o precision.o

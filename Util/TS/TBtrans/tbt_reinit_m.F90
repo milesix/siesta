@@ -36,6 +36,8 @@ contains
     use files, only: label_length
     use parallel, only : Node
     use fdf
+    use units,         only: inquire_unit
+
     use m_verbosity
 
 #ifdef MPI
@@ -198,7 +200,9 @@ contains
       call broadcast_fdf_struct(0,mpi_comm_world)
 #endif
 
-      ! Initialize the verbosity setting
+    call fdf_set_unit_handler(inquire_unit)
+
+    ! Initialize the verbosity setting
     call init_verbosity('TBT.Verbosity', 5)
 
     ! Define Name of the system ...
