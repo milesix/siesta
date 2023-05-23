@@ -75,7 +75,7 @@ install(
  target_link_libraries(
   gen-basis
   PRIVATE
-  fdf
+  libfdf::libfdf
   libgridxc::libgridxc
   libpsml::libpsml
   ${PROJECT_NAME}-libncps

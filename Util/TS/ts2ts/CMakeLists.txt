@@ -15,7 +15,7 @@ list(APPEND sources
 )
 
 add_executable(ts2ts ${sources})
-target_link_libraries(ts2ts  PRIVATE  fdf)
+target_link_libraries(ts2ts  PRIVATE  libfdf::libfdf)
 
 install(TARGETS ts2ts
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} )
