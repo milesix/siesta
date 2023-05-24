@@ -14,7 +14,7 @@
 #     the libraries/files could not be found, the corresponding entry is replaced by
 #     "_libpath-NOT_FOUND".
 #
-function(find_custom_libraries libs libdirs find_quietly libs_found)
+function(siesta_find_custom_libraries libs libdirs find_quietly libs_found)
 
   set(_libs)
   foreach(_lib IN LISTS libs)

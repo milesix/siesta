@@ -10,11 +10,11 @@ set(_pi_section_delims "+" "*" "O" "@")
 # create an empty list to deal with nested sections
 set(_pi_section_headers)
 
-# Global function for printing stuff
+# Global function for siesta_printing stuff
 # When using the SIESTA_FIND_PACKAGE option it tells the printer
 # to inform of the flags that are looked up in Siesta_find_package
 # See there for details about {NAME}_FIND_METHOD, {NAME}_URL, etc.
-function(print_feature_info)
+function(siesta_print_feature_info)
   set(options REQUIRED)
   set(oneValueArgs OPTION FOUND NAME SIESTA_FIND_PACKAGE)
   set(multiValueArgs
@@ -49,7 +49,7 @@ function(print_feature_info)
     set(_pi_used "OFF")
   endif()
 
-  print_section_line("-" 4 " ${_pi_NAME} is ${_pi_used} " ${_pi_width})
+  siesta_print_section_line("-" 4 " ${_pi_NAME} is ${_pi_used} " ${_pi_width})
   list(APPEND CMAKE_MESSAGE_INDENT "${_pi_section_package}")
 
   # Add the header print-out
@@ -128,7 +128,7 @@ function(print_feature_info)
     set(p "${_pi_SIESTA_FIND_PACKAGE}")
     list(APPEND _pi_VARIABLES
       ${p}_FIND_METHOD
-      ${p}_URL ${p}_REVISION
+      ${p}_GIT_REPOSITORY ${p}_GIT_TAG
       ${p}_SOURCE_DIR
       )
   endif()
@@ -190,12 +190,12 @@ function(print_feature_info)
   list(POP_BACK CMAKE_MESSAGE_INDENT)
   list(POP_BACK CMAKE_MESSAGE_INDENT)
 
-  print_section_line("-" 0 "" ${_pi_width})
+  siesta_print_section_line("-" 0 "" ${_pi_width})
 endfunction()
 
 # Section handlers
 
-function(print_section_line delim delim_pre_count msg delim_total_count)
+function(siesta_print_section_line delim delim_pre_count msg delim_total_count)
   # Create a message:
   #   PRE MSG POST
   # define PRE
@@ -208,7 +208,7 @@ function(print_section_line delim delim_pre_count msg delim_total_count)
 endfunction()
 
 
-macro(print_start_section _pi_msg)
+macro(siesta_print_start_section _pi_msg)
   # Get current section delimiter
   list(LENGTH _pi_section_headers _pi_sec_depth)
   list(GET _pi_section_delims ${_pi_sec_depth} _pi_section_delim)
@@ -218,12 +218,12 @@ macro(print_start_section _pi_msg)
 
   # Print new section
   message(NOTICE "")
-  print_section_line("${_pi_section_delim}" 4 " ${_pi_msg} >>> " ${_pi_width})
+  siesta_print_section_line("${_pi_section_delim}" 4 " ${_pi_msg} >>> " ${_pi_width})
 
   list(APPEND CMAKE_MESSAGE_INDENT "${_pi_section_delim} ")
 endmacro()
 
-macro(print_end_section)
+macro(siesta_print_end_section)
   # new line, and then header
   message(NOTICE "")
   list(POP_BACK CMAKE_MESSAGE_INDENT)
@@ -238,7 +238,7 @@ macro(print_end_section)
   # Do some arithmetic
   string(LENGTH "${_pi_msg}" _pi_section_msg_length)
   math(EXPR _pi_section_delim_len "${_pi_width} - ${_pi_section_msg_length} - 8 - 2")
-  print_section_line("${_pi_section_delim}" ${_pi_section_delim_len} " <<< ${_pi_msg} " ${_pi_width})
+  siesta_print_section_line("${_pi_section_delim}" ${_pi_section_delim_len} " <<< ${_pi_msg} " ${_pi_width})
 
 endmacro()
 
@@ -253,9 +253,9 @@ message(NOTICE
 )
 
 
-print_start_section("Parallel")
+siesta_print_start_section("Parallel")
 
-print_feature_info(
+siesta_print_feature_info(
   NAME OpenMP
   MSGOFF
     "Can be used for extremely large systems to reduce memory requirements"
@@ -267,7 +267,7 @@ print_feature_info(
   OPTION WITH_OPENMP
   )
 
-print_feature_info(
+siesta_print_feature_info(
   NAME MPI
   OPTION WITH_MPI
   FOUND MPI_Fortran_FOUND
@@ -275,12 +275,12 @@ print_feature_info(
   DEPENDENCIES "ScaLAPACK"
 )
 
-print_end_section()
+siesta_print_end_section()
 
 
-print_start_section("Linear algebra")
+siesta_print_start_section("Linear algebra")
 
-print_feature_info(
+siesta_print_feature_info(
   NAME BLAS
   VARIABLES
     BLAS_LIBRARY_DIR
@@ -299,7 +299,7 @@ print_feature_info(
   "for performance reasons"
   )
 
-print_feature_info(REQUIRED
+siesta_print_feature_info(REQUIRED
   NAME LAPACK
   VARIABLES
     LAPACK_LIBRARY_DIR
@@ -319,9 +319,9 @@ print_feature_info(REQUIRED
   "NOT the NetLib BLAS library!"
   )
 
-print_start_section("Parallel")
+siesta_print_start_section("Parallel")
 
-print_feature_info(
+siesta_print_feature_info(
   NAME ScaLAPACK
   OPTION WITH_MPI
   FOUND SCALAPACK_FOUND
@@ -336,7 +336,7 @@ print_feature_info(
   MSGOFF "Parallel support is highly advised to allow scalable and faster calculations"
   )
 
-print_feature_info(
+siesta_print_feature_info(
   NAME ELPA
   OPTION WITH_ELPA
   FOUND ELPA_FOUND
@@ -356,32 +356,26 @@ print_feature_info(
   DEPENDENCIES "MPI" "ScaLAPACK"
   )
 
-print_end_section()
-print_end_section()
+siesta_print_end_section()
+siesta_print_end_section()
 
 
-print_start_section("Required dependencies")
+siesta_print_start_section("Required dependencies")
 
-print_feature_info(REQUIRED
+siesta_print_feature_info(REQUIRED
   NAME libfdf
-  VARIABLES
-    LIBFDF_SOURCE_DIR # if submodule
-    libfdf_SOURCE_DIR # if fetch (FetchContent uses lowercase)
   FOUND LIBFDF_FOUND
   # add VARIABLES from SIESTA_FIND_PACKAGE
   SIESTA_FIND_PACKAGE LIBFDF
   )
 
-print_feature_info(REQUIRED
+siesta_print_feature_info(REQUIRED
   NAME xmlf90
-  VARIABLES
-    XMLF90_SOURCE_DIR # if submodule
-    xmlf90_SOURCE_DIR # if fetch (FetchContent uses lowercase)
   FOUND XMLF90_FOUND
   SIESTA_FIND_PACKAGE XMLF90
   )
   
-print_feature_info(REQUIRED
+siesta_print_feature_info(REQUIRED
   NAME LibGridXC
   VARIABLES
     LIBGRIDXC_ALLOW_FETCH
@@ -391,7 +385,7 @@ print_feature_info(REQUIRED
   FOUND LIBGRIDXC_FOUND
   )
 
-print_feature_info(REQUIRED
+siesta_print_feature_info(REQUIRED
   NAME LibPSML
   HEADER "Allows using pseudo-potentials from pseudo-dojo.org"
   FOUND LIBPSML_FOUND
@@ -399,16 +393,15 @@ print_feature_info(REQUIRED
     LIBPSML_LINK_LIBRARIES
     LIBPSML_INCLUDE_DIRS
     LIBPSML_INCLUDEDIR
-    LIBPSML_SOURCE_DIR
-    libpsml_SOURCE_DIR
+  SIESTA_FIND_PACKAGE LIBPSML
   )
 
-print_end_section()
+siesta_print_end_section()
 
 
-print_start_section("Recommended dependencies")
+siesta_print_start_section("Recommended dependencies")
 
-print_feature_info(
+siesta_print_feature_info(
   NAME Libxc
   MSGOFF
     "Users are advised to use the libxc library for full feature completeness"
@@ -435,7 +428,7 @@ print_feature_info(
   FOUND LIBXC_Fortran_FOUND
   )
 
-print_feature_info(
+siesta_print_feature_info(
   NAME NetCDF
   MSGOFF
     "Users are adviced to add support for NetCDF due to many functionalities"
@@ -456,12 +449,12 @@ print_feature_info(
   FOUND NetCDF_FOUND 
   )
 
-print_end_section()
+siesta_print_end_section()
 
 
-print_start_section("Optional features")
+siesta_print_start_section("Optional features")
 
-print_feature_info(
+siesta_print_feature_info(
   NAME flook
   MSGON "Interaction with Lua can be enabled by adding"
   "  Lua.Script luafile.lua"
@@ -476,12 +469,9 @@ print_feature_info(
   FOUND FLOOK_FOUND
   )
 
-print_feature_info(
+siesta_print_feature_info(
   NAME DFTD3
   OPTION WITH_DFTD3
-  VARIABLES
-    S-DFTD3_SOURCE_DIR
-    s-dftd3_SOURCE_DIR
   MSGOFF
     "Adding support for DFT-D3 can improve force descriptions"
     "using simple but heuristically determined corrections to forces"
@@ -489,7 +479,7 @@ print_feature_info(
   )
 
 
-print_feature_info(
+siesta_print_feature_info(
   NAME FFTW
   MSGON
     "Only the STM/ol-stm utility will currently benefit from FFTW"
@@ -499,7 +489,7 @@ print_feature_info(
 
 
 
-print_end_section()
+siesta_print_end_section()
 
 
 # Empty line

@@ -519,11 +519,10 @@ add_library(${PROJECT_NAME}-libsiesta "${libsiesta_sources}")
 set_target_properties(
   ${PROJECT_NAME}-libsiesta
   PROPERTIES
-  VERSION "${PROJECT_VERSION}"
   OUTPUT_NAME "SiestaForces"
 )
 
-add_executable(${PROJECT_NAME}-siesta   siesta.F )
+add_executable(${PROJECT_NAME}-siesta siesta.F )
 target_link_libraries(
     ${PROJECT_NAME}-siesta
     PRIVATE
@@ -626,7 +625,7 @@ endif()
 execute_process(COMMAND sh ${CMAKE_CURRENT_SOURCE_DIR}/SIESTA_cmake_vgen.sh
                 WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
                 OUTPUT_VARIABLE SIESTA_VERSION
-		ERROR_VARIABLE  VERSION_STDERR)
+		ERROR_VARIABLE VERSION_STDERR)
 
 string(STRIP "${SIESTA_VERSION}" SIESTA_VERSION)
 message(STATUS "SIESTA_VERSION: ${SIESTA_VERSION}")

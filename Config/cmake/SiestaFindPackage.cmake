@@ -29,8 +29,8 @@ function(Siesta_find_package)
     # the package name:
     # Used for variable lookups {NAME}_FIND_METHODS etc.
     NAME
-    URL REVISION # for git repo's
-    SUBMODULE_DIR)
+    GIT_REPOSITORY GIT_TAG # for git repo's
+    SOURCE_DIR)
   set(multiValueArgs)
   cmake_parse_arguments(_f "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
@@ -61,39 +61,39 @@ function(Siesta_find_package)
   list(APPEND CMAKE_MESSAGE_INDENT "| ")
 
   # Allow users to pass options via flags
-  #  *_URL
-  #  *_REVISION
+  #  *_GIT_REPOSITORY
+  #  *_GIT_TAG
   #  *_SOURCE_DIR
   foreach(n IN ITEMS ${pkg_lc} ${pkg_uc} ${pkg})
 
-    # Also allow externally setting the URL and REVISION
-    if(DEFINED "${n}_URL")
-      set(_f_URL "${${n}_URL}")
+    # Also allow externally setting the GIT_REPOSITORY and GIT_TAG
+    if(DEFINED "${n}_GIT_REPOSITORY")
+      set(_f_REPO "${${n}_GIT_REPOSITORY}")
     endif()
 
-    if(DEFINED "${n}_REVISION")
-      set(_f_REVISION "${${n}_REVISION}")
+    if(DEFINED "${n}_GIT_TAG")
+      set(_f_TAG "${${n}_GIT_TAG}")
     endif()
 
     # The submodule directory is a SOURCE_DIR from the outside
     # world. Hence it should look up the SOURCE_DIR
     if(DEFINED "${n}_SOURCE_DIR")
-      set(_f_SUBMODULE_DIR "${${n}_SOURCE_DIR}")
+      set(_f_SOURCE_DIR "${${n}_SOURCE_DIR}")
     endif()
   endforeach()
 
   # Determine the allowed find-methods
-  set(all_f_methods "cmake" "pkgconf" "subproject" "submodule" "fetch")
+  set(all_f_methods "cmake" "pkgconf" "source" "fetch")
   set(allowed_f_methods "cmake" "pkgconf")
-  if(DEFINED _f_SUBMODULE_DIR)
-    list(APPEND allowed_f_methods "subproject" "submodule")
+  if(DEFINED _f_SOURCE_DIR)
+    list(APPEND allowed_f_methods "source")
   endif()
-  if(DEFINED _f_URL AND DEFINED _f_REVISION)
+  if(DEFINED _f_REPO AND DEFINED _f_TAG)
     list(APPEND allowed_f_methods "fetch")
-  elseif(DEFINED _f_URL)
-    message(WARNING "Siesta_find_package: ${pkg} will not allow fetch as the URL is supplied, but no revision, please use -D${pkg}_REVISION= to specify revision")
-  elseif(DEFINED _f_REVISION)
-    message(WARNING "Siesta_find_package: ${pkg} will not allow fetch as the REVISION is supplied, but no URL, please use -D${pkg}_URL= to specify URL")
+  elseif(DEFINED _f_REPO)
+    message(WARNING "Siesta_find_package: ${pkg} will not allow fetch as the GIT_REPOSITORY is supplied, but no GIT_TAG, please use -D${pkg}_GIT_TAG=")
+  elseif(DEFINED _f_TAG)
+    message(WARNING "Siesta_find_package: ${pkg} will not allow fetch as the GIT_TAG is supplied, but no GIT_REPOSITORY, please use -D${pkg}_GIT_REPOSITORY=")
   endif()
 
   # default the searched methods
@@ -128,8 +128,7 @@ function(Siesta_find_package)
     set(f_methods)
   endif()
 
-  #debug
-  #message("METHODS = ${f_methods} | ${allowed_f_methods}")
+  message(DEBUG "Siesta_find_package[${pkg}] METHODS | ALLOWED = ${f_methods} | ${allowed_f_methods}")
 
   foreach(method IN ITEMS ${f_methods})
     # assert that method is in all_f_methods
@@ -175,26 +174,17 @@ function(Siesta_find_package)
       endif()
     endif()
 
-    if("${method}" STREQUAL "subproject" OR "${method}" STREQUAL "submodule")
-      mymsg(CHECK_START "sub-project in folder: ${_f_SUBMODULE_DIR}")
+    if("${method}" STREQUAL "source")
+      mymsg(CHECK_START "source in folder: ${_f_SOURCE_DIR}")
 
-      set("${pkg_uc}_SOURCE_DIR" "${_f_SUBMODULE_DIR}")
+      set("${pkg_uc}_SOURCE_DIR" "${_f_SOURCE_DIR}")
       if(EXISTS "${${pkg_uc}_SOURCE_DIR}/CMakeLists.txt")
         mymsg(CHECK_PASS "found")
 
-        set("${pkg_uc}_BINARY_DIR" "${_f_SUBMODULE_DIR}")
-        add_subdirectory(
-          "${${pkg_uc}_SOURCE_DIR}"
-          "${${pkg_uc}_BINARY_DIR}"
-        )
+        add_subdirectory("${${pkg_uc}_SOURCE_DIR}")
 
         add_library("${pkg}::${pkg}" INTERFACE IMPORTED GLOBAL)
         target_link_libraries("${pkg}::${pkg}" INTERFACE "${pkg}")
-
-        # We need the module directory in the subproject before we finish the configure stage
-        if(NOT EXISTS "${${pkg_uc}_BINARY_DIR}/include")
-          make_directory("${${pkg_uc}_BINARY_DIR}/include")
-        endif()
 
         break()
       else()
@@ -203,27 +193,23 @@ function(Siesta_find_package)
     endif()
 
     if("${method}" STREQUAL "fetch")
-      mymsg(CHECK_START "fetching from ${_f_URL} (${pkg})")
+      mymsg(CHECK_START "fetching from ${_f_REPO}")
 
       include(FetchContent)
       FetchContent_Declare(
-        "${pkg_lc}"
-        GIT_REPOSITORY "${_f_URL}"
-        GIT_TAG "${_f_REVISION}"
+        "${pkg}"
+        GIT_REPOSITORY "${_f_REPO}"
+        GIT_TAG "${_f_TAG}"
       )
-      FetchContent_MakeAvailable("${pkg_lc}")
+      FetchContent_MakeAvailable("${pkg}")
 
       add_library("${pkg}::${pkg}" INTERFACE IMPORTED GLOBAL)
       target_link_libraries("${pkg}::${pkg}" INTERFACE "${pkg}")
 
       # We need the module directory in the subproject before we finish the configure stage
-      FetchContent_GetProperties("${pkg_lc}" BINARY_DIR "${pkg_uc}_BINARY_DIR")
+      FetchContent_GetProperties("${pkg}" BINARY_DIR "${pkg_uc}_BINARY_DIR")
 
       mymsg(CHECK_PASS "fetched")
-
-      if(NOT EXISTS "${${pkg_uc}_BINARY_DIR}/include")
-        make_directory("${${pkg_uc}_BINARY_DIR}/include")
-      endif()
 
       break()
     endif()

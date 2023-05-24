@@ -65,7 +65,7 @@ influence the LAPACK detection if the built-in module is invoked.
 #]=======================================================================]
 
 include(FindPackageHandleStandardArgs)
-include(CustomLibraryFinder)
+include(SiestaCustomLibraryFinder)
 
 # indent for cleaner output
 message(STATUS "Parsing LAPACK options")
@@ -111,7 +111,7 @@ else()
 
       # LAPACK explicitely set by the user, search for those libraries
       # ON = find_quietly
-      find_custom_libraries("${LAPACK_LIBRARY}" "${LAPACK_LIBRARY_DIR}" ON _libs)
+      siesta_find_custom_libraries("${LAPACK_LIBRARY}" "${LAPACK_LIBRARY_DIR}" ON _libs)
       set(LAPACK_LIBRARY "${_libs}" CACHE STRING "List of LAPACK libraries to link" FORCE)
       unset(_libs)
 

@@ -65,7 +65,7 @@ The following cache variables may be set to influence the library detection:
 #]=======================================================================]
 
 include(FindPackageHandleStandardArgs)
-include(CustomLibraryFinder)
+include(SiestaCustomLibraryFinder)
 
 # indent for cleaner output
 message(STATUS "Parsing ScaLAPACK options")
@@ -136,7 +136,7 @@ else()
       message(STATUS "Using user-defined variables")
 
       # ON = find_quietly
-      find_custom_libraries("${SCALAPACK_LIBRARY}" "${SCALAPACK_LIBRARY_DIR}" ON _libs)
+      siesta_find_custom_libraries("${SCALAPACK_LIBRARY}" "${SCALAPACK_LIBRARY_DIR}" ON _libs)
       set(SCALAPACK_LIBRARY "${_libs}" CACHE STRING "List of ScaLAPACK libraries to link" FORCE)
       unset(_libs)
 

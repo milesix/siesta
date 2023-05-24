@@ -1,8 +1,8 @@
 include(SiestaFindPackage)
 
 Siesta_find_package(libfdf
-  URL "https://gitlab.com/siesta-project/libraries/libfdf"
-  REVISION "master"
-  SUBMODULE_DIR ${PROJECT_SOURCE_DIR}/External/libfdf
+  GIT_REPOSITORY "https://gitlab.com/siesta-project/libraries/libfdf"
+  GIT_TAG "master"
+  SOURCE_DIR ${PROJECT_SOURCE_DIR}/External/libfdf
   )
 

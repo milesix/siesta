@@ -16,7 +16,6 @@ list(APPEND
 project(
   siesta
   LANGUAGES Fortran C
-  # HOMEPAGE_URL requires >=3.12
   HOMEPAGE_URL "https://siesta-project.org/siesta"
   DESCRIPTION "A first-principles materials simulation code using DFT."
   )
@@ -28,11 +27,16 @@ set(SIESTA_LICENSE "GPLv3")
 include(SiestaUtils)
 siesta_util_ensure_out_of_source_build()
 
-# Default build-type 
+# Default build-type
 if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE "ReleaseWithDebInfo")
+  set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build" FORCE)
 endif()
+# For cmake-gui
+set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
+  "Debug" "Check" "Release" "MinRelSize" "RelWithDebInfo")
 
+# Compiler flags
+include(SiestaFlags)
 
 # -- Options ----------------------------------------
 option(WITH_GRID_SP "Use single-precision for grid magnitudes" FALSE)
@@ -40,8 +44,6 @@ option(WITH_GRID_SP "Use single-precision for grid magnitudes" FALSE)
 option(BUILD_DOCS "Create Doxygen-based documentation (WIP)" FALSE)
 #--------------------------------------
 
-# Compiler flags
-include(flags)
 
 # Follow GNU conventions for installing directories
 # This will use the bin/ include/ etc. folder structure
@@ -95,8 +97,8 @@ if(WITH_MPI AND (NOT SCALAPACK_FOUND))
 endif()
 
 # Now we can check for linear algebra stuff
-include(check_linalg)
-include(check_linalg_features)
+include(SiestaCheckLinalg)
+include(SiestaCheckLinalgFeatures)
 
 #---------------------------- OpenMP
 # OpenMP *must* be user-requested since it brings additional
@@ -122,16 +124,6 @@ if( WITH_OPENMP )
     endif()
   endif()
   
-else()
-
-  # Create dummy empty targets
-  if(NOT TARGET OpenMP::OpenMP_Fortran)
-    add_library(OpenMP::OpenMP_Fortran INTERFACE IMPORTED)
-  endif()
-  if(NOT TARGET OpenMP::OpenMP_C)
-    add_library(OpenMP::OpenMP_C INTERFACE IMPORTED)
-  endif()
-
 endif()
 
 
@@ -291,7 +283,7 @@ add_subdirectory(Docs)
 
 enable_testing()
 
-include(TestMPIConfig)
+include(SiestaTestMPIConfig)
 
 if(WITH_MPI)
   add_subdirectory("Util/MPI_test")
@@ -299,6 +291,6 @@ endif()
 
 add_subdirectory(Tests)
 
-include(PrintBuildInfo)
+include(SiestaPrintBuildInfo)
 
 #add_subdirectory("Src/ncps/examples")
