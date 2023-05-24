@@ -117,7 +117,13 @@ if(NOT TARGET libxc::XC_Fortran)
     message(STATUS "  - libxc${xcv} (FOUND = ${LIBXC_${xcV}_FOUND})")
   endforeach()
 
+  list(POP_BACK CMAKE_MESSAGE_INDENT)
+  message(CHECK_FAIL "not found")
+
+else()
+
+  list(POP_BACK CMAKE_MESSAGE_INDENT)
+  message(CHECK_PASS "found")
+
 endif()
 
-list(POP_BACK CMAKE_MESSAGE_INDENT)
-message(CHECK_PASS "found")
