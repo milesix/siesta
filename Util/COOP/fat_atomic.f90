@@ -55,14 +55,16 @@ program fatband_atomic
   logical  :: non_coll
 
   integer :: proj_u, nc_p
-  logical :: new_scheme = .false.
+  logical :: atom_lm_scheme = .false.
+  logical :: all_interactions = .true.
+  character(len=2) :: mark
 
   !
   !     Process options
   !
   n_opts = 0
   do
-     call getopts('dhlnR:b:B:',opt_name,opt_arg,n_opts,iostat)
+     call getopts('dhlaR:b:B:s',opt_name,opt_arg,n_opts,iostat)
      if (iostat /= 0) exit
      select case(opt_name)
      case ('d')
@@ -78,8 +80,10 @@ program fatband_atomic
      case ('B')
         read(opt_arg,*) max_band
         max_band_set = .true.
-     case ('n')
-        new_scheme = .true.
+     case ('a','n')
+        atom_lm_scheme = .true.
+     case ('s')   ! "same sets I and II"
+        all_interactions = .false.
      case ('h')
         call manual()
      case ('?',':')
@@ -249,7 +253,7 @@ program fatband_atomic
   ! Here we should implement new code to generate "orbital sets" for
   ! each lm pair and for each atom involved 
 
-  if (new_scheme) then
+  if (atom_lm_scheme) then
 
      ! There are 9 "curves" per atom
      ncb = 9*na_u
@@ -289,6 +293,12 @@ program fatband_atomic
      enddo
 
      call mask_to_arrays(ncb,orb_mask_atomic(:,:),noc(:,1),koc(:,1,:))
+     if (all_interactions) then
+        ! Consider all interactions
+        orb_mask_atomic(:,:) = .true.
+     else
+        ! Leave the mask for second set equal to the first
+     endif
      call mask_to_arrays(ncb,orb_mask_atomic(:,:),noc(:,2),koc(:,2,:))
         
   else
@@ -301,8 +311,11 @@ program fatband_atomic
      call read_curve_information(.true.,.false.,  &
                                     mpr_u,no_u,ncbmx,ncb,tit,orb_mask,dtc)
 
-     !  orb_mask(:,2,1:ncb) = .true.       ! All orbitals considered
-     orb_mask(:,2,1:ncb) = orb_mask(:,1,1:ncb)  ! Just the same set as I
+     if (all_interactions) then
+        orb_mask(:,2,1:ncb) = .true.       ! All orbitals considered
+     else
+        orb_mask(:,2,1:ncb) = orb_mask(:,1,1:ncb)  ! Just the same set as I
+     endif
 
      call mask_to_arrays(ncb,orb_mask(:,1,:),noc(:,1),koc(:,1,:))
      call mask_to_arrays(ncb,orb_mask(:,2,:),noc(:,2),koc(:,2,:))
@@ -447,22 +460,6 @@ program fatband_atomic
 
               if ( .not. mask2(ii2)) Cycle    ! Is not one of Set II
 
-              ! For the new fatbands, we use a NEW criterion: we do 
-              ! not consider interactions which are not in the same
-              ! shell (e.g. 3s: 3s_1st_z 3s_2nd_z)
-
-              ! The easiest thing for now is to request that the distance between
-              ! the centers of the orbitals is zero, and that the quantum numbers
-              ! are the same. However, this is implicitly taken care of when
-              ! setting the II set equal to the I set, 
-              ! ASSUMING that we are *only* using orbital set specifications that
-              ! include a single shell (For example, 1_3s).
-
-              if (dij(ind) > 0.0_dp) CYCLE
-              if (zl(io1) /= zl(ii2) ) CYCLE   ! Force same 'l' quantum number
-              if (zx(io1) /= zx(ii2) ) CYCLE   ! Force same 'm' quantum number
-
-              
               ! (what to do with semicore states??)
 
               num_red(i1) = num_red(i1) + 1
@@ -491,21 +488,6 @@ program fatband_atomic
 
               if ( .not. mask2(ii2)) Cycle
 
-              ! For the new fatbands, we use a NEW criterion: we do 
-              ! not consider interactions which are not in the same
-              ! shell (e.g. 3s: 3s_1st_z 3s_2nd_z)
-
-              ! The easiest thing for now is to request that the distance between
-              ! the centers of the orbitals is zero, and that the quantum numbers
-              ! are the same. However, this is implicitly taken care of when
-              ! setting the II set equal to the I set, 
-              ! ASSUMING that we are *only* using orbital set specifications that
-              ! include a single shell (For example, 1_3s).
-
-              if (dij(ind) > 0.0_dp) CYCLE
-              if (zl(io1) /= zl(ii2) ) CYCLE   ! Force same 'l' quantum number
-              if (zx(io1) /= zx(ii2) ) CYCLE   ! Force same 'm' quantum number
-
               ! (what to do with semicore states??)
 
               n_int = n_int + 1
@@ -527,15 +509,19 @@ program fatband_atomic
         read(wfs_u) 
         read(wfs_u) 
         read(wfs_u) 
-     
-        open(fat_u,file=trim(mflnm)// "." // trim(tit(ic)) // '.EIGFAT')
-        write(fat_u,"(a,2i5)") "# " // trim(sflnm) // " min_band, max_band: ", min_band, max_band
-        write(fat_u,"(3i6)")   nbands, nspin_blocks, nkp
+
+        if (.not. atom_lm_scheme) then
+           open(fat_u,file=trim(mflnm)// "." // trim(tit(ic)) // '.EIGFAT')
+           write(fat_u,"(a,2i5)") "# " // trim(sflnm) // " min_band, max_band: ", min_band, max_band
+           write(fat_u,"(3i6)")   nbands, nspin_blocks, nkp
+        endif
 
         do ik=1,nkp
 
-           write(fat_u,"(i4,3(1x,f10.5))")  ik, pk(1:3,ik)
-
+           if (.not. atom_lm_scheme) then
+              write(fat_u,"(i4,3(1x,f10.5))")  ik, pk(1:3,ik)
+           endif
+           
            do is=1,nspin_blocks
 
               ib = 0
@@ -608,8 +594,13 @@ program fatband_atomic
                     enddo  ! i1
 
                  enddo   ! iwf
-                 write(fat_u,"(4(4x,f10.4,f9.5))")   &
-                      (eig(ib,is),fat(ib,is,ik,ic),ib=1,nbands)
+
+                 if (.not. atom_lm_scheme) then
+
+                    write(fat_u,"(4(4x,f10.4,f9.5))")   &
+                         (eig(ib,is),fat(ib,is,ik,ic),ib=1,nbands)
+                 endif
+                 
               enddo      ! is
 
            enddo         ! ik
@@ -619,12 +610,14 @@ program fatband_atomic
            deallocate (list_io2)
            deallocate (list_ind)
 
-              close(fat_u)
+           close(fat_u)
 
         enddo    ! ic
 
-! Now, write in a more common format
-! Use the structure of the file to get the wavefunctions per k-point, etc
+       if (atom_lm_scheme) then
+           ! Write in a format appropriate for Pyprocar and others
+           
+           ! Use the structure of the file to get the wavefunctions per k-point, etc
 
         open(newunit=proj_u,file=trim(mflnm)// '.projs')
         write(proj_u,"(a,2i5)") "# " // trim(sflnm) // " min_band, max_band: ", min_band, max_band
@@ -663,13 +656,23 @@ program fatband_atomic
                  write(proj_u,"(/,a,i4,f12.6,a,i3,a)") 'Wf: ', iw, eigval, " (in set: ", ib, ")"
 
                  read(wfs_u) 
-                 if (new_scheme) then
-                    write(proj_u,"(/,3x,9(1x,a6))") "s", "py", "pz", "px", &
+                 if (atom_lm_scheme) then
+                    write(proj_u,"(/,3x,9(1x,a7))") "s", "py", "pz", "px", &
                       "dxy", "dyz", "dz2", "dxz", "dx2-z2"
                     nc_p = 0
                     do ia = 1, na_u
-                       write(proj_u,"(i3,9f7.4,2x,f7.4)") ia, &
-                            (fat(ib,is,ik,ic),ic=nc_p+1,nc_p+9), sum(fat(ib,is,ik,nc_p+1:nc_p+9))
+
+                       ! There are sometimes very small negative numbers
+                       ! We mark them with '**'. Clients can choose what to do with them
+                       if (any(fat(ib,is,ik,nc_p+1:nc_p+9) < -0.00005)) then
+                          mark="**"
+                       else
+                          mark ="  "
+                       endif
+
+                       write(proj_u,"(i3,9f8.4,2x,f8.4,1x,a2)") ia, &
+                            (fat(ib,is,ik,ic),ic=nc_p+1,nc_p+9), sum(fat(ib,is,ik,nc_p+1:nc_p+9)), mark
+
                        nc_p = nc_p + 9
                     end do
                  else
@@ -682,7 +685,7 @@ program fatband_atomic
 
         enddo         ! ik
         
-           
+     endif
 
  
  CONTAINS
@@ -701,6 +704,8 @@ program fatband_atomic
       write(6,*) "           -h:  print manual                    "
       write(6,*) "           -d:  debug                    "
       write(6,*) "           -l:  print summary of energy information         "
+      write(6,*) "           -a:  use atom-lm scheme and generate projections file "
+      write(6,*) "           -s:  ignore non-local interactions (for testing only) "
       write(6,*) "    "
       write(6,*) "   Selection of eigenstates to be used: "
       write(6,*) "    "
