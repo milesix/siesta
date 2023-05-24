@@ -29,9 +29,9 @@ end
 
 if (NOT blas_has_sgemm)
   message(WARNING
-    "---------------------------------------------"
-    " BLAS library cannot link properly"
-    " Please check the library linking string found or used by CMake"
+    "---------------------------------------------\n"
+    " BLAS library cannot link properly\n"
+    " Please check the library linking string found or used by CMake\n"
     "---------------------------------------------")
   message(FATAL_ERROR " BLAS library does not link properly")
 endif()

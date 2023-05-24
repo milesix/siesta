@@ -1,19 +1,21 @@
 
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.17)
 
 # CMAKE_MODULE_PATH is locally searched for *.cmake files
 # before CMAKE_PREFIX_PATH.
 # We will prefer to use CMAKE_MODULE_PATH
 list(APPEND
   CMAKE_MODULE_PATH
+  # add the generic configuration cmake directory
   ${CMAKE_CURRENT_SOURCE_DIR}/Config/cmake
+  # add the external modules directory
+  ${CMAKE_CURRENT_SOURCE_DIR}/Config/cmake/Modules
   )
 
 # Define project details
 project(
   siesta
   LANGUAGES Fortran C
-  VERSION "5.1.0"
   # HOMEPAGE_URL requires >=3.12
   HOMEPAGE_URL "https://siesta-project.org/siesta"
   DESCRIPTION "A first-principles materials simulation code using DFT."
@@ -57,12 +59,12 @@ find_package(CustomBlas)
 # Look for LAPACK
 find_package(CustomLapack REQUIRED)
 
-if (NOT TARGET MPI::MPI_Fortran)
+if(NOT TARGET MPI::MPI_Fortran)
  # Find MPI
  find_package(MPI OPTIONAL_COMPONENTS Fortran C)
 endif()
 
-if (MPI_Fortran_FOUND)
+if(MPI_Fortran_FOUND)
   find_package(CustomScalapack)
   if( NOT SCALAPACK_FOUND )
     message(WARNING

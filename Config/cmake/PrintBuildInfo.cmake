@@ -11,9 +11,12 @@ set(_pi_section_delims "+" "*" "O" "@")
 set(_pi_section_headers)
 
 # Global function for printing stuff
+# When using the SIESTA_FIND_PACKAGE option it tells the printer
+# to inform of the flags that are looked up in Siesta_find_package
+# See there for details about {NAME}_FIND_METHOD, {NAME}_URL, etc.
 function(print_feature_info)
   set(options REQUIRED)
-  set(oneValueArgs OPTION FOUND NAME)
+  set(oneValueArgs OPTION FOUND NAME SIESTA_FIND_PACKAGE)
   set(multiValueArgs
     VARIABLES
     DEPENDENCIES OPTIONAL_DEPENDENCIES
@@ -118,6 +121,16 @@ function(print_feature_info)
     foreach(dep IN LISTS _pi_OPTIONAL_DEPENDENCIES)
       message(NOTICE " - ${dep}")
     endforeach()
+  endif()
+
+  # Add variables if the SIESTA_FIND_PACKAGE option has been specified
+  if(DEFINED _pi_SIESTA_FIND_PACKAGE)
+    set(p "${_pi_SIESTA_FIND_PACKAGE}")
+    list(APPEND _pi_VARIABLES
+      ${p}_FIND_METHOD
+      ${p}_URL ${p}_REVISION
+      ${p}_SOURCE_DIR
+      )
   endif()
 
   if(DEFINED _pi_VARIABLES)
@@ -348,6 +361,25 @@ print_end_section()
 
 
 print_start_section("Required dependencies")
+
+print_feature_info(REQUIRED
+  NAME libfdf
+  VARIABLES
+    LIBFDF_SOURCE_DIR # if submodule
+    libfdf_SOURCE_DIR # if fetch (FetchContent uses lowercase)
+  FOUND LIBFDF_FOUND
+  # add VARIABLES from SIESTA_FIND_PACKAGE
+  SIESTA_FIND_PACKAGE LIBFDF
+  )
+
+print_feature_info(REQUIRED
+  NAME xmlf90
+  VARIABLES
+    XMLF90_SOURCE_DIR # if submodule
+    xmlf90_SOURCE_DIR # if fetch (FetchContent uses lowercase)
+  FOUND XMLF90_FOUND
+  SIESTA_FIND_PACKAGE XMLF90
+  )
   
 print_feature_info(REQUIRED
   NAME LibGridXC
@@ -453,6 +485,7 @@ print_feature_info(
   MSGOFF
     "Adding support for DFT-D3 can improve force descriptions"
     "using simple but heuristically determined corrections to forces"
+  SIESTA_FIND_PACKAGE S-DFTD3
   )
 
 
