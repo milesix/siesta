@@ -116,7 +116,7 @@ UNFOLD_OBJS += handlers.o
 
 $(DEP_OBJS): $(COMP_LIBS) 
 
-unfold: $(MPI_INTERFACE) $(COMP_LIBS) $(FDF_LIBS) $(NCPS) $(PSOP) $(DEP_OBJS) $(UNFOLD_OBJS) 
+unfold: $(MPI_INTERFACE) $(COMP_LIBS) $(NCPS) $(PSOP) $(DEP_OBJS) $(UNFOLD_OBJS) 
 	$(FC) $(FFLAGS) $(LDFLAGS) -o unfold \
               $(DEP_OBJS) $(UNFOLD_OBJS) $(MPI_INTERFACE) \
               $(XC) $(NCPS) $(PSOP) $(PSML_LIBS) $(XMLF90_LIBS) $(FDF_LIBS) $(COMP_LIBS) $(LIBS)

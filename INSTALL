@@ -1,6 +1,6 @@
 SIESTA can be built:
 
-* Using an experimental CMake framework (see file INSTALL.CMake for details)
+* Using CMake (see file INSTALL.CMake for details)
 
 * Using the traditional makefile-based approach, which has been
 streamlined and made more user-friendly.
@@ -26,11 +26,11 @@ still works, and can be useful for its flexibility, a new scheme
 facilitates the installation of the mandatory libraries
 on-the-fly, using CMake, pkg-config, and git submodules:
 
-- The xmlf90, libpsml, and libgridxc (required) libraries are available as
-  submodules in the External subdirectory, set to the appropriate
-  branches and/or tags for use in the current version of Siesta. If
-  you want to use them, and you are using git, you need to do (just
-  once, after you have fetched/cloned this Siesta branch):
+- The xmlf90, libpsml, libfdf, and libgridxc (required) libraries are
+  available as submodules in the External subdirectory, set to the
+  appropriate branches and/or tags for use in the current version of
+  Siesta. If you want to use them, and you are using git, you need to
+  do (just once, after you have fetched/cloned this Siesta branch):
 
      git submodule update --init --recursive <path>
 
@@ -74,8 +74,7 @@ on-the-fly, using CMake, pkg-config, and git submodules:
 The above steps involve a hybrid "makefile-CMake" approach. As
 mentioned at the top, it is possible to use CMake for the installation
 of Siesta itself, also with automatic installation of the required
-libraries. The CMake framework is functional, but still needs some ironing out.
-If you try it, please report problems and/or suggestions for improvement.
+libraries.
 
 
 

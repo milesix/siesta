@@ -49,14 +49,14 @@ VIBRA_OBJS = vibra.o hermdp.o klines.o outbands.o $(COMMON_OBJS)
 INCFLAGS+= $(FDF_INCFLAGS) 
 
 # Build dependencies
-$(BUILD_OBJS): $(FDF_LIBS) $(SIESTA_OBJS)
-$(VIBRA_OBJS): $(FDF_LIBS) $(SIESTA_OBJS)
+$(BUILD_OBJS): $(SIESTA_OBJS)
+$(VIBRA_OBJS): $(SIESTA_OBJS)
 
-fcbuild: $(FDF_LIBS) $(SIESTA_OBJS) $(BUILD_OBJS)
+fcbuild: $(SIESTA_OBJS) $(BUILD_OBJS)
 	$(FC) -o fcbuild \
 	       $(LDFLAGS) $(BUILD_OBJS) $(SIESTA_OBJS) $(FDF_LIBS)
 
-vibra: $(FDF_LIBS) $(COMP_LIBS) $(SIESTA_OBJS) $(VIBRA_OBJS)
+vibra:  $(COMP_LIBS) $(SIESTA_OBJS) $(VIBRA_OBJS)
 	$(FC) -o vibra \
 	       $(LDFLAGS) $(VIBRA_OBJS) $(SIESTA_OBJS) $(FDF_LIBS) $(COMP_LIBS) $(LIBS)
 

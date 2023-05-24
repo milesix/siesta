@@ -15,6 +15,7 @@ program unfold
 ! S.G.Mayo and J.M.Soler, Oct.2018
 ! P. Ordejón, Jan 2021 - Parallelization over orbitals implemented
 
+  use units, only: Ang
   use alloc,        only: de_alloc, re_alloc
   use memory_log,   only: memory_report
   use atmfuncs,     only: lofio, mofio, nofis, rcut, rphiatm, zetafio
@@ -22,9 +23,7 @@ program unfold
   use basis_types,  only: basis_parameters, initialize
   use basis_io,     only: read_basis_ascii
   use cellsubs,     only: reclat, volcel
-  use fdf,          only: block_fdf, fdf_bintegers, fdf_bline, fdf_block, &
-                          fdf_bmatch, fdf_bnames, fdf_bnnames, fdf_bnvalues, &
-                          fdf_bvalues, fdf_convfac, fdf_get, fdf_init, parsed_line
+  use fdf
   use hsx_m,        only: hsx_t, read_hsx_file
   use m_array,      only: array_copy
   use m_get_kpoints_scale, &
@@ -45,6 +44,8 @@ program unfold
   use spher_harm,   only: lofilm, rlylm
   use siesta_geom,  only: ucell, xa, isa   ! unit cell, atomic coords and species
   use sys,          only: die
+
+  use units,        only: inquire_unit
 
 
   implicit none
@@ -126,6 +127,8 @@ program unfold
 #ifdef MPI      
   call broadcast_fdf_struct(0,mpi_comm_world)
 #endif
+
+  call fdf_set_unit_handler(inquire_unit)
 
   ! Initialize timer
   threshold = fdf_get('TimerReportThreshold', 0._dp)
@@ -306,7 +309,7 @@ program unfold
 
   ! Find unit cell and initialize atomic coords
   if (myNode==0) print'(a,/,(3f12.6))','unfold: reading system geometry'
-  alat = fdf_get('LatticeConstant',1._dp,'bohr')
+  alat = fdf_get('LatticeConstant',Ang,'bohr')
   call coor(na,ucell)        ! atomic coordinates xa stored in module siesta_geom
   vol = volcel(ucell)        ! unit cell volume
   call reclat(ucell,rcell,1) ! rcell = reciprocal cell vectors

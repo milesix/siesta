@@ -38,11 +38,11 @@ add_executable(
 
 target_link_libraries(fcbuild
     vibra_top_objs
-    fdf
+    libfdf::libfdf
     )
 target_link_libraries(vibra
     vibra_top_objs
-    fdf
+    libfdf::libfdf
     LAPACK::LAPACK
     )
     

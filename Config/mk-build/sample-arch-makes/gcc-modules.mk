@@ -6,7 +6,7 @@
 # ml lapack   (Mac with homebrew: ml veclibfort)  # defines LAPACK_LIBS
 # ml fftw
 # ml elpa
-# ml gridxc-multi libpsml
+# ml gridxc-multi libpsml libfdf
 #--------------------------------------------------------
 # Use these symbols to request particular features
 # To turn on, set '=1'.

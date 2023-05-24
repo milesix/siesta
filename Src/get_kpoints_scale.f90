@@ -11,7 +11,7 @@ CONTAINS
     use fdf,            only: leqi, fdf_get
     use parallel,       only: IOnode
     use siesta_geom,    only: ucell
-    use units,          only: Pi
+    use units,          only: Pi, Ang
 
     implicit none
 
@@ -31,7 +31,7 @@ CONTAINS
 
     if (leqi(scale,'pi/a')) then
        
-       alat = fdf_get( 'LatticeConstant', 0.0_dp, 'Bohr' )
+       alat = fdf_get( 'LatticeConstant', Ang, 'Bohr' )
        if (alat .eq. 0.0_dp) then
           if (IOnode ) then
              write(6,'(a)') 'ERROR: Lattice constant required for ' // &
