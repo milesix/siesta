@@ -43,10 +43,13 @@ set_property(CACHE SIESTA_TOOLCHAIN PROPERTY STRINGS
 
 # Now load the toolchain
 if(EXISTS ${PROJECT_SOURCE_DIR}/Config/cmake/toolchains/${SIESTA_TOOLCHAIN}.cmake)
+  message(STATUS "Using toolchain: Config/cmake/toolchains/${SIESTA_TOOLCHAIN}.cmake")
   include(${PROJECT_SOURCE_DIR}/Config/cmake/toolchains/${SIESTA_TOOLCHAIN}.cmake)
 elseif(EXISTS ${SIESTA_TOOLCHAIN}.cmake)
+  message(STATUS "Using toolchain: ${SIESTA_TOOLCHAIN}.cmake")
   include(${SIESTA_TOOLCHAIN}.cmake)
 elseif(EXISTS ${SIESTA_TOOLCHAIN})
+  message(STATUS "Using toolchain: ${SIESTA_TOOLCHAIN}")
   include(${SIESTA_TOOLCHAIN})
 else()
   message(FATAL_ERROR "Unknown toolchain searched: Config/cmake/toolchains/${SIESTA_TOOLCHAIN}.cmake, ${SIESTA_TOOLCHAIN}.cmake and ${SIESTA_TOOLCHAIN}.")

@@ -79,21 +79,23 @@ if(MPI_Fortran_FOUND)
 endif()
 
 option(WITH_MPI "Build Siesta with MPI support" ${MPI_Fortran_FOUND})
-if(WITH_MPI AND (NOT MPI_Fortran_FOUND))
-  message(WARNING
-    "MPI could not be found by CMake"
-    "Try setting MPI_Fortran_COMPILER to an MPI wrapper, or the MPI_HOME env variable"
-    "If unsuccessful, set -DWITH_MPI=OFF")
-  message(FATAL_ERROR "MPI was requested, but could not be found by CMake")
-endif()
-if(WITH_MPI AND (NOT SCALAPACK_FOUND))
-  message(WARNING
-    "ScaLAPACK could not be found by CMake"
-    "Try adding SCALAPACK_LIBRARIES with appropriate flags"
-    "If ScaLAPACK is not present MPI needs to be turned off:\n"
-    "  -DWITH_MPI=OFF"
-    )
-  message(FATAL_ERROR "MPI was requested, but ScaLAPACK could not be found by CMake")
+if( WITH_MPI )
+  if(NOT MPI_Fortran_FOUND)
+    message(WARNING
+      "MPI could not be found by CMake"
+      "Try setting MPI_Fortran_COMPILER to an MPI wrapper, or the MPI_HOME env variable"
+      "If unsuccessful, set -DWITH_MPI=OFF")
+    message(FATAL_ERROR "MPI was requested, but could not be found by CMake")
+  endif()
+  if( NOT SCALAPACK_FOUND )
+    message(WARNING
+      "ScaLAPACK could not be found by CMake"
+      "Try adding SCALAPACK_LIBRARIES with appropriate flags"
+      "If ScaLAPACK is not present MPI needs to be turned off:\n"
+      "  -DWITH_MPI=OFF"
+      )
+    message(FATAL_ERROR "MPI was requested, but ScaLAPACK could not be found by CMake")
+  endif()
 endif()
 
 # Now we can check for linear algebra stuff
@@ -114,13 +116,11 @@ if( WITH_OPENMP )
     if( OpenMP_FOUND )
 
       if(NOT OpenMP_Fortran_HAVE_OMPLIB_MODULE)
-             message(ERROR_FATAL
-               "OpenMP does not have the 'omp_lib' module used by Siesta OpenMP")
+        message(ERROR_FATAL "OpenMP does not have the 'omp_lib' module used by Siesta OpenMP")
       endif()
       
     else()
-       message(ERROR_FATAL
-               "OpenMP support requested but could not find any OpenMP flags")
+      message(ERROR_FATAL "OpenMP support requested but could not find any OpenMP flags")
     endif()
   endif()
   
