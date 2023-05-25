@@ -64,4 +64,7 @@ endif()
 
 if(WITH_ELSI)
   setup_test("si64-elsi" "")
+  if (ELSI_WITH_PEXSI)
+    setup_test("si-qdot-elsi-pexsi" "coords.Si987H372.fdf")
+  endif()
 endif()
