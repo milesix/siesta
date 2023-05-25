@@ -22,14 +22,19 @@
 # It enables a bit more things and ensures expressivity in the options.
 
 # Handling of subproject dependencies
+# This function should be used in FindXXX.cmake files since
+# it directly utilizes the _FIND_REQUIRED|QUIETLY variables
+# This is important to not duplicate efforts.
 function(Siesta_find_package)
   # Define options
-  set(options QUIET)
   set(oneValueArgs
     # the package name:
     # Used for variable lookups {NAME}_FIND_METHODS etc.
     NAME
+    CMAKE # name of cmake package (default to NAME)
+    PKG_CONFIG # name of pkg-config package (default to NAME)
     GIT_REPOSITORY GIT_TAG # for git repo's
+    TARGET # name of the created target (defaluts to NAME::NAME)
     SOURCE_DIR)
   set(multiValueArgs)
   cmake_parse_arguments(_f "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -45,13 +50,24 @@ function(Siesta_find_package)
     endif()
   endif()
 
+  # Define the CMAKE and PKG_CONFIG variables
+  if(NOT DEFINED _f_CMAKE)
+    set(_f_CMAKE "${_f_NAME}")
+  endif()
+  if(NOT DEFINED _f_PKG_CONFIG)
+    set(_f_PKG_CONFIG "${_f_NAME}")
+  endif()
+  if(NOT DEFINED _f_TARGET)
+    set(_f_TARGET "${_f_NAME}::${_f_NAME}")
+  endif()
+
   set(pkg "${_f_NAME}")
   # convert package name to lower and upper case
   string(TOLOWER "${pkg}" pkg_lc)
   string(TOUPPER "${pkg}" pkg_uc)
 
   macro(mymsg check msg)
-    if(NOT _f_QUIET)
+    if(NOT ${_f_NAME}_FIND_QUIETLY)
       message(${check} "${msg}")
     endif()
   endmacro()
@@ -64,6 +80,8 @@ function(Siesta_find_package)
   #  *_GIT_REPOSITORY
   #  *_GIT_TAG
   #  *_SOURCE_DIR
+  set(_f_REPO "${_f_GIT_REPOSITORY}")
+  set(_f_TAG "${_f_GIT_TAG}")
   foreach(n IN ITEMS ${pkg_lc} ${pkg_uc} ${pkg})
 
     # Also allow externally setting the GIT_REPOSITORY and GIT_TAG
@@ -88,11 +106,11 @@ function(Siesta_find_package)
   if(DEFINED _f_SOURCE_DIR)
     list(APPEND allowed_f_methods "source")
   endif()
-  if(DEFINED _f_REPO AND DEFINED _f_TAG)
+  if(DEFINED "_f_REPO" AND DEFINED "_f_TAG")
     list(APPEND allowed_f_methods "fetch")
-  elseif(DEFINED _f_REPO)
+  elseif(DEFINED "_f_REPO")
     message(WARNING "Siesta_find_package: ${pkg} will not allow fetch as the GIT_REPOSITORY is supplied, but no GIT_TAG, please use -D${pkg}_GIT_TAG=")
-  elseif(DEFINED _f_TAG)
+  elseif(DEFINED "_f_TAG")
     message(WARNING "Siesta_find_package: ${pkg} will not allow fetch as the GIT_TAG is supplied, but no GIT_REPOSITORY, please use -D${pkg}_GIT_REPOSITORY=")
   endif()
 
@@ -123,12 +141,13 @@ function(Siesta_find_package)
     list(REMOVE_ITEM f_methods "subproject")
   endif()
 
-  if(TARGET "${pkg}::${pkg}")
+  if(TARGET "${_f_TARGET}")
     # skip all methods
+    message(DEBUG "Target already found, no searching done.")
     set(f_methods)
   endif()
 
-  message(DEBUG "Siesta_find_package[${pkg}] METHODS | ALLOWED = ${f_methods} | ${allowed_f_methods}")
+  message(STATUS "Siesta_find_package[${pkg}] METHODS | ALLOWED = ${f_methods} | ${allowed_f_methods}")
 
   foreach(method IN ITEMS ${f_methods})
     # assert that method is in all_f_methods
@@ -139,11 +158,11 @@ function(Siesta_find_package)
     if("${method}" STREQUAL "cmake")
       mymsg(CHECK_START "CMake package lookup")
 
-      find_package("${pkg}" CONFIG)
-      if("${pkg}_FOUND")
+      find_package("${_f_CMAKE}" CONFIG)
+      if("${${_f_CMAKE}_FOUND}")
         mymsg(CHECK_PASS "found")
         break()
-      else()                             ##AG: mymsg checks _f_QUIET
+      else()
         mymsg(CHECK_FAIL "not found")
       endif()
     endif()
@@ -153,19 +172,16 @@ function(Siesta_find_package)
 
       mymsg(CHECK_START "pkg-config package lookup")
 
-##AG:debug      pkg_check_modules("${pkg_uc}" QUIET "${pkg}")
-      pkg_check_modules("${pkg_uc}" "${pkg}")
-      if("${${pkg_uc}_FOUND}")
+      pkg_check_modules("${_f_PKG_CONFIG}" "${pkg}")
+      if("${${_f_PKG_CONFIG}_FOUND}")
         mymsg(CHECK_PASS "found")
 
-        add_library("${pkg}::${pkg}" INTERFACE IMPORTED GLOBAL)
-        target_link_libraries(
-          "${pkg}::${pkg}"
+        add_library("${_f_TARGET}" INTERFACE IMPORTED GLOBAL)
+        target_link_libraries("${_f_TARGET}"
           INTERFACE
           "${${pkg_uc}_LINK_LIBRARIES}"
         )
-        target_include_directories(
-          "${pkg}::${pkg}"
+      target_include_directories("${_f_TARGET}"
           INTERFACE
           "${${pkg_uc}_INCLUDE_DIRS}"
         )
@@ -184,8 +200,8 @@ function(Siesta_find_package)
 
         add_subdirectory("${${pkg_uc}_SOURCE_DIR}")
 
-        add_library("${pkg}::${pkg}" INTERFACE IMPORTED GLOBAL)
-        target_link_libraries("${pkg}::${pkg}" INTERFACE "${pkg}")
+        add_library("${_f_TARGET}" INTERFACE IMPORTED GLOBAL)
+        target_link_libraries("${_f_TARGET}" INTERFACE "${pkg}")
 
         break()
       else()
@@ -197,15 +213,14 @@ function(Siesta_find_package)
       mymsg(CHECK_START "fetching from ${_f_REPO}")
 
       include(FetchContent)
-      FetchContent_Declare(
-        "${pkg}"
+      FetchContent_Declare("${pkg}"
         GIT_REPOSITORY "${_f_REPO}"
         GIT_TAG "${_f_TAG}"
       )
       FetchContent_MakeAvailable("${pkg}")
 
-      add_library("${pkg}::${pkg}" INTERFACE IMPORTED GLOBAL)
-      target_link_libraries("${pkg}::${pkg}" INTERFACE "${pkg}")
+      add_library("${_f_TARGET}" INTERFACE IMPORTED GLOBAL)
+      target_link_libraries("${_f_TARGET}" INTERFACE "${pkg}")
 
       # We need the module directory in the subproject before we finish the configure stage
       FetchContent_GetProperties("${pkg}" BINARY_DIR "${pkg_uc}_BINARY_DIR")
@@ -218,16 +233,26 @@ function(Siesta_find_package)
   endforeach()
 
   list(POP_BACK CMAKE_MESSAGE_INDENT)
-  if(NOT TARGET "${pkg}::${pkg}")
+  if(TARGET "${_f_TARGET}")
+    mymsg(CHECK_PASS "found")
+
+    # notify about the found-variables
+    set("${pkg}_FOUND" TRUE PARENT_SCOPE)
+    set("${pkg_uc}_FOUND" TRUE PARENT_SCOPE)
+
+  else()
     mymsg(CHECK_FAIL "not found")
-    message(FATAL_ERROR "Could not find dependency ${pkg}")
+
+    # notify about the found-variables
+    set("${pkg}_FOUND" FALSE PARENT_SCOPE)
+    set("${pkg_uc}_FOUND" FALSE PARENT_SCOPE)
+
+    if( ${_f_NAME}_FIND_REQUIRED )
+      # package hasn't been found but REQUIRED. Emit an error.
+      message(FATAL_ERROR "Required package ${_f_NAME} cannot be found")
+    endif()
+
   endif()
-
-  mymsg(CHECK_PASS "found")
-
-  # notify about the found-variables
-  set("${pkg}_FOUND" TRUE PARENT_SCOPE)
-  set("${pkg_uc}_FOUND" TRUE PARENT_SCOPE)
 
 endfunction()
 

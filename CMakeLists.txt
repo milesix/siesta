@@ -191,7 +191,6 @@ if (NOT TARGET xmlf90::xmlf90)
 endif()
 
 if (NOT TARGET libpsml::libpsml)
-  # should we also add psml as required library?
   find_package(libpsml REQUIRED)
 endif()
 
