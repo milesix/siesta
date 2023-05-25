@@ -123,9 +123,11 @@ function(Siesta_find_package)
     list(REMOVE_ITEM f_methods "subproject")
   endif()
 
+  ##AG: Maybe have an argument to specify the target name
   if(TARGET "${pkg}::${pkg}")
     # skip all methods
     set(f_methods)
+    ##AG: Maybe get out early?
   endif()
 
   message(DEBUG "Siesta_find_package[${pkg}] METHODS | ALLOWED = ${f_methods} | ${allowed_f_methods}")
@@ -136,14 +138,21 @@ function(Siesta_find_package)
       message(FATAL_ERROR "Siesta_find_package: find-method ${method} is not in allowed methods ${all_f_methods}")
     endif()
 
+    ##AG: This seems to be necessary to avoid re-adding the target if it was already found
+    ##AG: (e.g. found as "cmake" and then tried again as "pkgconf")
+    if(TARGET "${package}::${package}")
+      break()
+    endif()
+
     if("${method}" STREQUAL "cmake")
       mymsg(CHECK_START "CMake package lookup")
 
-      find_package("${pkg}" CONFIG)
-      if("${pkg}_FOUND")
+      ##AG: Maybe add a VERSION argument (minimal, range?)
+      find_package("${pkg_uc}" CONFIG)    ##AG: Use _uc
+      if("${${pkg_uc}_FOUND}")            ##AG: Use _uc...
         mymsg(CHECK_PASS "found")
         break()
-      elseif(NOT _f_QUIET)
+      else()                             ##AG: mymsg checks _f_QUIET
         mymsg(CHECK_FAIL "not found")
       endif()
     endif()
@@ -153,7 +162,8 @@ function(Siesta_find_package)
 
       mymsg(CHECK_START "pkg-config package lookup")
 
-      pkg_check_modules("${pkg_uc}" QUIET "${pkg}")
+##AG:debug      pkg_check_modules("${pkg_uc}" QUIET "${pkg}")
+      pkg_check_modules("${pkg_uc}" "${pkg}")
       if("${${pkg_uc}_FOUND}")
         mymsg(CHECK_PASS "found")
 
@@ -192,6 +202,8 @@ function(Siesta_find_package)
       endif()
     endif()
 
+    ##AG: Maybe add a "tarball" option to get the source from a tarball
+    ##AG: This would be useful for systems without an internet connection
     if("${method}" STREQUAL "fetch")
       mymsg(CHECK_START "fetching from ${_f_REPO}")
 
@@ -208,6 +220,11 @@ function(Siesta_find_package)
 
       # We need the module directory in the subproject before we finish the configure stage
       FetchContent_GetProperties("${pkg}" BINARY_DIR "${pkg_uc}_BINARY_DIR")
+      ##AG: This seems to be missing here to actually set the module directory...
+      ##AG:    if(NOT EXISTS "${${_pkg_uc}_BINARY_DIR}/include")
+      ##AG:       make_directory("${${_pkg_uc}_BINARY_DIR}/include")
+      ##AG:    endif()
+      ##AG: (Maybe not for all packages?)
 
       mymsg(CHECK_PASS "fetched")
 
