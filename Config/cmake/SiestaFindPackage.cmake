@@ -143,7 +143,7 @@ function(Siesta_find_package)
       if("${pkg}_FOUND")
         mymsg(CHECK_PASS "found")
         break()
-      elseif(NOT _f_QUIET)
+      else()                             ##AG: mymsg checks _f_QUIET
         mymsg(CHECK_FAIL "not found")
       endif()
     endif()
@@ -153,7 +153,8 @@ function(Siesta_find_package)
 
       mymsg(CHECK_START "pkg-config package lookup")
 
-      pkg_check_modules("${pkg_uc}" QUIET "${pkg}")
+##AG:debug      pkg_check_modules("${pkg_uc}" QUIET "${pkg}")
+      pkg_check_modules("${pkg_uc}" "${pkg}")
       if("${${pkg_uc}_FOUND}")
         mymsg(CHECK_PASS "found")
 
