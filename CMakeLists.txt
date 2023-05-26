@@ -183,15 +183,15 @@ endif()
 # Handle external dependencies
 # Use proper order for xmlf90 and libpsml dependencies
 if (NOT TARGET libfdf::libfdf)
-  find_package(libfdf REQUIRED)
+  find_package(Customlibfdf REQUIRED)
 endif()
 
 if (NOT TARGET xmlf90::xmlf90)
-  find_package(xmlf90 REQUIRED)
+  find_package(Customxmlf90 REQUIRED)
 endif()
 
 if (NOT TARGET libpsml::libpsml)
-  find_package(libpsml REQUIRED)
+  find_package(Customlibpsml REQUIRED)
 endif()
 
 if (NOT TARGET libxc::XC_Fortran)
