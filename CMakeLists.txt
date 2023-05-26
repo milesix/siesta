@@ -194,7 +194,7 @@ if (NOT TARGET libpsml::libpsml)
   find_package(Customlibpsml REQUIRED)
 endif()
 
-if (NOT TARGET libxc::XC_Fortran)
+if (NOT TARGET Libxc::xc_Fortran)
   find_package(CustomLibxc)
 endif()
 option(WITH_LIBXC "Include libxc support" ${LIBXC_Fortran_FOUND})

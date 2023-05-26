@@ -24,8 +24,11 @@ Notes:
   to ship their own cmake package.
 
 The target:
-   libxc::xc
+   Libxc::xc
+   Libxc::xc_Fortran
 will be usable upon return.
+While it might have been more obvious to use libxc::xc we need to use the
+same upstream name. Libxc project uses Libxc::xc|xcf03
 
 #]=======================================================================]
 # The searched fortran interfaces may be controlled with
@@ -46,16 +49,16 @@ message(DEBUG "LIBXC_C_LINK_LIBRARIES: ${LIBXC_C_LINK_LIBRARIES}")
 message(DEBUG "LIBXC_C_INCLUDEDIR: ${LIBXC_C_INCLUDEDIR}")
 message(DEBUG "LIBXC_C_INCLUDE_DIRS: ${LIBXC_C_INCLUDE_DIRS}")
 
-if(NOT TARGET libxc::xc)
+if(NOT TARGET Libxc::xc)
   # we need to add the target if it does not exist
-  add_library(libxc::xc INTERFACE IMPORTED)
+  add_library(Libxc::xc INTERFACE IMPORTED)
 
   target_link_libraries(
-    libxc::xc
+    Libxc::xc
     INTERFACE "${LIBXC_C_LINK_LIBRARIES}"
   )
   target_include_directories(
-    libxc::xc
+    Libxc::xc
     INTERFACE "${LIBXC_C_INCLUDE_DIRS}" "${LIBXC_C_INCLUDEDIR}"
   )
 endif()
@@ -84,20 +87,20 @@ foreach(xcv IN LISTS LIBXC_Fortran_INTERFACE)
     message(DEBUG "LIBXC_${xcV}_INCLUDEDIR: ${LIBXC_${xcV}_INCLUDEDIR}")
     message(DEBUG "LIBXC_${xcV}_INCLUDE_DIRS: ${LIBXC_${xcV}_INCLUDE_DIRS}")
 
-    add_library(libxc::xc${xcv} INTERFACE IMPORTED)
+    add_library(Libxc::xc${xcv} INTERFACE IMPORTED)
 
     target_link_libraries(
-      libxc::xc${xcv}
+      Libxc::xc${xcv}
       INTERFACE "${LIBXC_${xcV}_LINK_LIBRARIES}"
     )
 
     target_include_directories(
-      libxc::xc${xcv}
+      Libxc::xc${xcv}
       INTERFACE "${LIBXC_${xcV}_INCLUDE_DIRS}" "${LIBXC_${xcV}_INCLUDEDIR}"
     )
   
-    add_library(libxc::XC_Fortran INTERFACE IMPORTED)
-    target_link_libraries(libxc::XC_Fortran INTERFACE libxc::xc${xcv} libxc::xc)
+    add_library(Libxc::xc_Fortran INTERFACE IMPORTED)
+    target_link_libraries(Libxc::xc_Fortran INTERFACE Libxc::xc${xcv} Libxc::xc)
 
     break()
   else()
@@ -107,7 +110,7 @@ foreach(xcv IN LISTS LIBXC_Fortran_INTERFACE)
 endforeach()
 
 
-if(NOT TARGET libxc::XC_Fortran)
+if(NOT TARGET Libxc::xc_Fortran)
   set(LIBXC_Fortran_FOUND FALSE)
 
   message(STATUS "Could not find any libxc fortran libraries.")

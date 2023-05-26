@@ -78,12 +78,12 @@ if (libgridxc_FOUND)
       message(CHECK_FAIL "not found")
       set(_GOOD_LIBRARY FALSE)
     endif()
-    # If compiled with libxc, the package will have libxc::XC_Fortran as a dependency
+    # If compiled with libxc, the package will have Libxc::xc_Fortran as a dependency
     # Hence it is not necessary to add it.
   endif()
 
   # Conversely, if the library links to libxc, the following checks will fail if WITH_LIBXC is not ON,
-  # since we will not have found libxc:XC_Fortran...
+  # since we will not have found Libxc:xc_Fortran...
 
   if (WITH_MPI)
     message(CHECK_START "${_lib}: checking for MPI support")
@@ -167,7 +167,7 @@ if(gridxc_multi_FOUND)
 
     if (GRIDXC_USES_LIBXC)
       message(CHECK_PASS "found")
-      target_link_libraries(PkgConfig::gridxc_multi INTERFACE libxc::XC_Fortran)
+      target_link_libraries(PkgConfig::gridxc_multi INTERFACE Libxc::xc_Fortran)
     else()      
       message(CHECK_FAIL "not found")
       set(_GOOD_LIBRARY FALSE)
@@ -224,7 +224,7 @@ if(gridxc_FOUND)
 
     if (GRIDXC_USES_LIBXC)
       message(CHECK_PASS "found")
-      target_link_libraries(PkgConfig::gridxc INTERFACE libxc::XC_Fortran)
+      target_link_libraries(PkgConfig::gridxc INTERFACE Libxc::xc_Fortran)
     else()      
       message(CHECK_FAIL "not found")
       set(_GOOD_LIBRARY FALSE)
