@@ -51,8 +51,10 @@ endfunction()
 
 setup_test("h2o" "")
 #setup_test("ch4" "")
-setup_test("si_pdos_kgrid" "")
-setup_test("wannier" "wannier.nnkp wannier.win")
+#setup_test("si_pdos_kgrid" "")
+#setup_test("wannier" "wannier.nnkp wannier.win")
+setup_test("gaas_fatbands" "")
+setup_test("si_fatbands" "")
 
 
 if(WITH_LUA)

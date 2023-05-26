@@ -56,6 +56,7 @@ add_executable(
 )
 target_link_libraries(fat_atomic
    coop_common_objs
+   LAPACK::LAPACK
    )
    
 add_executable(
