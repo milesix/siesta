@@ -38,8 +38,9 @@ program fatband_atomic
   real(dp), allocatable  :: S_sqroot(:,:)
   real(dp), allocatable  :: S_inv_sqroot(:,:)
   real(dp), allocatable  :: S_full(:,:)
-  real(dp), allocatable  :: coeff(:,:), aux_cof(:), psi_coeffs(:), coeff2(:)
-  real(dp) :: proj_new, norm
+  real(dp), allocatable  :: coeff(:,:), aux_cof(:), psi_coeffs(:), coeff2(:), work(:)
+  real(dp) :: proj_new, norm, sum_projs
+  integer :: n_orbs_atom, ja
 
 
   integer  :: nwfmx, nwfmin
@@ -431,15 +432,20 @@ program fatband_atomic
   ! The coefficients of the corresponding first orthogonal vector will be
   ! those in the first row of S_inv_sqroot
 
-  allocate(coeff(1:no_u,1:no_u), aux_cof(1:no_u), psi_coeffs(1:no_u))
+  n_orbs_atom = no_u/2
+
+  allocate(coeff(1:no_u,1:no_u), aux_cof(1:no_u), psi_coeffs(1:no_u), work(1:no_u))
   do i = 1, no_u
      coeff(i,1:no_u) = S_inv_sqroot(i,1:no_u)
      print "(/,a,i0)", "coeffs of orthog orbital number: ", i
-     print "(13(1x,f8.4))", coeff(i,1:26)
-     do j = 1, no_u
-        aux_cof(j) = dot_product(coeff(i,:),S_full(:,j))
+     do ia = 1, 2
+        do j = 1, n_orbs_atom
+           ja = (ia-1)*n_orbs_atom + j
+           write(*,"(1x,f8.4)",advance="no") coeff(i,ja)
+        enddo
+        write(*,*)
      enddo
-     norm = dot_product(aux_cof(:),coeff(i,:))
+     norm = inner_prod(coeff(i,:),coeff(i,:),S_full)
      print *, "NORM:", norm
 
   enddo
@@ -695,9 +701,37 @@ program fatband_atomic
                  if (abs(dot_product(pk(:,ik),pk(:,ik))) < 1.0e-10) then
                     read(wfs_u) (wf_single(:,io), io=1,no_u)
                     psi_coeffs(:) = real(wf_single(1,:),kind=dp)
-                    proj_new  = dot_product(aux_cof,psi_coeffs)
-                    write(proj_u,"(/,3x,2(1x,a7))") "snew on 1st atom", "square"
-                    write(proj_u,"(i3,2f8.4)") 1, proj_new, proj_new**2
+                    !                    proj_new  = dot_product(aux_cof,psi_coeffs)
+                    write(proj_u,"(/,3x)",advance="no")
+                    do j=1, n_orbs_atom
+                       write(proj_u,"(1x,i7)",advance="no") j
+                    enddo
+                    write(proj_u,*)
+                    
+                    do ia = 1, 2
+                       write(proj_u,"(i3)",advance="no") ia
+                       sum_projs = 0.0_dp
+                       do i = 1, n_orbs_atom
+                          j = (ia-1)* n_orbs_atom + i
+                          proj_new = inner_prod(coeff(j,:),psi_coeffs(:),S_full)
+                          write(proj_u,"(f8.4)",advance="no") proj_new**2
+                          sum_projs = sum_projs + proj_new**2
+                       enddo
+                       write(proj_u,"(2x,f8.4)") sum_projs
+                    enddo
+
+                    do ia = 1, 2
+                       write(proj_u,"(i3)",advance="no") ia
+                       sum_projs = 0.0_dp
+                       do i = 1, n_orbs_atom
+                          j = (ia-1)* n_orbs_atom + i
+                          proj_new = sqroot_contraction(j)
+                          write(proj_u,"(f8.4)",advance="no") proj_new**2
+                          sum_projs = sum_projs + proj_new**2
+                       enddo
+                       write(proj_u,"(2x,f8.4)") sum_projs
+                    enddo
+
                  else
                     read(wfs_u)
                  endif
@@ -804,6 +838,35 @@ program fatband_atomic
       stop
 
       end subroutine manual
+
+      function sqroot_contraction(i) result (res)
+        integer, intent(in) :: i
+        real(dp) :: res
+        integer  j
+
+        res = 0.0_dp
+        do j = 1, no_u
+           res = res + psi_coeffs(j)*S_sqroot(i,j)
+        end do
+
+      end function sqroot_contraction
+
+      function inner_prod(a,b,S) result (res)
+        real(dp), intent(in) :: a(:)
+        real(dp), intent(in) :: b(:)
+        real(dp), intent(in) :: S(:,:)
+        real(dp)             :: res
+
+        integer i, j, n
+
+        ! work is used by host association, as
+        ! a work array
+        n = size(a)
+        do i = 1, n
+           work(i) = dot_product(a,S(:,i))
+        enddo
+        res  = dot_product(work,b)
+      end function inner_prod
 
       function sqroot(x) result(res)
         real(dp), intent(in) :: x
