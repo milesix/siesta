@@ -31,29 +31,32 @@ elseif(CMAKE_Fortran_COMPILER_ID MATCHES GNU)
   endif()
 
 else()
-  set(_toolchain "none")
+  set(_toolchain "generic")
 endif()
 
 set(SIESTA_TOOLCHAIN "${_toolchain}"
   CACHE STRING
-  "Define which default compiler settings to use: none|gnu|intel|mac|marconi100|marenostrum|vega"
+  "Define which default compiler settings to use: none|generic|gnu|intel|mac|marconi100|marenostrum|vega"
   )
 set_property(CACHE SIESTA_TOOLCHAIN PROPERTY STRINGS
-  "none" "gnu" "intel" "mac" "marconi100" "marenostrum" "vega")
+  "none" "generic" "gnu" "intel" "mac" "marconi100" "marenostrum" "vega")
 
-# Now load the toolchain
-if(EXISTS ${PROJECT_SOURCE_DIR}/Config/cmake/toolchains/${SIESTA_TOOLCHAIN}.cmake)
-  message(STATUS "Using toolchain: Config/cmake/toolchains/${SIESTA_TOOLCHAIN}.cmake")
-  include(${PROJECT_SOURCE_DIR}/Config/cmake/toolchains/${SIESTA_TOOLCHAIN}.cmake)
-elseif(EXISTS ${SIESTA_TOOLCHAIN}.cmake)
-  message(STATUS "Using toolchain: ${SIESTA_TOOLCHAIN}.cmake")
-  include(${SIESTA_TOOLCHAIN}.cmake)
-elseif(EXISTS ${SIESTA_TOOLCHAIN})
-  message(STATUS "Using toolchain: ${SIESTA_TOOLCHAIN}")
-  include(${SIESTA_TOOLCHAIN})
-else()
-  message(FATAL_ERROR "Unknown toolchain searched: Config/cmake/toolchains/${SIESTA_TOOLCHAIN}.cmake, ${SIESTA_TOOLCHAIN}.cmake and ${SIESTA_TOOLCHAIN}.")
-endif()
+foreach(_toolchain IN LISTS SIESTA_TOOLCHAIN)
+  # Now load the toolchain
+  if(EXISTS ${PROJECT_SOURCE_DIR}/Config/cmake/toolchains/${_toolchain}.cmake)
+    message(STATUS "Using toolchain: Config/cmake/toolchains/${_toolchain}.cmake")
+    include(${PROJECT_SOURCE_DIR}/Config/cmake/toolchains/${_toolchain}.cmake)
+  elseif(EXISTS ${_toolchain}.cmake)
+    message(STATUS "Using toolchain: ${_toolchain}.cmake")
+    include(${_toolchain}.cmake)
+  elseif(EXISTS ${_toolchain})
+    message(STATUS "Using toolchain: ${_toolchain}")
+    include(${_toolchain})
+  else()
+    message(FATAL_ERROR "Unknown toolchain searched: Config/cmake/toolchains/${_toolchain}.cmake, ${_toolchain}.cmake and ${_toolchain}.")
+  endif()
+endforeach()
+
 
 # Get all languages, enables easy extensions
 get_property(_languages GLOBAL PROPERTY ENABLED_LANGUAGES)

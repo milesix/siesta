@@ -137,9 +137,6 @@ function(Siesta_find_package)
       list(REMOVE_ITEM f_methods ${method})
     endif()
   endforeach()
-  if("subproject" IN_LIST f_methods AND "submodule" IN_LIST f_methods)
-    list(REMOVE_ITEM f_methods "subproject")
-  endif()
 
   if(TARGET "${_f_TARGET}")
     # skip all methods

@@ -252,6 +252,25 @@ message(NOTICE
   "depending on how variables are passed."
 )
 
+siesta_print_start_section("Compiler information")
+
+siesta_print_feature_info(
+  NAME Compiler 
+  MSGON
+    "Using '${CMAKE_BUILD_TYPE}' build type"
+  VARIABLES
+    CMAKE_Fortran_COMPILER_ID
+    CMAKE_Fortran_COMPILER_VERSION
+    CMAKE_Fortran_COMPILER
+    CMAKE_Fortran_FLAGS
+    CMAKE_Fortran_FLAGS_RELEASE
+    CMAKE_Fortran_FLAGS_DEBUG
+    CMAKE_Fortran_FLAGS_MINSIZEREL
+    CMAKE_Fortran_FLAGS_CHECK
+    CMAKE_Fortran_FLAGS_RELWITHDEBINFO
+  REQUIRED
+ )
+siesta_print_end_section()
 
 siesta_print_start_section("Parallel")
 

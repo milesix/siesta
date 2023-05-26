@@ -24,33 +24,33 @@
 #
 # Fortran compiler settings
 #
-set(Fortran_FLAGS ""
+set(Fortran_FLAGS "${CMAKE_Fortran_FLAGS}"
   CACHE STRING "Build type independent Fortran compiler flags")
 
-set(Fortran_FLAGS_RELEASE ""
+set(Fortran_FLAGS_RELEASE "${CMAKE_Fortran_FLAGS_RELEASE}"
   CACHE STRING "Fortran compiler flags for Release build")
 
-set(Fortran_FLAGS_RELWITHDEBINFO ""
+set(Fortran_FLAGS_RELWITHDEBINFO "${CMAKE_Fortran_FLAGS_RELWITHDEBINFO}"
   CACHE STRING "Fortran compiler flags for Release with debug info build")
 
-set(Fortran_FLAGS_MINRELSIZE ""
+set(Fortran_FLAGS_MINRELSIZE "${CMAKE_Fortran_FLAGS_MINRELSIZE}"
   CACHE STRING "Fortran compiler flags for minimal size build")
 
-set(Fortran_FLAGS_DEBUG ""
+set(Fortran_FLAGS_DEBUG "${CMAKE_Fortran_FLAGS_DEBUG}"
   CACHE STRING "Fortran compiler flags for Debug build")
 
-set(Fortran_FLAGS_CHECK "" 
+set(Fortran_FLAGS_CHECK "${CMAKE_Fortran_FLAGS_CHECK}"
   CACHE STRING "Fortran compiler flags for Debug + checking build")
 
 #
 # C compiler settings
 #
-set(C_FLAGS ""
+set(C_FLAGS "${CMAKE_C_FLAGS}"
   CACHE STRING "Build type independent C compiler flags")
 
-set(C_FLAGS_RELEASE ""
+set(C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE}"
   CACHE STRING  "C compiler flags for Release build")
 
-set(C_FLAGS_DEBUG ""
+set(C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG}"
   CACHE STRING "C compiler flags for Debug build")
 
