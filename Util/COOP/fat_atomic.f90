@@ -35,6 +35,11 @@ program fatband_atomic
   logical, allocatable   :: orb_mask_atomic(:,:)
   integer, allocatable   :: num_red(:), ptr(:), list_io2(:), list_ind(:)
   real(dp), allocatable  :: eig(:,:), fat(:,:,:,:)
+  real(dp), allocatable  :: S_sqroot(:,:)
+  real(dp), allocatable  :: S_inv_sqroot(:,:)
+  real(dp), allocatable  :: S_full(:,:)
+  real(dp), allocatable  :: coeff(:), aux_cof(:), psi_coeffs(:)
+  real(dp) :: proj_new
 
 
   integer  :: nwfmx, nwfmin
@@ -412,7 +417,31 @@ program fatband_atomic
 
 
   !=====================
- 
+
+  print *, "About to diagonalize S..."
+  call get_s_root(Sover,no_u,numh,listhptr,listh,S_sqroot,sqroot)
+  print *, size(S_sqroot)
+  call get_s_root(Sover,no_u,numh,listhptr,listh,S_inv_sqroot,inv_sqroot)
+  print *, size(S_inv_sqroot)
+
+  S_full = matmul(S_sqroot, S_sqroot)
+  
+  ! Use S_inv_sqroot to get the orthogonal basis
+  ! For the 1st zeta orbital of the first atom:
+  ! The coefficients of the corresponding first orthogonal vector will be
+  ! those in the first row of S_inv_sqroot
+
+  allocate(coeff(1:no_u), aux_cof(1:no_u), psi_coeffs(1:no_u))
+  coeff(1:no_u) = S_inv_sqroot(1,1:no_u)
+  print *, "coeffs of 1st orthog orbital:"
+  print "(13(1x,f10.4))", coeff(1:26)
+
+  ! We could plot it...
+  ! The projection will be the inner product with Psi_k, which involves S
+  do i = 1, no_u
+     aux_cof(i) = dot_product(coeff(:),S_full(:,i))
+  enddo
+  
   ! * Fatband weights
 
   ! nspin has been read in iohs
@@ -655,7 +684,15 @@ program fatband_atomic
                  ib = ib + 1
                  write(proj_u,"(/,a,i4,f12.6,a,i3,a)") 'Wf: ', iw, eigval, " (in set: ", ib, ")"
 
-                 read(wfs_u) 
+                 if (abs(dot_product(pk(:,ik),pk(:,ik))) < 1.0e-10) then
+                    read(wfs_u) (wf_single(:,io), io=1,no_u)
+                    psi_coeffs(:) = real(wf_single(1,:),kind=dp)
+                    proj_new  = dot_product(aux_cof,psi_coeffs)
+                    write(proj_u,"(/,3x,2(1x,a7))") "snew on 1st atom", "square"
+                    write(proj_u,"(i3,2f8.4)") 1, proj_new, proj_new**2
+                 else
+                    read(wfs_u)
+                 endif
                  if (atom_lm_scheme) then
                     write(proj_u,"(/,3x,9(1x,a7))") "s", "py", "pz", "px", &
                       "dxy", "dyz", "dz2", "dxz", "dx2-z2"
@@ -663,8 +700,7 @@ program fatband_atomic
                     do ia = 1, na_u
 
                        ! There are sometimes very small negative numbers
-                       ! We mark them with '**' or '!!'.
-                       ! Clients can choose what to do with them
+                       ! We mark them with '**'. Clients can choose what to do with them
                        if (any(fat(ib,is,ik,nc_p+1:nc_p+9) < -0.1)) then
                           mark="!!"
                        else  if (any(fat(ib,is,ik,nc_p+1:nc_p+9) < -0.00005)) then
@@ -761,6 +797,224 @@ program fatband_atomic
 
       end subroutine manual
 
+      function sqroot(x) result(res)
+        real(dp), intent(in) :: x
+        real(dp)             :: res
+        res = sqrt(x)
+      end function sqroot
+
+      function inv_sqroot(x) result(res)
+        real(dp), intent(in) :: x
+        real(dp)             :: res
+        res = 1.0_dp/sqrt(x)
+      end function inv_sqroot
+
+      subroutine get_s_root(S_sp,no_u,numh,listhptr,listh,S_func,func)
+        real(dp), intent(in) :: S_sp(:)
+        integer, intent(in)  :: no_u
+        integer, intent(in)  :: numh(:), listhptr(:), listh(:)
+        real(dp), intent(out), allocatable :: S_func(:,:)
+
+        interface
+           function func(x)
+             import :: dp
+             real(dp), intent(in) :: x
+             real(dp)             :: func
+           end function func
+        end interface
+
+        real(dp), allocatable :: S_base(:,:), S_keep(:,:), B(:,:)
+
+        real(dp), allocatable :: w(:)              ! Eigenvalues
+        integer :: lwork                  ! Size of the workspace
+        integer :: liwork                  ! Size of the workspace
+        real(dp), allocatable :: work(:)
+        integer, allocatable :: iwork(:)
+        integer :: n, iwork_query(1)
+        real(dp) :: work_query(1)         ! Workspace query
+
+        integer :: i, j, jo, info, io, ind
+
+        print *, "no_u: ", no_u
+
+        allocate(S_base(no_u,no_u))
+        allocate(S_keep(no_u,no_u))
+        allocate(w(no_u))
+       
+        do io = 1,no_u
+           S_base(:,io) = 0._dp
+           do j = 1,numh(io)
+            ind = listhptr(io) + j
+            jo = listh(ind)
+            jo = MODP(jo,no_u)  ! To allow auxiliary supercells
+            S_base(jo,io) = S_base(jo,io) + S_sp(ind)  ! plus phases in general
+         enddo
+      enddo
+
+         write(6,*) "S(k=0):"
+         do i = 1, min(8,no_u)
+            do j = 1, min(8,no_u)
+               write(6,fmt="(1x,f10.4)",advance="no") S_base(i,j)
+            enddo
+            write(6,*)
+         enddo
+
+      S_keep = S_base
+
+!!$      call dsyevd(jobz,uplo,n,S_base,n,&
+!!$           w,work,lwork,iwork,liwork, &
+!!$           info)
+
+  ! Workspace query
+      lwork = -1
+      liwork = -1
+  call dsyevd('V', 'U', no_u, S_base, no_u, w, work_query, lwork, iwork_query, liwork, info)
+  print *, "info: ", info
+
+  ! lwork must be at least: 1 + 6*N + 2*N**2   for 'V'
+  ! liwork must be at least: 3 + 5*N   for 'V'
+  
+  lwork = int(work_query(1))
+  liwork = iwork_query(1)
+
+  print *, "lwork, liwork: ", lwork, liwork
+  allocate(work(lwork))
+  allocate(iwork(liwork))
+
+! Call dsyevd
+  call dsyevd('V', 'U', no_u, S_base, no_u, w, work, lwork, iwork, liwork, info)
+
+  ! Check for successful execution
+  if (info == 0) then
+    print *, "Eigenvalues:"
+    do i = 1, no_u
+      print *, w(i)
+    end do
+!!$    print *, "Eigenvectors (stored in S):"
+!!$    do i = 1, no_u
+!!$      print *, S_base(:, i)
+!!$    end do
+  else
+    print *, "Error: dsyevd failed with info =", info
+  endif
+
+
+  ! We have that S = Z D Z^T
+  ! Compute B=ZD
+  allocate(B(no_u,no_u))
+
+  do i = 1, no_u
+     do j = 1, no_u
+        b(i,j) = s_base(i,j) * func(w(j))
+     enddo
+  enddo
+  ! Now, compute B*Z^T
+  !  /* calculate the square root A=B*Z^T */
+  !  cblas_dgemm(CblasColMajor, CblasNoTrans, CblasTrans, N, N, N,
+  !               1, B, N, Z, N, 0, A, N);
+  allocate(S_func(no_u,no_u))
+  call dgemm('N','T', no_u,no_u,no_u, 1.0_dp, B,no_u, S_base,no_u, 0.0_dp,S_func,no_u)
+  
+         write(6,*) "Product (only valid when func=sqrt():"
+         do i = 1, min(8,no_u)
+            do j = 1, min(8,no_u)
+               write(6,fmt="(1x,f10.4)",advance="no")  &
+                   dot_product(S_func(i,:),S_func(:,j))
+            enddo
+            write(6,*)
+         enddo
+         
+  deallocate(work,iwork,w)
+  
+      ! S_base contains the eigenvectors
+
+!!$                call zheevd(jobz,uplo,n,H,n,&                                                          
+!!$               w,work,lwork,rwork,lrwork,iwork,liwork, &                    
+!!$               info)
+                
+end subroutine get_s_root
+
+! A MOD function which behaves differently on the edge.                                                               
+! It will NEVER return 0, but instead return the divisor.                                                             
+! This makes it useful in FORTRAN do-loops which are not zero-based                                                   
+! but 1-based.                                                                                                        
+! Thus we have the following scheme:                                                                                  
+!  MODP(x',x) == x         for x' == x                                                                                
+!  MODP(x',x) == MOD(x',x) for x' /= x                                                                                
+  elemental function MODP(a,p)
+    integer, intent(in) :: a,p
+    integer :: MODP
+    MODP = MOD(a-1,p) + 1
+  end function MODP
+
+!!$      subroutine get_sinv(S_sp,no_u,numh,listhptr,listh)
+!!$! Compute inverse of the S matrix for further analysis
+!!$! Also, save S matrix for base step
+!!$
+!!$      use thermal_flux_data, only : Sinv, S_base
+!!$      use fdf
+!!$      use intrinsic_missing, only: modp
+!!$
+!!$      integer :: i, j, info, io, ind, jo
+!!$
+!!$      if (no_u /= no_l) call die("get_sinv does not work in parallel")
+!!$
+!!$      call re_alloc(Sinv,1, no_u,1, no_u, 'Sinv', 'state_init')
+!!$      call re_alloc(S_base,1, no_u,1, no_u, 'S_base', 'state_init')
+!!$
+!!$      do io = 1,no_u
+!!$         Sinv(:,io) = 0._dp
+!!$         do j = 1,numh(io)
+!!$            ind = listhptr(io) + j
+!!$            jo = listh(ind)
+!!$            jo = MODP(jo,no_u)  ! To allow auxiliary supercells
+!!$            Sinv(jo,io) = Sinv(jo,io) + S(ind)
+!!$         enddo
+!!$      enddo
+!!$
+!!$! Copy S at this point
+!!$
+!!$      S_base(:,:) = Sinv(:,:)
+!!$
+!!$      call dpotrf('L',no_u,Sinv,no_u,info)
+!!$      write(6,*) "Info choleski:", info
+!!$      call dpotri('L',no_u,Sinv,no_u,info)
+!!$      write(6,*) "Info inverse:", info
+!!$
+!!$! Generate the upper triangle
+!!$      do i = 1, no_u
+!!$         do j = i+1, no_u
+!!$            Sinv(i,j) = Sinv(j,i)
+!!$         enddo
+!!$      enddo
+!!$
+!!$      if (fdf_get('Sinv.printmatrix',.false.)) then
+!!$         write(6,*) "S(k=0):"
+!!$         do i = 1, min(8,no_u)
+!!$            do j = 1, min(8,no_u)
+!!$               write(6,fmt="(1x,f10.4)",advance="no") S_base(i,j)
+!!$            enddo
+!!$            write(6,*)
+!!$         enddo
+!!$         write(6,*) "S^-1(k=0):"
+!!$         do i = 1, min(8,no_u)
+!!$            do j = 1, min(8,no_u)
+!!$               write(6,fmt="(1x,f10.4)",advance="no") Sinv(i,j)
+!!$            enddo
+!!$            write(6,*)
+!!$         enddo
+!!$         write(6,*) "Product:"
+!!$         do i = 1, min(8,no_u)
+!!$            do j = 1, min(8,no_u)
+!!$               write(6,fmt="(1x,f10.4)",advance="no")
+!!$     $              dot_product(S_base(i,:),Sinv(:,j))
+!!$            enddo
+!!$            write(6,*)
+!!$         enddo
+!!$      endif
+!!$
+!!$      end subroutine get_sinv
+!!$
 
 end program fatband_atomic
 
