@@ -98,7 +98,10 @@ function(Siesta_find_package)
     if(DEFINED "${n}_SOURCE_DIR")
       set(_f_SOURCE_DIR "${${n}_SOURCE_DIR}")
     endif()
+
+    mark_as_advanced(${n}_GIT_REPOSITORY ${n}_GIT_TAG ${n}_SOURCE_DIR)
   endforeach()
+
 
   # Determine the allowed find-methods
   set(all_f_methods "cmake" "pkgconf" "source" "fetch")
@@ -125,6 +128,7 @@ function(Siesta_find_package)
     if(DEFINED "${n}_FIND_METHOD")
       set(f_methods "${${n}_FIND_METHOD}")
     endif()
+    mark_as_advanced(${n}_FIND_METHOD)
   endforeach()
 
   # Strip away elements that are not in the allowed-f-methods
