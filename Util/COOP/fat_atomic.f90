@@ -38,8 +38,8 @@ program fatband_atomic
   real(dp), allocatable  :: S_sqroot(:,:)
   real(dp), allocatable  :: S_inv_sqroot(:,:)
   real(dp), allocatable  :: S_full(:,:)
-  real(dp), allocatable  :: coeff(:), aux_cof(:), psi_coeffs(:)
-  real(dp) :: proj_new
+  real(dp), allocatable  :: coeff(:,:), aux_cof(:), psi_coeffs(:), coeff2(:)
+  real(dp) :: proj_new, norm
 
 
   integer  :: nwfmx, nwfmin
@@ -431,15 +431,23 @@ program fatband_atomic
   ! The coefficients of the corresponding first orthogonal vector will be
   ! those in the first row of S_inv_sqroot
 
-  allocate(coeff(1:no_u), aux_cof(1:no_u), psi_coeffs(1:no_u))
-  coeff(1:no_u) = S_inv_sqroot(1,1:no_u)
-  print *, "coeffs of 1st orthog orbital:"
-  print "(13(1x,f10.4))", coeff(1:26)
+  allocate(coeff(1:no_u,1:no_u), aux_cof(1:no_u), psi_coeffs(1:no_u))
+  do i = 1, no_u
+     coeff(i,1:no_u) = S_inv_sqroot(i,1:no_u)
+     print "(/,a,i0)", "coeffs of orthog orbital number: ", i
+     print "(13(1x,f8.4))", coeff(i,1:26)
+     do j = 1, no_u
+        aux_cof(j) = dot_product(coeff(i,:),S_full(:,j))
+     enddo
+     norm = dot_product(aux_cof(:),coeff(i,:))
+     print *, "NORM:", norm
+
+  enddo
 
   ! We could plot it...
   ! The projection will be the inner product with Psi_k, which involves S
   do i = 1, no_u
-     aux_cof(i) = dot_product(coeff(:),S_full(:,i))
+     aux_cof(i) = dot_product(coeff(1,:),S_full(:,i))
   enddo
   
   ! * Fatband weights
