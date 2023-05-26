@@ -663,8 +663,11 @@ program fatband_atomic
                     do ia = 1, na_u
 
                        ! There are sometimes very small negative numbers
-                       ! We mark them with '**'. Clients can choose what to do with them
-                       if (any(fat(ib,is,ik,nc_p+1:nc_p+9) < -0.00005)) then
+                       ! We mark them with '**' or '!!'.
+                       ! Clients can choose what to do with them
+                       if (any(fat(ib,is,ik,nc_p+1:nc_p+9) < -0.1)) then
+                          mark="!!"
+                       else  if (any(fat(ib,is,ik,nc_p+1:nc_p+9) < -0.00005)) then
                           mark="**"
                        else
                           mark ="  "
