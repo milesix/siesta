@@ -672,7 +672,7 @@ program fatband_atomic
                  do ia = 1, 2
                     do j = 1, n_orbs_atom
                        ja = (ia-1)*n_orbs_atom + j
-                       write(*,"(1x,f8.4)",advance="no") coeff(i,ja)
+                       write(*,"(1x,a1,2f8.4,a1)",advance="no") '(', coeff(i,ja), ')'
                     enddo
                     write(*,*)
                  enddo
@@ -980,17 +980,28 @@ program fatband_atomic
 
   allocate(S_func(no_u,no_u))
   call dgemm('N','T', no_u,no_u,no_u, 1.0_dp, B,no_u, S_base,no_u, 0.0_dp,S_func,no_u)
+
+  B = matmul(S_func,S_func)
   
          write(6,*) "Product (only valid when func=sqrt():"
          do i = 1, min(8,no_u)
             do j = 1, min(8,no_u)
-               write(6,fmt="(1x,f10.4)",advance="no")  &
-                   dot_product(S_func(i,:),S_func(:,j))
+               write(6,fmt="(1x,f10.4)",advance="no")  b(i,j)
             enddo
             write(6,*)
          enddo
+
+  S_base = matmul(B,S_k)
          
-  deallocate(work,iwork,w,S_base,B)
+         write(6,*) "further Product with S_k (should be 1 for S_inv)"
+         do i = 1, min(8,no_u)
+            do j = 1, min(8,no_u)
+               write(6,fmt="(1x,f10.4)",advance="no")  s_base(i,j)
+            enddo
+            write(6,*)
+         enddo
+
+    deallocate(work,iwork,w,S_base,B)
   
 
 
@@ -1113,14 +1124,26 @@ end subroutine get_s_func
   allocate(S_func(no_u,no_u))
   call zgemm('N','C', no_u,no_u,no_u, (1.0_dp,0.0_dp), B,no_u, S_base,no_u, (0.0_dp,0.0_dp),S_func,no_u)
   
-         write(6,*) "Real(Product) (only valid when func=sqrt():"
+  B = matmul(S_func,S_func)
+  
+         write(6,*) "Product (only valid when func=sqrt():"
          do i = 1, min(8,no_u)
             do j = 1, min(8,no_u)
-               write(6,fmt="(1x,f10.4)",advance="no")  &
-                   real(dot_product(conjg(S_func(i,:)),S_func(:,j)),kind=dp)
+               write(6,fmt="(1x,f10.4)",advance="no")  real(b(i,j))
             enddo
             write(6,*)
          enddo
+
+  S_base = matmul(B,S_k)
+         
+         write(6,*) "further Product with S_k (should be 1 for S_inv)"
+         do i = 1, min(8,no_u)
+            do j = 1, min(8,no_u)
+               write(6,fmt="(1x,f10.4)",advance="no")  real(s_base(i,j))
+            enddo
+            write(6,*)
+         enddo
+
          
   deallocate(work,iwork,w,S_base,B)
   

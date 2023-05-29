@@ -63,5 +63,5 @@ COOP.Write T
 AtomicCoordinatesFormat  Fractional
 %block AtomicCoordinatesAndAtomicSpecies
     0.    0.    0.     1  Ga        1
-    0.25  0.25  0.25   1  As        2
+    0.25  0.25  0.25   2  As        2
 %endblock AtomicCoordinatesAndAtomicSpecies
