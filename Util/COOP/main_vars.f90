@@ -69,7 +69,7 @@ module main_vars
 
   real(dp),    allocatable :: wk(:)
   real(SP),    allocatable :: wf_single(:,:)       ! Note single precision
-  real(DP),    allocatable :: wf(:,:)              ! Note double precision
+  real(DP),    allocatable, target :: wf(:,:)              ! Note double precision
   ! MPR file
   character :: what*4, tit(ncbmx)*30
   logical   :: dos, coop

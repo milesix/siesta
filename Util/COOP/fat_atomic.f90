@@ -23,6 +23,8 @@ program fatband_atomic
   use io_hs, only: read_hs_file
   use read_curves, only: read_curve_information, mask_to_arrays
 
+  use iso_c_binding, only: c_loc, c_f_pointer
+
   implicit none
 
   logical :: gamma_wfsx, got_qcos
@@ -35,11 +37,14 @@ program fatband_atomic
   logical, allocatable   :: orb_mask_atomic(:,:)
   integer, allocatable   :: num_red(:), ptr(:), list_io2(:), list_ind(:)
   real(dp), allocatable  :: eig(:,:), fat(:,:,:,:)
-  real(dp), allocatable  :: S_sqroot(:,:)
-  real(dp), allocatable  :: S_inv_sqroot(:,:)
-  real(dp), allocatable  :: S_k(:,:)
-  real(dp), allocatable  :: coeff(:,:), psi_coeffs(:), coeff2(:), work(:)
-  real(dp) :: proj_new, norm, sum_projs
+  complex(dp), allocatable  :: S_sqroot(:,:)
+  complex(dp), allocatable  :: S_inv_sqroot(:,:)
+  complex(dp), allocatable  :: S_k(:,:)
+  complex(dp), pointer  :: psi_coeffs(:) => null()
+  complex(dp), allocatable  :: coeff(:,:), work(:)
+
+  real(dp) :: sum_projs
+  complex(dp) :: proj_new, norm, phase
   integer :: n_orbs_atom, ja
 
 
@@ -651,11 +656,11 @@ program fatband_atomic
               !-------------------------------------
               ! Process S_k and friends here
               ! Get functions of S (this real version when k=0 only)
-           if (abs(dot_product(pk(:,ik),pk(:,ik))) < 1.0e-10) then
-              call get_s_func(Sover,no_u,numh,listhptr,listh,S_sqroot,sqroot)
-              call get_s_func(Sover,no_u,numh,listhptr,listh,S_inv_sqroot,inv_sqroot)
 
-              !  S_k = matmul(S_sqroot, S_sqroot)
+              call get_sk_func(Sover,no_u,numh,listhptr,listh,pk(:,ik), &
+                              S_sqroot,sqroot)
+              call get_sk_func(Sover,no_u,numh,listhptr,listh,pk(:,ik), &
+                              S_inv_sqroot,inv_sqroot)
 
               ! Use S_inv_sqroot to get the orthogonal basis
               ! The coefficients of the ith orthogonal vector will be
@@ -672,10 +677,10 @@ program fatband_atomic
                     write(*,*)
                  enddo
                  norm = inner_prod(coeff(i,:),coeff(i,:),S_k)
-                 print *, "NORM:", norm
+                 print *, "NORM:", abs(norm)
               enddo
               !-------------------------------------
-           endif
+
         
            do is=1,nspin_blocks
               if (nspin_blocks > 1) then
@@ -698,9 +703,11 @@ program fatband_atomic
                  ib = ib + 1
                  write(proj_u,"(/,a,i4,f12.6,a,i3,a)") 'Wf: ', iw, eigval, " (in set: ", ib, ")"
 
-                 if (abs(dot_product(pk(:,ik),pk(:,ik))) < 1.0e-10) then
                     read(wfs_u) (wf_single(:,io), io=1,no_u)
-                    psi_coeffs(:) = real(wf_single(1,:),kind=dp)
+                    ! Use a double precision form in what follows
+                    wf(:,:) = real(wf_single(:,:), kind=dp)
+                    call c_f_pointer(c_loc(wf), psi_coeffs, [no_u])
+
                     write(proj_u,"(/,3x)",advance="no")
                     do j=1, n_orbs_atom
                        write(proj_u,"(1x,i7)",advance="no") j
@@ -715,8 +722,8 @@ program fatband_atomic
                        do i = 1, n_orbs_atom
                           j = (ia-1)* n_orbs_atom + i
                           proj_new = inner_prod(coeff(j,:),psi_coeffs(:),S_k)
-                          write(proj_u,"(f8.4)",advance="no") proj_new**2
-                          sum_projs = sum_projs + proj_new**2
+                          write(proj_u,"(f8.4)",advance="no") abs(proj_new)**2
+                          sum_projs = sum_projs + abs(proj_new)**2
                        enddo
                        write(proj_u,"(2x,f8.4)") sum_projs
                     enddo
@@ -728,15 +735,11 @@ program fatband_atomic
                        do i = 1, n_orbs_atom
                           j = (ia-1)* n_orbs_atom + i
                           proj_new = sqroot_contraction(j)
-                          write(proj_u,"(f8.4)",advance="no") proj_new**2
-                          sum_projs = sum_projs + proj_new**2
+                          write(proj_u,"(f8.4)",advance="no") abs(proj_new)**2
+                          sum_projs = sum_projs + abs(proj_new)**2
                        enddo
                        write(proj_u,"(2x,f8.4)") sum_projs
                     enddo
-
-                 else
-                    read(wfs_u)
-                 endif
 
                     write(proj_u,"(/,3x,9(1x,a7))") "s", "py", "pz", "px", &
                       "dxy", "dyz", "dz2", "dxz", "dx2-z2"
@@ -841,21 +844,21 @@ program fatband_atomic
       ! relevant variables
       function sqroot_contraction(i) result (res)
         integer, intent(in) :: i
-        real(dp) :: res
+        complex(dp) :: res
         integer  j
 
         res = 0.0_dp
         do j = 1, no_u
-           res = res + psi_coeffs(j)*S_sqroot(i,j)
+           res = res + conjg(psi_coeffs(j))*S_sqroot(i,j)
         end do
 
       end function sqroot_contraction
 
       function inner_prod(a,b,S) result (res)
-        real(dp), intent(in) :: a(:)
-        real(dp), intent(in) :: b(:)
-        real(dp), intent(in) :: S(:,:)
-        real(dp)             :: res
+        complex(dp), intent(in) :: a(:)
+        complex(dp), intent(in) :: b(:)
+        complex(dp), intent(in) :: S(:,:)
+        complex(dp)             :: res
 
         integer i, j, n
 
@@ -865,7 +868,7 @@ program fatband_atomic
         do i = 1, n
            work(i) = dot_product(a,S(:,i))
         enddo
-        res  = dot_product(work,b)
+        res  = dot_product(conjg(work),b)
       end function inner_prod
 
       function sqroot(x) result(res)
@@ -951,10 +954,10 @@ program fatband_atomic
 
   ! Check for successful execution
   if (info == 0) then
-    print *, "Eigenvalues of S_k:"
-    do i = 1, no_u
-      print *, w(i)
-    end do
+    print *, "Range of Eigenvalues of S_k:", w(1), w(no_u)
+!!$    do i = 1, no_u
+!!$      print *, w(i)
+!!$    end do
 !!$    print *, "Eigenvectors (stored in S_base):"
 !!$    do i = 1, no_u
 !!$      print *, S_base(:, i)
@@ -996,6 +999,134 @@ program fatband_atomic
 !!$               info)
                 
 end subroutine get_s_func
+
+      ! Compute a function of S_k (generated from S_sp)
+
+      subroutine get_sk_func(S_sp,no_u,numh,listhptr,listh,kp,S_func,func)
+        real(dp), intent(in) :: S_sp(:)
+        integer, intent(in)  :: no_u
+        integer, intent(in)  :: numh(:), listhptr(:), listh(:)
+        real(dp), intent(in) :: kp(:)  ! k-point
+        complex(dp), intent(out), allocatable :: S_func(:,:)
+
+        interface
+           function func(x)
+             import :: dp
+             real(dp), intent(in) :: x
+             real(dp)             :: func
+           end function func
+        end interface
+
+        complex(dp), allocatable :: S_base(:,:), B(:,:)
+
+        real(dp), allocatable :: w(:)              ! Eigenvalues
+        integer :: lwork                  ! Size of the workspace
+        integer :: lrwork                 ! Size of the workspace
+        integer :: liwork                 ! Size of the workspace
+
+        complex(dp), allocatable :: work(:)
+        real(dp), allocatable :: rwork(:)
+        integer, allocatable :: iwork(:)
+
+        integer :: n, iwork_query(1)
+        complex(dp) :: work_query(1)         ! Workspace query
+        real(dp) :: rwork_query(1)         ! Workspace query
+
+        integer :: i, j, jo, info, io, ind
+        complex(dp), parameter :: ii = (0.0_dp, 1.0_dp)
+        
+        allocate(S_base(no_u,no_u))
+        allocate(w(no_u))
+       
+        do io = 1,no_u
+           S_k(:,io) = 0._dp
+           do j = 1,numh(io)
+              ind = listhptr(io) + j
+              phase = dot_product(kp,xij(:,ind))
+              jo = listh(ind)
+              jo = MODP(jo,no_u)  ! To allow auxiliary supercells
+              ! Maybe transpose?
+              S_k(jo,io) = S_k(jo,io) + S_sp(ind)*exp(ii*phase)  
+           enddo
+        enddo
+
+         write(6,*) "Real(S(k)):"
+         do i = 1, min(8,no_u)
+            do j = 1, min(8,no_u)
+               write(6,fmt="(1x,f10.4)",advance="no") real(S_k(i,j),kind=dp)
+            enddo
+            write(6,*)
+         enddo
+
+      S_base = S_k
+
+  ! Workspace query
+      lwork = -1
+      lrwork = -1
+      liwork = -1
+!!$                call zheevd(jobz,uplo,n,H,n,&                                                          
+!!$               w,work,lwork,rwork,lrwork,iwork,liwork, &                    
+!!$               info)
+      print *, "Calling zheevd in query mode..."
+      call zheevd('V', 'U', no_u, S_base, no_u, w, work_query, lwork, rwork_query, lrwork, iwork_query, liwork, info)
+      print *, "info: ", info
+
+  
+  lwork = int(real(work_query(1)))
+  lrwork = int(rwork_query(1))
+  liwork = iwork_query(1)
+
+  allocate(work(lwork))
+  allocate(rwork(lrwork))
+  allocate(iwork(liwork))
+
+! Call dsyevd
+  call zheevd('V', 'U', no_u, S_base, no_u, w, work, lwork, rwork, lrwork, iwork, liwork, info)
+  print *, "info after diag: ", info
+
+  ! Check for successful execution
+  if (info == 0) then
+    print *, "Range of Eigenvalues of S_k:", w(1), w(no_u)
+!!$    do i = 1, no_u
+!!$      print *, w(i)
+!!$    end do
+!!$    print *, "Eigenvectors (stored in S_base):"
+!!$    do i = 1, no_u
+!!$      print *, S_base(:, i)
+!!$    end do
+  else
+    print *, "Error: zheevd failed with info =", info
+  endif
+
+
+  ! We have that S = Z D Z^H
+  ! Compute B=ZD
+  allocate(B(no_u,no_u))
+
+  do i = 1, no_u
+     do j = 1, no_u
+        b(i,j) = S_base(i,j) * func(w(j))
+     enddo
+  enddo
+  ! Now, compute B*Z^T
+
+  allocate(S_func(no_u,no_u))
+  call zgemm('N','C', no_u,no_u,no_u, (1.0_dp,0.0_dp), B,no_u, S_base,no_u, (0.0_dp,0.0_dp),S_func,no_u)
+  
+         write(6,*) "Real(Product) (only valid when func=sqrt():"
+         do i = 1, min(8,no_u)
+            do j = 1, min(8,no_u)
+               write(6,fmt="(1x,f10.4)",advance="no")  &
+                   real(dot_product(conjg(S_func(i,:)),S_func(:,j)),kind=dp)
+            enddo
+            write(6,*)
+         enddo
+         
+  deallocate(work,iwork,w,S_base,B)
+  
+
+                
+end subroutine get_sk_func
 
 ! A MOD function which behaves differently on the edge.                                                               
 ! It will NEVER return 0, but instead return the divisor.                                                             
