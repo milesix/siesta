@@ -421,35 +421,11 @@ program fatband_atomic
 
 
   allocate(S_k(no_u,no_u))
-  ! Get functions of S (this real version when k=0 only)
-  call get_s_func(Sover,no_u,numh,listhptr,listh,S_sqroot,sqroot)
-  print *, "Computed sqrt(S_k)"
-  call get_s_func(Sover,no_u,numh,listhptr,listh,S_inv_sqroot,inv_sqroot)
-
-  !  S_k = matmul(S_sqroot, S_sqroot)
-  
-  ! Use S_inv_sqroot to get the orthogonal basis
-  ! The coefficients of the ith orthogonal vector will be
-  ! those in the ith row of S_inv_sqroot
-
   ! Assume binary compound with atoms with the same number of orbitals...
   n_orbs_atom = no_u/2
 
   allocate(coeff(1:no_u,1:no_u), psi_coeffs(1:no_u), work(1:no_u))
-  do i = 1, no_u
-     coeff(i,1:no_u) = S_inv_sqroot(i,1:no_u)
-     print "(/,a,i0)", "coeffs of orthog orbital number: ", i
-     do ia = 1, 2
-        do j = 1, n_orbs_atom
-           ja = (ia-1)*n_orbs_atom + j
-           write(*,"(1x,f8.4)",advance="no") coeff(i,ja)
-        enddo
-        write(*,*)
-     enddo
-     norm = inner_prod(coeff(i,:),coeff(i,:),S_k)
-     print *, "NORM:", norm
 
-  enddo
 
   ! * Fatband weights
 
@@ -672,6 +648,35 @@ program fatband_atomic
 
            write(proj_u,"(//,a,i4,3(1x,f10.5))") 'K-point: ', ik, pk(1:3,ik)
 
+              !-------------------------------------
+              ! Process S_k and friends here
+              ! Get functions of S (this real version when k=0 only)
+           if (abs(dot_product(pk(:,ik),pk(:,ik))) < 1.0e-10) then
+              call get_s_func(Sover,no_u,numh,listhptr,listh,S_sqroot,sqroot)
+              call get_s_func(Sover,no_u,numh,listhptr,listh,S_inv_sqroot,inv_sqroot)
+
+              !  S_k = matmul(S_sqroot, S_sqroot)
+
+              ! Use S_inv_sqroot to get the orthogonal basis
+              ! The coefficients of the ith orthogonal vector will be
+              ! those in the ith row of S_inv_sqroot
+
+              do i = 1, no_u
+                 coeff(i,1:no_u) = S_inv_sqroot(i,1:no_u)
+                 print "(/,a,i0)", "coeffs of orthog orbital number: ", i
+                 do ia = 1, 2
+                    do j = 1, n_orbs_atom
+                       ja = (ia-1)*n_orbs_atom + j
+                       write(*,"(1x,f8.4)",advance="no") coeff(i,ja)
+                    enddo
+                    write(*,*)
+                 enddo
+                 norm = inner_prod(coeff(i,:),coeff(i,:),S_k)
+                 print *, "NORM:", norm
+              enddo
+              !-------------------------------------
+           endif
+        
            do is=1,nspin_blocks
               if (nspin_blocks > 1) then
                  write(proj_u,"(/a,i1)") 'Spin: ', is
@@ -732,7 +737,7 @@ program fatband_atomic
                  else
                     read(wfs_u)
                  endif
-                 if (atom_lm_scheme) then
+
                     write(proj_u,"(/,3x,9(1x,a7))") "s", "py", "pz", "px", &
                       "dxy", "dyz", "dz2", "dxz", "dx2-z2"
                     nc_p = 0
@@ -753,11 +758,7 @@ program fatband_atomic
 
                        nc_p = nc_p + 9
                     end do
-                 else
-                    write(proj_u,"(/,3x,9(1x,a6))") "s", "py", "pz", "px", &
-                      "dxy", "dyz", "dz2", "dxz", "dx2-z2"
-                    write(proj_u,"(i3,9f7.4,2x,f7.4)") 1, (fat(ib,is,ik,ic),ic=1,ncb), sum(fat(ib,is,ik,:))
-                 endif
+
               enddo   ! iwf
            enddo      ! is
 
