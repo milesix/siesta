@@ -1,0 +1,66 @@
+# -----------------------------------------------------------------------------
+#
+#
+
+SystemName          MoPt2 bulk with test of various types of WFS output 
+SystemLabel         mopt2_fatbands
+
+NumberOfAtoms       6
+NumberOfSpecies     2
+
+%block ChemicalSpeciesLabel
+ 1  42  Mo
+ 2  78  Pt
+%endblock ChemicalSpeciesLabel
+
+PAO.BasisSize       DZP
+PAO.EnergyShift     100 meV
+
+LatticeConstant    1.000 Ang
+%block LatticeVectors
+   2.7575040051883231    0.0000000000000000    0.0000000000000002
+   0.0000000000000006    3.9641387120234550    0.0000000000000002
+   0.0000000000000000    0.0000000000000000    8.3129677875464782
+%endblock LatticeVectors
+
+MeshCutoff          400.0 Ry
+
+DM.MixingWeight      0.15 
+DM.NumberPulay       3  
+DM.Tolerance         1.d-4
+ 
+kgridcutoff          7. Ang
+
+SolutionMethod       diagon    
+ElectronicTemperature  25 meV  
+
+#
+# Note: pseudo-dojo pseudos have the 3d orbitals in the valence
+# Hence, the first 10 bands are d-like
+#
+BandLinesScale ReciprocalLatticeVectors
+WFS.Write.For.Bands T             # For fat-bands analysis
+%block BandLines                  
+ 1  0.000  0.000  0.000  \Gamma   
+30  0.500  0.000  0.000     X     
+30  0.500  0.500  0.000     S     
+30  0.000  0.500  0.000     Y     
+30  0.000  0.000  0.000  \Gamma   
+30  0.000  0.000  0.500     Z
+30  0.500  0.000  0.500     U
+30  0.500  0.500  0.500     R
+30  0.000  0.500  0.500     T
+30  0.000  0.000  0.500     Z     
+%endblock BandLines
+
+COOP.Write T
+
+AtomicCoordinatesFormat  Fractional
+%block AtomicCoordinatesAndAtomicSpecies
+   0.0000000000000000    0.0000000000000000    0.0000000000000000 1 Mo 1
+   0.5000000000000000    0.5000000000000000    0.5000000000000000 1 Mo 1
+   0.5000000000000000    0.5000000000000000    0.1633420749999999 2 Pt 2
+   0.0000000000000000    0.0000000000000000    0.3366579250000000 2 Pt 2
+   0.0000000000000000    0.0000000000000000    0.6633420750000000 2 Pt 2
+   0.5000000000000000    0.5000000000000000    0.8366579250000000 2 Pt 2
+%endblock AtomicCoordinatesAndAtomicSpecies

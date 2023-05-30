@@ -42,7 +42,7 @@ module main_vars
   integer             ::  npts_energy = 200
 
   integer :: nshmx
-  integer, parameter :: ncbmx=20
+  integer, parameter :: ncbmx=200
   integer, parameter :: nlwmx=30
 
   character :: sflnm*50, taux*100, wrd(nlwmx)*20, cx*20

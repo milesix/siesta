@@ -289,15 +289,15 @@ program fatband_atomic
               select case (lorb)
               case (0)
                  orb_mask_atomic(nao,nc_p+1) = .true.
-                 write(tit(nc_p+1),"(a,i3)") "s on atom", ia
+                 write(tit(nc_p+1),"(a,i0)") "s_on_atom_", ia
                  print *, "s on atom", ia, " put in set", nc_p+1
               case (1)
                  orb_mask_atomic(nao,nc_p+1+ko) = .true.
-                 write(tit(nc_p+1+ko),"(a,i1,a,i3)") "p ", ko," on atom", ia
+                 write(tit(nc_p+1+ko),"(a,i1,a,i0)") "p_", ko,"_on_atom_", ia
                  print *, "p ", ko, "on atom", ia, " put in set", nc_p+1+ko
               case (2) 
                  orb_mask_atomic(nao,nc_p+4+ko) = .true.
-                 write(tit(nc_p+4+ko),"(a,i1,a,i3)") "d ", ko," on atom", ia
+                 write(tit(nc_p+4+ko),"(a,i1,a,i0)") "d_", ko,"_on_atom_", ia
                  print *, "d ", ko, "on atom", ia, " put in set", nc_p+1+ko
               end select
            enddo
@@ -735,6 +735,11 @@ program fatband_atomic
                     wf(:,:) = real(wf_single(:,:), kind=dp)
                     call c_f_pointer(c_loc(wf), psi_coeffs, [no_u])
 
+                    ! For spinors:
+                    !call c_f_pointer(c_loc(wf), psi_coeffs, [2*no_u])
+                    ! or, for more clarity
+                    !call c_f_pointer(c_loc(wf), psi_spinor, [2,no_u])
+                    ! Then dispatch to the appropriate contraction below
                     write(proj_u,"(/,3x)",advance="no")
                     do j=1, n_orbs_atom
                        write(proj_u,"(1x,i7)",advance="no") j
@@ -755,6 +760,7 @@ program fatband_atomic
 !!$                       write(proj_u,"(2x,f8.4)") sum_projs
 !!$                    enddo
 
+                    ! Alternative method with contraction with sqrt(S)
                     do ia = 1, 2
                        write(proj_u,"(i3)",advance="no") ia
                        sum_projs = 0.0_dp
@@ -770,7 +776,7 @@ program fatband_atomic
                     write(proj_u,"(/,3x,9(1x,a7))") "s", "py", "pz", "px", &
                       "dxy", "dyz", "dz2", "dxz", "dx2-z2"
 
-                    ! Alternative method with contraction with sqrt(S)
+                    ! Aggregate the different orbital projections into lm bins
                     nao = 0
                     do ia = 1, na_u
                        projs(:) = 0.0_dp
@@ -782,20 +788,16 @@ program fatband_atomic
                           lorb = lquant(it,io)
                           do ko = 1, 2*lorb + 1
                              nao = nao + 1
-                             print *, "ia, io, nao, lorb, ko: ", ia, io, nao, lorb, ko
+
                              proj_new = abs(sqroot_contraction(nao))**2
-!!!                             write(proj_u,"(f8.4)",advance="no") abs(proj_new)**2
-!!!                             sum_projs = sum_projs + abs(proj_new)**2
+
                              select case (lorb)
                              case (0)
                                 projs(1) = projs(1) + proj_new
-                                print *, "added to ", 1
                              case (1)
                                 projs(1+ko) = projs(1+ko) + proj_new
-                                print *, "added to ", 1+ko
                              case (2) 
                                 projs(1+3+ko) = projs(1+3+ko) + proj_new
-                                print *, "added to ", 1+3+ko
                              end select
                           enddo
                           io = io + 2*lorb
@@ -806,7 +808,11 @@ program fatband_atomic
 
 !!$                    write(proj_u,"(/,3x,9(1x,a7))") "s", "py", "pz", "px", &
 !!$                      "dxy", "dyz", "dz2", "dxz", "dx2-z2"
+                    
                     write(proj_u,"(/)")
+                    !
+                    ! Print older Siesta estimate for comparison
+                    !
                     nc_p = 0
                     do ia = 1, na_u
 
@@ -918,6 +924,31 @@ program fatband_atomic
 
       end function sqroot_contraction
 
+!!$      function sqroot_contraction_spinor(i) result (res)
+!!$        integer, intent(in) :: i
+!!$        complex(dp) :: res
+!!$        integer  j
+!!$
+!!$        res = 0.0_dp
+!!$        ! Full projection, not spin resolved
+!!$        do j = 1, no_u
+!!$           res = res + psi_spinor(1,j) * S_sqroot(i,j) + &
+!!$                       psi_spinor(2,j) * S_sqroot(i,j)
+!!$        end do
+!!$
+!!$        ! Does this make sense?
+!!$        
+!!$        ! Use Pauli matrices
+!!$        ! z
+!!$           res = res + (psi_spinor(1,j) - psi_spinor(2,j)) * S_sqroot(i,j)
+!!$        ! y
+!!$           res = res + (-ii*psi_spinor(1,j) + ii*psi_spinor(2,j)) * S_sqroot(i,j)
+!!$        ! x  --- would be equal to the full!!
+!!$           res = res + (psi_spinor(1,j) + psi_spinor(2,j)) * S_sqroot(i,j)
+!!$        
+!!$
+!!$         end function sqroot_contraction_spinor
+
       function inner_prod(a,b,S) result (res)
         complex(dp), intent(in) :: a(:)
         complex(dp), intent(in) :: b(:)
@@ -932,10 +963,7 @@ program fatband_atomic
         allocate(wrk(n))
         wrk = matmul(S,b)
         res = dot_product(a,wrk)
-!!$        do i = 1, n
-!!$           wrk(i) = dot_product(a,S(:,i))
-!!$        enddo
-!!$        res  = dot_product(conjg(wrk),b)
+
         deallocate(wrk)
         
       end function inner_prod

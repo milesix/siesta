@@ -55,7 +55,7 @@ setup_test("h2o" "")
 #setup_test("wannier" "wannier.nnkp wannier.win")
 setup_test("gaas_fatbands" "")
 setup_test("si_fatbands" "")
-
+setup_test("mopt2_fatbands" "")
 
 if(WITH_LUA)
   setup_test("lua_h2o" "siesta.lua")
