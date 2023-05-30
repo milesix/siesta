@@ -37,11 +37,12 @@ program fatband_atomic
   logical, allocatable   :: orb_mask_atomic(:,:)
   integer, allocatable   :: num_red(:), ptr(:), list_io2(:), list_ind(:)
   real(dp), allocatable  :: eig(:,:), fat(:,:,:,:)
+
   complex(dp), allocatable  :: S_sqroot(:,:)
   complex(dp), allocatable  :: S_inv_sqroot(:,:)
   complex(dp), allocatable  :: S_k(:,:)
   complex(dp), pointer  :: psi_coeffs(:) => null()
-  complex(dp), allocatable  :: coeff(:,:), work(:)
+  complex(dp), allocatable  :: coeff(:,:)
 
   real(dp) :: sum_projs
   complex(dp) :: proj_new, norm, phase
@@ -426,10 +427,12 @@ program fatband_atomic
 
 
   allocate(S_k(no_u,no_u))
+  allocate(S_sqroot(no_u,no_u), S_inv_sqroot(no_u,no_u))
+
   ! Assume binary compound with atoms with the same number of orbitals...
   n_orbs_atom = no_u/2
 
-  allocate(coeff(1:no_u,1:no_u), psi_coeffs(1:no_u), work(1:no_u))
+  allocate(coeff(1:no_u,1:no_u))
 
 
   ! * Fatband weights
@@ -653,14 +656,36 @@ program fatband_atomic
 
            write(proj_u,"(//,a,i4,3(1x,f10.5))") 'K-point: ', ik, pk(1:3,ik)
 
-              !-------------------------------------
-              ! Process S_k and friends here
-              ! Get functions of S (this real version when k=0 only)
+           !-------------------------------------
+           ! Process S_k and friends here
 
-              call get_sk_func(Sover,no_u,numh,listhptr,listh,pk(:,ik), &
-                              S_sqroot,sqroot)
-              call get_sk_func(Sover,no_u,numh,listhptr,listh,pk(:,ik), &
-                              S_inv_sqroot,inv_sqroot)
+           compute_Sk: block
+             complex(dp), parameter :: ii = (0.0_dp, 1.0_dp)
+             complex(dp) :: phase
+             integer jo
+
+             do io = 1,no_u
+                S_k(:,io) = 0.0_dp
+                do j = 1,numh(io)
+                   ind = listhptr(io) + j
+                   phase = dot_product(pk(:,ik),xij(:,ind))
+                   jo = listh(ind)
+                   jo = MODP(jo,no_u)  ! To allow auxiliary supercells
+                   ! Maybe transpose?
+                   S_k(jo,io) = S_k(jo,io) + Sover(ind)*exp(ii*phase)  
+                enddo
+             enddo
+             write(6,*) "Real(S(k)):"
+             do i = 1, min(8,no_u)
+                do j = 1, min(8,no_u)
+                   write(6,fmt="(1x,f10.4)",advance="no") real(S_k(i,j),kind=dp)
+                enddo
+                write(6,*)
+             enddo
+
+           end block compute_Sk
+
+           call get_sk_funcs(S_k, S_sqroot, S_inv_sqroot)
 
               ! Use S_inv_sqroot to get the orthogonal basis
               ! The coefficients of the ith orthogonal vector will be
@@ -860,15 +885,18 @@ program fatband_atomic
         complex(dp), intent(in) :: S(:,:)
         complex(dp)             :: res
 
+        complex(dp), allocatable :: wrk(:)
+        
         integer i, j, n
 
-        ! work is used by host association, as
-        ! a work array
         n = size(a)
+        allocate(wrk(n))
         do i = 1, n
-           work(i) = dot_product(a,S(:,i))
+           wrk(i) = dot_product(a,S(:,i))
         enddo
-        res  = dot_product(conjg(work),b)
+        res  = dot_product(conjg(wrk),b)
+        deallocate(wrk)
+        
       end function inner_prod
 
       function sqroot(x) result(res)
@@ -883,150 +911,14 @@ program fatband_atomic
         res = 1.0_dp/sqrt(x)
       end function inv_sqroot
 
-      ! Compute a function of S_k (generated from S_sp)
-      ! k=0 only for now
-      subroutine get_s_func(S_sp,no_u,numh,listhptr,listh,S_func,func)
-        real(dp), intent(in) :: S_sp(:)
-        integer, intent(in)  :: no_u
-        integer, intent(in)  :: numh(:), listhptr(:), listh(:)
-        real(dp), intent(out), allocatable :: S_func(:,:)
+      ! Compute functions of S_k
 
-        interface
-           function func(x)
-             import :: dp
-             real(dp), intent(in) :: x
-             real(dp)             :: func
-           end function func
-        end interface
-
-        real(dp), allocatable :: S_base(:,:), B(:,:)
-
-        real(dp), allocatable :: w(:)              ! Eigenvalues
-        integer :: lwork                  ! Size of the workspace
-        integer :: liwork                  ! Size of the workspace
-        real(dp), allocatable :: work(:)
-        integer, allocatable :: iwork(:)
-        integer :: n, iwork_query(1)
-        real(dp) :: work_query(1)         ! Workspace query
-
-        integer :: i, j, jo, info, io, ind
-
-        allocate(S_base(no_u,no_u))
-        allocate(w(no_u))
-       
-        do io = 1,no_u
-           S_k(:,io) = 0._dp
-           do j = 1,numh(io)
-            ind = listhptr(io) + j
-            jo = listh(ind)
-            jo = MODP(jo,no_u)  ! To allow auxiliary supercells
-            S_k(jo,io) = S_k(jo,io) + S_sp(ind)  ! plus phases in general
-         enddo
-      enddo
-
-         write(6,*) "S(k=0):"
-         do i = 1, min(8,no_u)
-            do j = 1, min(8,no_u)
-               write(6,fmt="(1x,f10.4)",advance="no") S_k(i,j)
-            enddo
-            write(6,*)
-         enddo
-
-      S_base = S_k
-
-  ! Workspace query
-      lwork = -1
-      liwork = -1
-  call dsyevd('V', 'U', no_u, S_base, no_u, w, work_query, lwork, iwork_query, liwork, info)
-  print *, "info: ", info
-
-  ! lwork must be at least: 1 + 6*N + 2*N**2   for 'V'
-  ! liwork must be at least: 3 + 5*N   for 'V'
-  
-  lwork = int(work_query(1))
-  liwork = iwork_query(1)
-
-  allocate(work(lwork))
-  allocate(iwork(liwork))
-
-! Call dsyevd
-  call dsyevd('V', 'U', no_u, S_base, no_u, w, work, lwork, iwork, liwork, info)
-
-  ! Check for successful execution
-  if (info == 0) then
-    print *, "Range of Eigenvalues of S_k:", w(1), w(no_u)
-!!$    do i = 1, no_u
-!!$      print *, w(i)
-!!$    end do
-!!$    print *, "Eigenvectors (stored in S_base):"
-!!$    do i = 1, no_u
-!!$      print *, S_base(:, i)
-!!$    end do
-  else
-    print *, "Error: dsyevd failed with info =", info
-  endif
+      subroutine get_sk_funcs(S_k ,S_sqroot, S_inv_sqroot)
+        complex(dp), intent(in)  :: S_k(:,:)
+        complex(dp), intent(out) :: S_sqroot(:,:), S_inv_sqroot(:,:)
 
 
-  ! We have that S = Z D Z^T
-  ! Compute B=ZD
-  allocate(B(no_u,no_u))
-
-  do i = 1, no_u
-     do j = 1, no_u
-        b(i,j) = S_base(i,j) * func(w(j))
-     enddo
-  enddo
-  ! Now, compute B*Z^T
-
-  allocate(S_func(no_u,no_u))
-  call dgemm('N','T', no_u,no_u,no_u, 1.0_dp, B,no_u, S_base,no_u, 0.0_dp,S_func,no_u)
-
-  B = matmul(S_func,S_func)
-  
-         write(6,*) "Product (only valid when func=sqrt():"
-         do i = 1, min(8,no_u)
-            do j = 1, min(8,no_u)
-               write(6,fmt="(1x,f10.4)",advance="no")  b(i,j)
-            enddo
-            write(6,*)
-         enddo
-
-  S_base = matmul(B,S_k)
-         
-         write(6,*) "further Product with S_k (should be 1 for S_inv)"
-         do i = 1, min(8,no_u)
-            do j = 1, min(8,no_u)
-               write(6,fmt="(1x,f10.4)",advance="no")  s_base(i,j)
-            enddo
-            write(6,*)
-         enddo
-
-    deallocate(work,iwork,w,S_base,B)
-  
-
-
-!!$                call zheevd(jobz,uplo,n,H,n,&                                                          
-!!$               w,work,lwork,rwork,lrwork,iwork,liwork, &                    
-!!$               info)
-                
-end subroutine get_s_func
-
-      ! Compute a function of S_k (generated from S_sp)
-
-      subroutine get_sk_func(S_sp,no_u,numh,listhptr,listh,kp,S_func,func)
-        real(dp), intent(in) :: S_sp(:)
-        integer, intent(in)  :: no_u
-        integer, intent(in)  :: numh(:), listhptr(:), listh(:)
-        real(dp), intent(in) :: kp(:)  ! k-point
-        complex(dp), intent(out), allocatable :: S_func(:,:)
-
-        interface
-           function func(x)
-             import :: dp
-             real(dp), intent(in) :: x
-             real(dp)             :: func
-           end function func
-        end interface
+        integer :: no_u
 
         complex(dp), allocatable :: S_base(:,:), B(:,:)
 
@@ -1045,111 +937,79 @@ end subroutine get_s_func
 
         integer :: i, j, jo, info, io, ind
         complex(dp), parameter :: ii = (0.0_dp, 1.0_dp)
+
+        no_u = size(S_k,dim=1)
         
         allocate(S_base(no_u,no_u))
         allocate(w(no_u))
        
-        do io = 1,no_u
-           S_k(:,io) = 0._dp
-           do j = 1,numh(io)
-              ind = listhptr(io) + j
-              phase = dot_product(kp,xij(:,ind))
-              jo = listh(ind)
-              jo = MODP(jo,no_u)  ! To allow auxiliary supercells
-              ! Maybe transpose?
-              S_k(jo,io) = S_k(jo,io) + S_sp(ind)*exp(ii*phase)  
+        S_base = S_k
+
+        ! Workspace query
+        lwork = -1
+        lrwork = -1
+        liwork = -1
+
+        call zheevd('V', 'U', no_u, S_base, no_u, w, work_query, lwork, rwork_query, lrwork, iwork_query, liwork, info)
+
+        lwork = int(real(work_query(1)))
+        lrwork = int(rwork_query(1))
+        liwork = iwork_query(1)
+
+        allocate(work(lwork))
+        allocate(rwork(lrwork))
+        allocate(iwork(liwork))
+
+        call zheevd('V', 'U', no_u, S_base, no_u, w, work, lwork, rwork, lrwork, iwork, liwork, info)
+
+        ! Check for successful execution
+        if (info == 0) then
+           print *, "Range of Eigenvalues of S_k:", w(1), w(no_u)
+        else
+           print *, "Error: zheevd failed with info =", info
+        endif
+
+        ! We have that S = Z D Z^H
+        ! Compute B=ZD
+        allocate(B(no_u,no_u))
+
+        ! Compute square root ----------------------
+        do j = 1, no_u
+           b(1:no_u,j) = S_base(1:no_u,j) * sqrt(w(j))
+        enddo
+        ! Now, compute B*Z^T
+        call zgemm('N','C', no_u,no_u,no_u, (1.0_dp,0.0_dp), B,no_u, S_base,no_u, (0.0_dp,0.0_dp),S_sqroot,no_u)
+
+        B = matmul(S_sqroot,S_sqroot)
+
+        write(6,*) "Check of square root: Product (only valid when func=sqrt():"
+        if ( any(  abs(B-S_k) > 1.0e-5) ) then
+           print *, "S_sqroot is not a proper square root of S_k"
+           error stop 1
+        endif
+
+        ! Compute inverse square root ----------------------
+        do j = 1, no_u
+           b(1:no_u,j) = S_base(1:no_u,j) / sqrt(w(j))
+        enddo
+        ! Now, compute B*Z^T
+        call zgemm('N','C', no_u,no_u,no_u, (1.0_dp,0.0_dp), B,no_u, S_base,no_u, (0.0_dp,0.0_dp),S_inv_sqroot,no_u)
+
+        B = matmul(S_inv_sqroot,S_inv_sqroot)
+        S_base = matmul(B,S_k)  ! Note reuse
+
+        write(6,*) "Check of S_inv_sqroot. It should be identity matrix"
+        do i = 1, min(8,no_u)
+           do j = 1, min(8,no_u)
+              write(6,fmt="(1x,f10.4)",advance="no")  real(s_base(i,j))
            enddo
+           write(6,*)
         enddo
 
-         write(6,*) "Real(S(k)):"
-         do i = 1, min(8,no_u)
-            do j = 1, min(8,no_u)
-               write(6,fmt="(1x,f10.4)",advance="no") real(S_k(i,j),kind=dp)
-            enddo
-            write(6,*)
-         enddo
+        deallocate(work,iwork,w,S_base,B)
 
-      S_base = S_k
+      end subroutine get_sk_funcs
 
-  ! Workspace query
-      lwork = -1
-      lrwork = -1
-      liwork = -1
-!!$                call zheevd(jobz,uplo,n,H,n,&                                                          
-!!$               w,work,lwork,rwork,lrwork,iwork,liwork, &                    
-!!$               info)
-      print *, "Calling zheevd in query mode..."
-      call zheevd('V', 'U', no_u, S_base, no_u, w, work_query, lwork, rwork_query, lrwork, iwork_query, liwork, info)
-      print *, "info: ", info
-
-  
-  lwork = int(real(work_query(1)))
-  lrwork = int(rwork_query(1))
-  liwork = iwork_query(1)
-
-  allocate(work(lwork))
-  allocate(rwork(lrwork))
-  allocate(iwork(liwork))
-
-! Call dsyevd
-  call zheevd('V', 'U', no_u, S_base, no_u, w, work, lwork, rwork, lrwork, iwork, liwork, info)
-  print *, "info after diag: ", info
-
-  ! Check for successful execution
-  if (info == 0) then
-    print *, "Range of Eigenvalues of S_k:", w(1), w(no_u)
-!!$    do i = 1, no_u
-!!$      print *, w(i)
-!!$    end do
-!!$    print *, "Eigenvectors (stored in S_base):"
-!!$    do i = 1, no_u
-!!$      print *, S_base(:, i)
-!!$    end do
-  else
-    print *, "Error: zheevd failed with info =", info
-  endif
-
-
-  ! We have that S = Z D Z^H
-  ! Compute B=ZD
-  allocate(B(no_u,no_u))
-
-  do i = 1, no_u
-     do j = 1, no_u
-        b(i,j) = S_base(i,j) * func(w(j))
-     enddo
-  enddo
-  ! Now, compute B*Z^T
-
-  allocate(S_func(no_u,no_u))
-  call zgemm('N','C', no_u,no_u,no_u, (1.0_dp,0.0_dp), B,no_u, S_base,no_u, (0.0_dp,0.0_dp),S_func,no_u)
-  
-  B = matmul(S_func,S_func)
-  
-         write(6,*) "Product (only valid when func=sqrt():"
-         do i = 1, min(8,no_u)
-            do j = 1, min(8,no_u)
-               write(6,fmt="(1x,f10.4)",advance="no")  real(b(i,j))
-            enddo
-            write(6,*)
-         enddo
-
-  S_base = matmul(B,S_k)
-         
-         write(6,*) "further Product with S_k (should be 1 for S_inv)"
-         do i = 1, min(8,no_u)
-            do j = 1, min(8,no_u)
-               write(6,fmt="(1x,f10.4)",advance="no")  real(s_base(i,j))
-            enddo
-            write(6,*)
-         enddo
-
-         
-  deallocate(work,iwork,w,S_base,B)
-  
-
-                
-end subroutine get_sk_func
 
 ! A MOD function which behaves differently on the edge.                                                               
 ! It will NEVER return 0, but instead return the divisor.                                                             
