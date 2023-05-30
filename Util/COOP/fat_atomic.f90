@@ -672,7 +672,7 @@ program fatband_atomic
                    jo = listh(ind)
                    jo = MODP(jo,no_u)  ! To allow auxiliary supercells
                    ! Maybe transpose?
-                   S_k(jo,io) = S_k(jo,io) + Sover(ind)*exp(ii*phase)  
+                   S_k(jo,io) = S_k(jo,io) + Sover(ind)*exp(-ii*phase)  
                 enddo
              enddo
              write(6,*) "Real(S(k)):"
@@ -874,7 +874,7 @@ program fatband_atomic
 
         res = 0.0_dp
         do j = 1, no_u
-           res = res + conjg(psi_coeffs(j))*S_sqroot(i,j)
+           res = res + psi_coeffs(j) * S_sqroot(i,j)
         end do
 
       end function sqroot_contraction
