@@ -44,6 +44,8 @@ program fatband_atomic
   complex(dp), pointer  :: psi_coeffs(:) => null()
   complex(dp), allocatable  :: coeff(:,:)
 
+  real(dp) :: projs(9)
+ 
   real(dp) :: sum_projs
   complex(dp) :: proj_new, norm, phase
   integer :: n_orbs_atom, ja
@@ -739,21 +741,20 @@ program fatband_atomic
                     enddo
                     write(proj_u,*)
                     
-                    ! Use inner product of wf with projecting orbital,
-                    ! which is the matching one in the Lowdin orthogonal basis
-                    do ia = 1, 2
-                       write(proj_u,"(i3)",advance="no") ia
-                       sum_projs = 0.0_dp
-                       do i = 1, n_orbs_atom
-                          j = (ia-1)* n_orbs_atom + i
-                          proj_new = inner_prod(coeff(:,j),psi_coeffs(:),S_k)
-                          write(proj_u,"(f8.4)",advance="no") abs(proj_new)**2
-                          sum_projs = sum_projs + abs(proj_new)**2
-                       enddo
-                       write(proj_u,"(2x,f8.4)") sum_projs
-                    enddo
+!!$                    ! Use inner product of wf with projecting orbital,
+!!$                    ! which is the matching one in the Lowdin orthogonal basis
+!!$                    do ia = 1, 2
+!!$                       write(proj_u,"(i3)",advance="no") ia
+!!$                       sum_projs = 0.0_dp
+!!$                       do i = 1, n_orbs_atom
+!!$                          j = (ia-1)* n_orbs_atom + i
+!!$                          proj_new = inner_prod(coeff(:,j),psi_coeffs(:),S_k)
+!!$                          write(proj_u,"(f8.4)",advance="no") abs(proj_new)**2
+!!$                          sum_projs = sum_projs + abs(proj_new)**2
+!!$                       enddo
+!!$                       write(proj_u,"(2x,f8.4)") sum_projs
+!!$                    enddo
 
-                    ! Alternative method with contraction with sqrt(S)
                     do ia = 1, 2
                        write(proj_u,"(i3)",advance="no") ia
                        sum_projs = 0.0_dp
@@ -768,6 +769,44 @@ program fatband_atomic
 
                     write(proj_u,"(/,3x,9(1x,a7))") "s", "py", "pz", "px", &
                       "dxy", "dyz", "dz2", "dxz", "dx2-z2"
+
+                    ! Alternative method with contraction with sqrt(S)
+                    nao = 0
+                    do ia = 1, na_u
+                       projs(:) = 0.0_dp
+                       it = isa(ia)
+                       io = 0
+                       do
+                          io = io + 1
+                          if (io > no(it)) exit
+                          lorb = lquant(it,io)
+                          do ko = 1, 2*lorb + 1
+                             nao = nao + 1
+                             print *, "ia, io, nao, lorb, ko: ", ia, io, nao, lorb, ko
+                             proj_new = abs(sqroot_contraction(nao))**2
+!!!                             write(proj_u,"(f8.4)",advance="no") abs(proj_new)**2
+!!!                             sum_projs = sum_projs + abs(proj_new)**2
+                             select case (lorb)
+                             case (0)
+                                projs(1) = projs(1) + proj_new
+                                print *, "added to ", 1
+                             case (1)
+                                projs(1+ko) = projs(1+ko) + proj_new
+                                print *, "added to ", 1+ko
+                             case (2) 
+                                projs(1+3+ko) = projs(1+3+ko) + proj_new
+                                print *, "added to ", 1+3+ko
+                             end select
+                          enddo
+                          io = io + 2*lorb
+                       enddo
+                       write(proj_u,"(i3,9f8.4,2x,f8.4,1x,a2)") ia, (projs(i),i=1,9), sum(projs), " n"
+                    enddo
+
+
+!!$                    write(proj_u,"(/,3x,9(1x,a7))") "s", "py", "pz", "px", &
+!!$                      "dxy", "dyz", "dz2", "dxz", "dx2-z2"
+                    write(proj_u,"(/)")
                     nc_p = 0
                     do ia = 1, na_u
 
