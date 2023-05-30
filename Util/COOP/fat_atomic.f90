@@ -697,7 +697,7 @@ program fatband_atomic
                  do ia = 1, 2
                     do j = 1, n_orbs_atom
                        ja = (ia-1)*n_orbs_atom + j
-                       write(*,"(1x,a1,2f8.4,a1)",advance="no") '(', coeff(ja,i), ')'
+                       write(*,"(1x,a1,f6.3,f7.3,a1)",advance="no") '(', coeff(ja,i), ')'
                     enddo
                     write(*,*)
                  enddo
