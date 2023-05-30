@@ -689,19 +689,19 @@ program fatband_atomic
 
               ! Use S_inv_sqroot to get the orthogonal basis
               ! The coefficients of the ith orthogonal vector will be
-              ! those in the ith row of S_inv_sqroot
+              ! those in the ith COLUMN of S_inv_sqroot
 
               do i = 1, no_u
-                 coeff(i,1:no_u) = S_inv_sqroot(i,1:no_u)
+                 coeff(1:no_u,i) = S_inv_sqroot(1:no_u,i)
                  print "(/,a,i0)", "coeffs of orthog orbital number: ", i
                  do ia = 1, 2
                     do j = 1, n_orbs_atom
                        ja = (ia-1)*n_orbs_atom + j
-                       write(*,"(1x,a1,2f8.4,a1)",advance="no") '(', coeff(i,ja), ')'
+                       write(*,"(1x,a1,2f8.4,a1)",advance="no") '(', coeff(ja,i), ')'
                     enddo
                     write(*,*)
                  enddo
-                 norm = inner_prod(coeff(i,:),coeff(i,:),S_k)
+                 norm = inner_prod(coeff(:,i),coeff(:,i),S_k)
                  print *, "NORM:", abs(norm)
               enddo
               !-------------------------------------
@@ -746,7 +746,7 @@ program fatband_atomic
                        sum_projs = 0.0_dp
                        do i = 1, n_orbs_atom
                           j = (ia-1)* n_orbs_atom + i
-                          proj_new = inner_prod(coeff(j,:),psi_coeffs(:),S_k)
+                          proj_new = inner_prod(coeff(:,j),psi_coeffs(:),S_k)
                           write(proj_u,"(f8.4)",advance="no") abs(proj_new)**2
                           sum_projs = sum_projs + abs(proj_new)**2
                        enddo
@@ -891,10 +891,12 @@ program fatband_atomic
 
         n = size(a)
         allocate(wrk(n))
-        do i = 1, n
-           wrk(i) = dot_product(a,S(:,i))
-        enddo
-        res  = dot_product(conjg(wrk),b)
+        wrk = matmul(S,b)
+        res = dot_product(a,wrk)
+!!$        do i = 1, n
+!!$           wrk(i) = dot_product(a,S(:,i))
+!!$        enddo
+!!$        res  = dot_product(conjg(wrk),b)
         deallocate(wrk)
         
       end function inner_prod
