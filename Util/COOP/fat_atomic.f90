@@ -44,10 +44,10 @@ program fatband_atomic
   complex(dp), pointer  :: psi_coeffs(:) => null()
   complex(dp), allocatable  :: coeff(:,:)
 
-  real(dp) :: projs(9)
+  real(dp) :: projs(9), old_projs(9)
  
   real(dp) :: sum_projs
-  complex(dp) :: proj_new, norm, phase
+  complex(dp) :: proj_new, proj_old, norm, phase
   integer :: n_orbs_atom, ja
 
 
@@ -760,18 +760,18 @@ program fatband_atomic
 !!$                       write(proj_u,"(2x,f8.4)") sum_projs
 !!$                    enddo
 
-                    ! Alternative method with contraction with sqrt(S)
-                    do ia = 1, 2
-                       write(proj_u,"(i3)",advance="no") ia
-                       sum_projs = 0.0_dp
-                       do i = 1, n_orbs_atom
-                          j = (ia-1)* n_orbs_atom + i
-                          proj_new = sqroot_contraction(j)
-                          write(proj_u,"(f8.4)",advance="no") abs(proj_new)**2
-                          sum_projs = sum_projs + abs(proj_new)**2
-                       enddo
-                       write(proj_u,"(2x,f8.4)") sum_projs
-                    enddo
+!!$                    ! Alternative method with contraction with sqrt(S)
+!!$                    do ia = 1, 2
+!!$                       write(proj_u,"(i3)",advance="no") ia
+!!$                       sum_projs = 0.0_dp
+!!$                       do i = 1, n_orbs_atom
+!!$                          j = (ia-1)* n_orbs_atom + i
+!!$                          proj_new = sqroot_contraction(j)
+!!$                          write(proj_u,"(f8.4)",advance="no") abs(proj_new)**2
+!!$                          sum_projs = sum_projs + abs(proj_new)**2
+!!$                       enddo
+!!$                       write(proj_u,"(2x,f8.4)") sum_projs
+!!$                    enddo
 
                     write(proj_u,"(/,3x,9(1x,a7))") "s", "py", "pz", "px", &
                       "dxy", "dyz", "dz2", "dxz", "dx2-z2"
@@ -780,6 +780,7 @@ program fatband_atomic
                     nao = 0
                     do ia = 1, na_u
                        projs(:) = 0.0_dp
+                       old_projs(:) = 0.0_dp
                        it = isa(ia)
                        io = 0
                        do
@@ -790,19 +791,23 @@ program fatband_atomic
                              nao = nao + 1
 
                              proj_new = abs(sqroot_contraction(nao))**2
-
+                             proj_old = real(old_contraction(nao),kind=dp)
                              select case (lorb)
                              case (0)
                                 projs(1) = projs(1) + proj_new
+                                old_projs(1) = old_projs(1) + proj_old
                              case (1)
                                 projs(1+ko) = projs(1+ko) + proj_new
+                                old_projs(1+ko) = old_projs(1+ko) + proj_old
                              case (2) 
                                 projs(1+3+ko) = projs(1+3+ko) + proj_new
+                                old_projs(1+3+ko) = old_projs(1+3+ko) + proj_old
                              end select
                           enddo
                           io = io + 2*lorb
                        enddo
                        write(proj_u,"(i3,9f8.4,2x,f8.4,1x,a2)") ia, (projs(i),i=1,9), sum(projs), " n"
+                       write(proj_u,"(i3,9f8.4,2x,f8.4,1x,a2)") ia, (old_projs(i),i=1,9), sum(old_projs), " o"
                     enddo
 
 
@@ -912,6 +917,20 @@ program fatband_atomic
 
       ! Some of these functions use host association for
       ! relevant variables
+      function old_contraction(i) result (res)
+        ! This is what Siesta did implicitly for DOS and fat
+        integer, intent(in) :: i
+        complex(dp) :: res
+        integer  j
+
+        res = 0.0_dp
+        do j = 1, no_u
+           res = res + S_k(i,j) *  psi_coeffs(j)
+        enddo
+        res =  conjg(psi_coeffs(i)) * res
+
+      end function old_contraction
+
       function sqroot_contraction(i) result (res)
         integer, intent(in) :: i
         complex(dp) :: res
