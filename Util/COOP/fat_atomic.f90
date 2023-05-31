@@ -69,8 +69,7 @@ program fatband_atomic
   logical  :: non_coll
 
   integer :: proj_u, nc_p
-  logical :: atom_lm_scheme = .false.
-  logical :: all_interactions = .true.
+  logical :: write_lowdin_basis = .false.
   character(len=2) :: mark
 
   !
@@ -78,7 +77,7 @@ program fatband_atomic
   !
   n_opts = 0
   do
-     call getopts('dhlaR:b:B:s',opt_name,opt_arg,n_opts,iostat)
+     call getopts('dhlR:b:B:s',opt_name,opt_arg,n_opts,iostat)
      if (iostat /= 0) exit
      select case(opt_name)
      case ('d')
@@ -94,10 +93,8 @@ program fatband_atomic
      case ('B')
         read(opt_arg,*) max_band
         max_band_set = .true.
-     case ('a','n')
-        atom_lm_scheme = .true.
-     case ('s')   ! "same sets I and II"
-        all_interactions = .false.
+     case ('p')
+        write_lowdin_basis = .true.
      case ('h')
         call manual()
      case ('?',':')
@@ -262,79 +259,6 @@ program fatband_atomic
 
   ! ==================================
 
-  ! Process orbital sets
-
-  ! Here we should implement new code to generate "orbital sets" for
-  ! each lm pair and for each atom involved 
-
-  if (atom_lm_scheme) then
-
-     ! There are 9 "curves" per atom
-     ncb = 9*na_u
-     allocate(orb_mask_atomic(no_u,ncb))
-     allocate (koc(ncb,2,no_u))
-     orb_mask_atomic(:,:) = .false.
-     nc_p = 0
-     nao = 0
-     do ia=1,na_u
-        it = isa(ia)
-        io = 0
-        do
-           io = io + 1
-           if (io > no(it)) exit
-           lorb = lquant(it,io)
-           do ko = 1, 2*lorb + 1
-              nao = nao + 1
-              print *, "ia, io, nao, lorb, ko: ", ia, io, nao, lorb, ko
-              select case (lorb)
-              case (0)
-                 orb_mask_atomic(nao,nc_p+1) = .true.
-                 write(tit(nc_p+1),"(a,i0)") "s_on_atom_", ia
-                 print *, "s on atom", ia, " put in set", nc_p+1
-              case (1)
-                 orb_mask_atomic(nao,nc_p+1+ko) = .true.
-                 write(tit(nc_p+1+ko),"(a,i1,a,i0)") "p_", ko,"_on_atom_", ia
-                 print *, "p ", ko, "on atom", ia, " put in set", nc_p+1+ko
-              case (2) 
-                 orb_mask_atomic(nao,nc_p+4+ko) = .true.
-                 write(tit(nc_p+4+ko),"(a,i1,a,i0)") "d_", ko,"_on_atom_", ia
-                 print *, "d ", ko, "on atom", ia, " put in set", nc_p+1+ko
-              end select
-           enddo
-           io = io + 2*lorb
-        enddo
-        nc_p = nc_p + 9
-     enddo
-
-     call mask_to_arrays(ncb,orb_mask_atomic(:,:),noc(:,1),koc(:,1,:))
-     if (all_interactions) then
-        ! Consider all interactions
-        orb_mask_atomic(:,:) = .true.
-     else
-        ! Leave the mask for second set equal to the first
-     endif
-     call mask_to_arrays(ncb,orb_mask_atomic(:,:),noc(:,2),koc(:,2,:))
-        
-  else
-!
-     allocate(orb_mask(no_u,2,ncbmx))
-     allocate (koc(ncbmx,2,no_u))
-     ! Give values to flags for reuse of the reading routine
-     dos = .true.
-     coop = .false.
-     call read_curve_information(.true.,.false.,  &
-                                    mpr_u,no_u,ncbmx,ncb,tit,orb_mask,dtc)
-
-     if (all_interactions) then
-        orb_mask(:,2,1:ncb) = .true.       ! All orbitals considered
-     else
-        orb_mask(:,2,1:ncb) = orb_mask(:,1,1:ncb)  ! Just the same set as I
-     endif
-
-     call mask_to_arrays(ncb,orb_mask(:,1,:),noc(:,1),koc(:,1,:))
-     call mask_to_arrays(ncb,orb_mask(:,2,:),noc(:,2),koc(:,2,:))
-  endif
-!!
   write(6,"('Writing files: ',a,'.stt ...')") trim(mflnm)
   open(stt_u,file=trim(mflnm)//'.info')
   write(stt_u,"(/'UNIT CELL ATOMS:')")
@@ -401,31 +325,9 @@ program fatband_atomic
         write(stt_u,"(3x,3f9.6)") pk(:,ik)
      enddo
 
-     write(stt_u,"(/'FATBAND ORBITAL SETS:')")
-     do ic=1,ncb
-        write(stt_u,"(3x,a)") trim(tit(ic))
-        write(stt_u,"(3x,'AO set I: ',/,15x,12i5)") (koc(ic,1,j),j=1,noc(ic,1))
-        write(stt_u,"(3x,'Number of set II orbs:',i8)") noc(ic,2)
-     enddo
-
   close(stt_u)
 
   !==================================
-
-  if (ref_line_given) then
-     allocate(ref_mask(no_u))
-     print *, "Orbital set spec: ", trim(ref_line)
-     call get_orbital_set(ref_line,ref_mask)
-     do io=1, no_u
-        if (ref_mask(io)) write(6,fmt="(i5)",advance="no") io
-     enddo
-     deallocate(ref_mask)
-     write(6,*)
-     STOP "bye from ref_line processing"
-  endif
-
-
-  !=====================
 
 
   allocate(S_k(no_u,no_u))
@@ -460,185 +362,6 @@ program fatband_atomic
      endif
      allocate (mask2(1:no_u))
 
-     do ic=1,ncb
-
-        no1 = noc(ic,1)
-        no2 = noc(ic,2)
-
-        mask2(1:no_u) = .false.
-        do i2=1,no2
-           io2=koc(ic,2,i2)              ! AO Set II
-           mask2(io2) = .true.
-        enddo
-
-        ! Create reduced pattern
-        ! First pass for checking dimensions
-
-        allocate (num_red(no1))
-        do i1=1,no1
-           num_red(i1) = 0
-           io1=koc(ic,1,i1)              ! AO Set I
-           do ii1 = 1,numh(io1)
-              ind = listhptr(io1)+ii1
-              ii2 = indxuo(listh(ind))      ! Equiv orb in unit cell
-
-              if ( .not. mask2(ii2)) Cycle    ! Is not one of Set II
-
-              ! (what to do with semicore states??)
-
-              num_red(i1) = num_red(i1) + 1
-           enddo
-        enddo
-        allocate (ptr(no1))
-        ptr(1)=0
-        do i1=2,no1
-           ptr(i1)=ptr(i1-1)+num_red(i1-1)
-        enddo
-        nnz = sum(num_red(1:no1))  
-
-        write(*,"(a,3x,a,2x,a,i6,1x,i12)") 'Fatband coeffs set: ', trim(tit(ic)),  &
-                                      'Base orbitals and interactions: ', &
-                                       no1, nnz
-
-        allocate (list_io2(nnz))
-        allocate (list_ind(nnz))
-
-        n_int = 0
-        do i1=1,no1
-           io1=koc(ic,1,i1)              ! AO Set I
-           do ii1 = 1,numh(io1)
-              ind = listhptr(io1)+ii1
-              ii2 = indxuo(listh(ind))
-
-              if ( .not. mask2(ii2)) Cycle
-
-              ! (what to do with semicore states??)
-
-              n_int = n_int + 1
-              list_io2(n_int) = ii2
-              list_ind(n_int) = ind
-           enddo
-        enddo
-        if (n_int .ne. nnz) then
-           print *, "n_int, nnz:", n_int, nnz
-           STOP "mismatch"
-        endif
-
-
-     !Stream over file, without using too much memory
-
-        rewind(wfs_u)
-
-        read(wfs_u) 
-        read(wfs_u) 
-        read(wfs_u) 
-        read(wfs_u) 
-
-        if (.not. atom_lm_scheme) then
-           open(fat_u,file=trim(mflnm)// "." // trim(tit(ic)) // '.EIGFAT')
-           write(fat_u,"(a,2i5)") "# " // trim(sflnm) // " min_band, max_band: ", min_band, max_band
-           write(fat_u,"(3i6)")   nbands, nspin_blocks, nkp
-        endif
-
-        do ik=1,nkp
-
-           if (.not. atom_lm_scheme) then
-              write(fat_u,"(i4,3(1x,f10.5))")  ik, pk(1:3,ik)
-           endif
-           
-           do is=1,nspin_blocks
-
-              ib = 0
-              fat(:,is,ik,ic) = 0.0_dp
-
-              read(wfs_u) 
-              read(wfs_u) 
-              read(wfs_u)  number_of_wfns
-              do iw=1,number_of_wfns
-                 read(wfs_u) 
-                 read(wfs_u) eigval
-
-                 ! Use only the specified band set
-                 if ( (iw<min_band) .or. (iw>max_band)) then
-                    read(wfs_u)   ! Still need to read this
-                    CYCLE
-                 endif
-
-                 ib = ib + 1
-                 eig(ib,is) = eigval    ! This will be done for every curve... harmless
-
-                 read(wfs_u) (wf_single(:,io), io=1,no_u)
-                 ! Use a double precision form in what follows
-                 wf(:,:) = real(wf_single(:,:), kind=dp)
-
-
-                 do i1 = 1, no1
-                    io1=koc(ic,1,i1)              ! AO Set I
-
-                      do i2 = 1,num_red(i1)
-                         ind_red = ptr(i1)+i2
-                         io2 = list_io2(ind_red)
-                         ind = list_ind(ind_red)
-                             
-                                ! (qcos, qsin) = C_1*conjg(C_2)
-                                !AG: Corrected:  (qcos, qsin) = conjg(C_1)*(C_2)
-                                ! We might want to avoid recomputing this
-                                if (non_coll) then
-                                   ! Take as weight the "complete spinor" product
-                                   qcos= wf(1,io1)*wf(1,io2) + &
-                                        wf(2,io1)*wf(2,io2) + &
-                                        wf(3,io1)*wf(3,io2) + &
-                                        wf(4,io1)*wf(4,io2)
-                                   qsin= wf(1,io1)*wf(2,io2) - &
-                                        wf(2,io1)*wf(1,io2) + &
-                                        wf(3,io1)*wf(4,io2) - &
-                                        wf(4,io1)*wf(3,io2) 
-                                else
-                                   if (gamma_wfsx) then
-                                      qcos = wf(1,io1)*wf(1,io2) 
-                                      qsin = 0.0_dp
-                                   else
-                                      qcos= (wf(1,io1)*wf(1,io2) + &
-                                           wf(2,io1)*wf(2,io2))
-                                      qsin= (wf(1,io1)*wf(2,io2) - &
-                                           wf(2,io1)*wf(1,io2))
-                                   endif
-                                endif
-                             ! k*R_12    (r_2-r_1)
-                             alfa=dot_product(pk(1:3,ik),xij(1:3,ind))
-
-                             ! Crb = Real(C_1*conjg(C_2)*exp(-i*alfa)) * S_12
-                             !AG: This one better --  or Real(conjg(C_1)*C_2)*exp(+i*alfa)) * S_12
-                             ! Common factor computed here
-                             factor =  (qcos*cos(alfa)-qsin*sin(alfa))
-
-                             fat(ib,is,ik,ic) = fat(ib,is,ik,ic) + Sover(ind)*factor
-
-                        enddo   ! i2
-                    enddo  ! i1
-
-                 enddo   ! iwf
-
-                 if (.not. atom_lm_scheme) then
-
-                    write(fat_u,"(4(4x,f10.4,f9.5))")   &
-                         (eig(ib,is),fat(ib,is,ik,ic),ib=1,nbands)
-                 endif
-                 
-              enddo      ! is
-
-           enddo         ! ik
-           
-           deallocate (num_red)
-           deallocate (ptr)
-           deallocate (list_io2)
-           deallocate (list_ind)
-
-           close(fat_u)
-
-        enddo    ! ic
-
-       if (atom_lm_scheme) then
            ! Write in a format appropriate for Pyprocar and others
            
            ! Use the structure of the file to get the wavefunctions per k-point, etc
@@ -677,14 +400,15 @@ program fatband_atomic
                    S_k(jo,io) = S_k(jo,io) + Sover(ind)*exp(-ii*phase)  
                 enddo
              enddo
-             write(6,*) "Real(S(k)):"
-             do i = 1, min(8,no_u)
-                do j = 1, min(8,no_u)
-                   write(6,fmt="(1x,f10.4)",advance="no") real(S_k(i,j),kind=dp)
+             if (debug) then
+                write(6,*) "Real(S(k)):"
+                do i = 1, min(8,no_u)
+                   do j = 1, min(8,no_u)
+                      write(6,fmt="(1x,f10.4)",advance="no") real(S_k(i,j),kind=dp)
+                   enddo
+                   write(6,*)
                 enddo
-                write(6,*)
-             enddo
-
+             endif
            end block compute_Sk
 
            call get_sk_funcs(S_k, S_sqroot, S_inv_sqroot)
@@ -693,19 +417,18 @@ program fatband_atomic
               ! The coefficients of the ith orthogonal vector will be
               ! those in the ith COLUMN of S_inv_sqroot
 
+           if (write_lowdin_basis) then
               do i = 1, no_u
                  coeff(1:no_u,i) = S_inv_sqroot(1:no_u,i)
                  print "(/,a,i0)", "coeffs of orthog orbital number: ", i
-                 do ia = 1, 2
-                    do j = 1, n_orbs_atom
-                       ja = (ia-1)*n_orbs_atom + j
+                 do ja = 1, no_u
                        write(*,"(1x,a1,f6.3,f7.3,a1)",advance="no") '(', coeff(ja,i), ')'
-                    enddo
-                    write(*,*)
                  enddo
-                 norm = inner_prod(coeff(:,i),coeff(:,i),S_k)
-                 print *, "NORM:", abs(norm)
+                 write(*,*)
+                 !! norm = inner_prod(coeff(:,i),coeff(:,i),S_k)
+                 !! print *, "NORM:", abs(norm)
               enddo
+           endif
               !-------------------------------------
 
         
@@ -740,39 +463,7 @@ program fatband_atomic
                     ! or, for more clarity
                     !call c_f_pointer(c_loc(wf), psi_spinor, [2,no_u])
                     ! Then dispatch to the appropriate contraction below
-                    write(proj_u,"(/,3x)",advance="no")
-                    do j=1, n_orbs_atom
-                       write(proj_u,"(1x,i7)",advance="no") j
-                    enddo
-                    write(proj_u,*)
                     
-!!$                    ! Use inner product of wf with projecting orbital,
-!!$                    ! which is the matching one in the Lowdin orthogonal basis
-!!$                    do ia = 1, 2
-!!$                       write(proj_u,"(i3)",advance="no") ia
-!!$                       sum_projs = 0.0_dp
-!!$                       do i = 1, n_orbs_atom
-!!$                          j = (ia-1)* n_orbs_atom + i
-!!$                          proj_new = inner_prod(coeff(:,j),psi_coeffs(:),S_k)
-!!$                          write(proj_u,"(f8.4)",advance="no") abs(proj_new)**2
-!!$                          sum_projs = sum_projs + abs(proj_new)**2
-!!$                       enddo
-!!$                       write(proj_u,"(2x,f8.4)") sum_projs
-!!$                    enddo
-
-!!$                    ! Alternative method with contraction with sqrt(S)
-!!$                    do ia = 1, 2
-!!$                       write(proj_u,"(i3)",advance="no") ia
-!!$                       sum_projs = 0.0_dp
-!!$                       do i = 1, n_orbs_atom
-!!$                          j = (ia-1)* n_orbs_atom + i
-!!$                          proj_new = sqroot_contraction(j)
-!!$                          write(proj_u,"(f8.4)",advance="no") abs(proj_new)**2
-!!$                          sum_projs = sum_projs + abs(proj_new)**2
-!!$                       enddo
-!!$                       write(proj_u,"(2x,f8.4)") sum_projs
-!!$                    enddo
-
                     write(proj_u,"(/,3x,9(1x,a7))") "s", "py", "pz", "px", &
                       "dxy", "dyz", "dz2", "dxz", "dx2-z2"
 
@@ -806,63 +497,36 @@ program fatband_atomic
                           enddo
                           io = io + 2*lorb
                        enddo
-                       write(proj_u,"(i3,9f8.4,2x,f8.4,1x,a2)") ia, (projs(i),i=1,9), sum(projs), " n"
-                       write(proj_u,"(i3,9f8.4,2x,f8.4,1x,a2)") ia, (old_projs(i),i=1,9), sum(old_projs), " o"
+                       write(proj_u,"(i3,9f8.4,2x,f8.4,1x,a2)") ia, (projs(i),i=1,9), sum(projs), "&n"
+                       write(proj_u,"(i3,9f8.4,2x,f8.4,1x,a2)") ia, (old_projs(i),i=1,9), sum(old_projs), "&o"
                     enddo
 
 
-!!$                    write(proj_u,"(/,3x,9(1x,a7))") "s", "py", "pz", "px", &
-!!$                      "dxy", "dyz", "dz2", "dxz", "dx2-z2"
-                    
-                    write(proj_u,"(/)")
-                    !
-                    ! Print older Siesta estimate for comparison
-                    !
-                    nc_p = 0
-                    do ia = 1, na_u
-
-                       ! There are sometimes very small negative numbers
-                       ! We mark them with '**'. Clients can choose what to do with them
-                       if (any(fat(ib,is,ik,nc_p+1:nc_p+9) < -0.1)) then
-                          mark="!!"
-                       else  if (any(fat(ib,is,ik,nc_p+1:nc_p+9) < -0.00005)) then
-                          mark="**"
-                       else
-                          mark ="  "
-                       endif
-
-                       write(proj_u,"(i3,9f8.4,2x,f8.4,1x,a2)") ia, &
-                            (fat(ib,is,ik,ic),ic=nc_p+1,nc_p+9), sum(fat(ib,is,ik,nc_p+1:nc_p+9)), mark
-
-                       nc_p = nc_p + 9
-                    end do
 
               enddo   ! iwf
            enddo      ! is
 
         enddo         ! ik
         
-     endif
-
  
  CONTAINS
 
       subroutine manual()
 
-      write(6,"('* FAT(BANDS) PROGRAM')")
+      write(6,"('* FAT_ATOMIC(BANDS) PROGRAM')")
       write(6,"('  Alberto Garcia, ICMAB-CSIC, 2012 ')")
       write(6,*)
-      write(6,"('    FAT calculates eigenvector projections ')")
-      write(6,"('    using output files obtained with SIESTA. The atomic orbital (AO)')")
-      write(6,"('    sets are defined in an input file (MLabel.mpr).')")
+      write(6,"('    FAT_ATOMIC calculates eigenvector projections ')")
+      write(6,"('    using output files obtained with SIESTA. ')")
+      write(6,"('    The Lowdin basis is used implicitly for projections. ')")
+      write(6,"('    The output is in Pyprocar style.')")
       write(6,"('  ')")
-      write(6,*) "Usage: fat [ options ] MPROP_FILE_BASENAME"
+      write(6,*) "Usage: fat_atomic [ options ] FILE_BASENAME"
       write(6,*) "Options:"
       write(6,*) "           -h:  print manual                    "
       write(6,*) "           -d:  debug                    "
       write(6,*) "           -l:  print summary of energy information         "
-      write(6,*) "           -a:  use atom-lm scheme and generate projections file "
-      write(6,*) "           -s:  ignore non-local interactions (for testing only) "
+      write(6,*) "           -p:  print Lowdin basis information              "
       write(6,*) "    "
       write(6,*) "   Selection of eigenstates to be used: "
       write(6,*) "    "
@@ -870,47 +534,6 @@ program fatband_atomic
       write(6,*) "   -B Max_band  :  set maximum band index to be used               "
       write(6,*) "    "
       write(6,*)
-      write(6,"('* .mpr FILE STRUCTURE')")
-      write(6,"('         SLabel                   # Name of the siesta output files')")
-      write(6,"('         DOS                      # DOS option of mprop is mandatory')")
-      write(6,"('    /-  As many blocks as projections wanted ]')")
-      write(6,"('    |    projection_name         # DOS projection name')")
-      write(6,"('    \-   Subset of AO (*)        # Subset of orbitals included')")
-      write(6,"('     (*) See below how to define subsets of AO')")
-      write(6,"('     A final line with leading chars  ----  can signal the end of the input')")
-      write(6,*)
-      write(6,"('* INPUT FILES')")
-      write(6,"('    [output files from SIESTA >=  2.4.1]')")
-      write(6,"('    SLabel.WFSX and SLabel.HSX (new format)')")
-      write(6,*)
-      write(6,"('* OUTPUT FORMAT')")
-      write(6,*) 
-      write(6,*) " MLabel.CurveName.EIGFAT    :  File with eigenvalue and projection info "
-      write(6,"('    [An information file with extension .info will always be generated]')")
-      write(6,*)
-      write(6,"('* PROJECTION AND CURVES NAMES')")
-      write(6,"('    Alphanumerical string up to 30 char. with no spaces')")
-      write(6,"('* SUBSET OF AO USING ORDER NUMBERS')")
-      write(6,"('    List of integer numbers preceeded by a + symbol')")
-      write(6,"('    Each number refers to one AO in the final list of AO of SIESTA')")
-      write(6,"('    Example: + 23 65 78')")
-      write(6,"('* SUBSET OF AO USING ATOM_SHELL NOTATION')")
-      write(6,"('    List of atoms and shell groups of AO')")
-      write(6,"('    General notation: ATOM_SHELL')")
-      write(6,"('     > ATOM:  Atomic symbol refers to all the atoms of that type')")
-      write(6,"('              Integer number refers to the N-th atom in unit cell')")
-      write(6,"('     > SHELL: Integer1+Letter+Integer2')")
-      write(6,"('               > Integer1 refers to the n quantum number')")
-      write(6,"('               > Letter   refers to the l quantum number (s,p,d,f,g,h)')")
-      write(6,"('               > Integer2 refers to a single AO into the n-l shell')")
-      write(6,"('                   Alternatively, alphanumerical strings can be used')")
-      write(6,"('                     p-shells   1  y    d-shells   1  xy   4  xz')")
-      write(6,"('                                2  z               2  yz   5  x2-y2')")
-      write(6,"('                                3  x               3  z2')")
-      write(6,"('    Particular cases:')")
-      write(6,"('     > Just ATOM is indicated: all the AO of the atom will be included')")
-      write(6,"('     > No value for Integer2:  all the AO of the shell will be included')")
-      write(6,"('    Example: Ca_3p Al 4_4d3 5 O_2py')")
       stop
 
       end subroutine manual
@@ -1052,7 +675,9 @@ program fatband_atomic
 
         ! Check for successful execution
         if (info == 0) then
-           print *, "Range of Eigenvalues of S_k:", w(1), w(no_u)
+           if (debug) then
+              print *, "Range of Eigenvalues of S_k:", w(1), w(no_u)
+           endif
         else
            print *, "Error: zheevd failed with info =", info
         endif
@@ -1070,12 +695,14 @@ program fatband_atomic
 
         B = matmul(S_sqroot,S_sqroot)
 
-        write(6,*) "Check of square root: Product (only valid when func=sqrt():"
-        if ( any(  abs(B-S_k) > 1.0e-5) ) then
-           print *, "S_sqroot is not a proper square root of S_k"
-           error stop 1
+        if (debug) then
+           write(6,*) "Check of square root: Product (only valid when func=sqrt():"
+           if ( any(  abs(B-S_k) > 1.0e-5) ) then
+              print *, "S_sqroot is not a proper square root of S_k"
+              error stop 1
+           endif
         endif
-
+        
         ! Compute inverse square root ----------------------
         do j = 1, no_u
            b(1:no_u,j) = S_base(1:no_u,j) / sqrt(w(j))
@@ -1086,13 +713,15 @@ program fatband_atomic
         B = matmul(S_inv_sqroot,S_inv_sqroot)
         S_base = matmul(B,S_k)  ! Note reuse
 
-        write(6,*) "Check of S_inv_sqroot. It should be identity matrix"
-        do i = 1, min(8,no_u)
-           do j = 1, min(8,no_u)
-              write(6,fmt="(1x,f10.4)",advance="no")  real(s_base(i,j))
+        if (debug) then
+           write(6,*) "Check of S_inv_sqroot. It should be identity matrix"
+           do i = 1, min(8,no_u)
+              do j = 1, min(8,no_u)
+                 write(6,fmt="(1x,f10.4)",advance="no")  real(s_base(i,j))
+              enddo
+              write(6,*)
            enddo
-           write(6,*)
-        enddo
+        endif
 
         deallocate(work,iwork,w,S_base,B)
 
