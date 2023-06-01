@@ -388,11 +388,32 @@ where density is calculated. It can leverage the libxc library, which
 is also highly recommended.
 
 libgridxc depends on the `WITH_GRID_SP` flag which controls the
-precision of the grid operations.
+precision of the grid operations. It also depends on `WITH_MPI`
+for parallel support.
 
+It has optional support for libxc which is highly recommended.
 
-<to be filled>
-
+- `LIBGRIDXC_FIND_METHOD=cmake/pkgconf/fetch/source`
+  a CMake list of multiple ways to check for library existance,
+  `cmake;fetch` will first search using CMake `find_package`, if
+  that fails it will fetch it from the `LIBGRIDXC_GIT_REPOSITORY`
+  variables
+  `cmake` and `pkgconf` are generically implemented using
+  package finders shipped with CMake. Ensure `CMAKE_PREFIX_PATH`
+  and `PKG_CONFIG_PATH` are (prepended)/appended with the
+  directories that should be searched.
+  This value defaults to `SIESTA_FIND_METHOD`.
+  `SIESTA_FIND_METHOD` defaults to `cmake;pkgconf;source;fetch`.
+- `LIBGRIDXC_SOURCE_DIR` should point to a directory where the
+  sources are present, ither manually cloned on unpacked from
+  a release archive.
+  Applicable when `LIBGRIDXC_FIND_METHOD=source`
+- `LIBGRIDXC_GIT_TAG` when `LIBGRIDXC_FIND_METHOD=fetch` this
+  revision of the source will be checked out.
+- `LIBGRIDXC_GIT_REPOSITORY` is the URL of the Git repository
+  when cloning the sources.
+  Is defaulted to the original development site, may be
+  useful for testing clones with fixes/changes or.
 
 
 #### libxc (highly recommended)
