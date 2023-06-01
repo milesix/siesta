@@ -206,9 +206,6 @@ endif()
 
 if (NOT TARGET libgridxc::libgridxc)
   find_package(CustomLibGridxc REQUIRED)
-  if( NOT LIBGRIDXC_FOUND )
-    message(FATAL_ERROR "LibGridXC is a required dependency, but it could not be found by CMake")
-  endif()
 endif()
 
 

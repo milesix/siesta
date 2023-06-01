@@ -396,12 +396,9 @@ siesta_print_feature_info(REQUIRED
   
 siesta_print_feature_info(REQUIRED
   NAME LibGridXC
-  VARIABLES
-    LIBGRIDXC_ALLOW_FETCH
-    LIBGRIDXC_SOURCE_DIR # if submodule
-    libgridxc_SOURCE_DIR # if fetch (FetchContent uses lowercase)
-  OPTIONAL_DEPENDENCIES LibXC MPI
+  OPTIONAL_DEPENDENCIES Libxc MPI
   FOUND LIBGRIDXC_FOUND
+  SIESTA_FIND_PACKAGE LIBGRIDXC
   )
 
 siesta_print_feature_info(REQUIRED

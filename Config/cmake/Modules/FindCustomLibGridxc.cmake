@@ -22,297 +22,184 @@ requested Siesta precision and 3) libxc support.
 3. Search for the libgridxc in single-config mode using pkg-config
 4. If libgridxc directory is found in the External/ folder it may be
    used as a sub-project.
-5. If LIBGRIDXC_ALLOW_FETCH is true cmake will try and fetch the remote
-   and add it as a sub-project.
-
+5. It uses the SiestaFindPackage to wrap and thus the options for controlling
+  what to search for is applicable here as well.
 
 The target:
    libgridxc::libgridxc
 will be usable upon return.
 
 #]=======================================================================]
+set(_name libgridxc)
 
+# try and find it using the Siesta_find_package repository
+include(SiestaFindPackage)
 
-set(LIBGRIDXC_ALLOW_FETCH "ON" CACHE BOOL "Allow remote fetching of libgridxc code")
+# Lets just include this always
+include(CheckFortranSourceCompiles)
+include(CheckFortranSourceRuns)
 
-set(_lib "libgridxc")
-set(_pkg "LIBGRIDXC")
-set(_url "https://gitlab.com/siesta-project/libraries/libgridxc")
-set(_tag "master") #TODO revision of version for libgridxc
+# For compiling libgridxc we (before procedure pointers) require
+# a stub handler for the libraries.
+# Here is a listing that has all of these
+set(_libgridxc_stub [=[
+  subroutine gridxc_timer_start()
+  end
+  subroutine gridxc_timer_stop()
+  end
+  subroutine alloc_error_report()
+  end
+  subroutine alloc_memory_event()
+  end
+  subroutine die()
+  end
+  ]=])
 
-set(_GOOD_LIBRARY TRUE)
-
-message(CHECK_START "Searching for ${_lib} library")
-list(APPEND CMAKE_MESSAGE_INDENT "  ")
-
-macro(found_return)
-  unset(_GOOD_LIBRARY)
-  list(POP_BACK CMAKE_MESSAGE_INDENT)
-  set(LIBGRIDXC_FOUND TRUE)
-  message(CHECK_PASS "found with compatibility")
-  return()
-endmacro()
-
-
-# -- As a cmake package
-find_package(libgridxc CONFIG)
-if (libgridxc_FOUND)
-  message(STATUS "Found ${_lib} cmake package -- checking compatibility")
-
-  # We must still make sure that it has the right features
-  # In the future we might compile different components for the library
-  
-  if (WITH_LIBXC)
-    message(CHECK_START "${_lib}: checking for libxc support")
-    list(APPEND CMAKE_MESSAGE_INDENT "  ")
-    include(CheckFortranSourceCompiles)
-    set(CMAKE_REQUIRED_LIBRARIES libgridxc::libgridxc)
-    check_fortran_source_compiles("use gridxc, only: gridxc_setXC_libxc; end"
-                               GRIDXC_USES_LIBXC SRC_EXT F90)
-    unset(CMAKE_REQUIRED_LIBRARIES)
-    list(POP_BACK CMAKE_MESSAGE_INDENT)
-
-    if( GRIDXC_USES_LIBXC )
-      message(CHECK_PASS "found")
-    else()
-      message(CHECK_FAIL "not found")
-      set(_GOOD_LIBRARY FALSE)
-    endif()
-    # If compiled with libxc, the package will have Libxc::xc_Fortran as a dependency
-    # Hence it is not necessary to add it.
-  endif()
-
-  # Conversely, if the library links to libxc, the following checks will fail if WITH_LIBXC is not ON,
-  # since we will not have found Libxc:xc_Fortran...
-
-  if (WITH_MPI)
-    message(CHECK_START "${_lib}: checking for MPI support")
-    list(APPEND CMAKE_MESSAGE_INDENT "  ")
-    include(CheckFortranSourceCompiles)
-    set(CMAKE_REQUIRED_LIBRARIES libgridxc::libgridxc)
-    check_fortran_source_compiles("use gridxc, only: gridxc_init; call gridxc_init(1); end"
-                               GRIDXC_HAS_MPI SRC_EXT F90)
-    unset(CMAKE_REQUIRED_LIBRARIES)
-    list(POP_BACK CMAKE_MESSAGE_INDENT)
-
-    if( GRIDXC_HAS_MPI )
-      message(CHECK_PASS "found")
-    else()
-      message(CHECK_FAIL "not found")
-      set(_GOOD_LIBRARY FALSE)
-    endif()
-  endif()
-
-  if (WITH_GRID_SP)
-    message(CHECK_START "${_lib}: checking for single precision")
-    list(APPEND CMAKE_MESSAGE_INDENT "  ")
-    include(CheckFortranSourceRuns)
-    set(CMAKE_REQUIRED_LIBRARIES libgridxc::libgridxc)
-    check_fortran_source_runs(
-        "use gridxc, only: grid_p; if (kind(1.0) /= grid_p) ERROR STOP 1; end"
-         GRIDXC_USES_SP SRC_EXT F90)
-    unset(CMAKE_REQUIRED_LIBRARIES)
-    list(POP_BACK CMAKE_MESSAGE_INDENT)
-
-    if( GRIDXC_USES_SP )
-      message(CHECK_PASS "has support")
-    else()
-      message(CHECK_FAIL "no support")
-      set(_GOOD_LIBRARY FALSE)
-    endif()
-  endif()
-
-  if(_GOOD_LIBRARY)
-    # we are in good condition, return
-    found_return()
-  endif()
-  
-endif()
-
-
-# we did not find with cmake package.
-# Now we will try with pkg-config + multiconfig
-
-# reset variable check
-set(_GOOD_LIBRARY TRUE)
-
-find_package(PkgConfig QUIET)
-
+# First parse some options as passed to the Siesta compilation
 if (WITH_MPI)
   if (WITH_GRID_SP)
-    pkg_check_modules(gridxc_multi IMPORTED_TARGET GLOBAL libgridxc_sp_mpi>=0.10.0)
+    set(pkg_configs "gridxc_multi libgridxc_sp_mpi>=0.10.0")
+    #pkg_check_modules(gridxc_multi IMPORTED_TARGET GLOBAL libgridxc_sp_mpi>=0.10.0)
   else()
-    pkg_check_modules(gridxc_multi IMPORTED_TARGET GLOBAL libgridxc_dp_mpi>=0.10.0)
+    set(pkg_configs "gridxc_multi libgridxc_dp_mpi>=0.10.0")
+    #pkg_check_modules(gridxc_multi IMPORTED_TARGET GLOBAL libgridxc_dp_mpi>=0.10.0)
   endif()
 else()
   if (WITH_GRID_SP)
-    pkg_check_modules(gridxc_multi IMPORTED_TARGET GLOBAL libgridxc_sp>=0.10.0)
+    set(pkg_configs "gridxc_multi libgridxc_sp>=0.10.0")
+    #pkg_check_modules(gridxc_multi IMPORTED_TARGET GLOBAL libgridxc_sp>=0.10.0)
   else()
-    pkg_check_modules(gridxc_multi IMPORTED_TARGET GLOBAL libgridxc_dp>=0.10.0)
-  endif()
-endif()  
-
-if(gridxc_multi_FOUND)
-  message(STATUS "Found ${_lib} (multi) through pkgconfig -- checking compatibility")
-  
-  if (WITH_LIBXC)
-    message(CHECK_START "${_lib}: checking for libxc support")
-    list(APPEND CMAKE_MESSAGE_INDENT "  ")
-    include(CheckFortranSourceCompiles)
-    set(CMAKE_REQUIRED_LIBRARIES PkgConfig::gridxc_multi)
-    check_fortran_source_compiles("use gridxc, only: gridxc_setXC_libxc; end"
-                             GRIDXC_USES_LIBXC SRC_EXT F90)
-    unset(CMAKE_REQUIRED_LIBRARIES)
-    list(POP_BACK CMAKE_MESSAGE_INDENT)
-
-    if (GRIDXC_USES_LIBXC)
-      message(CHECK_PASS "found")
-      target_link_libraries(PkgConfig::gridxc_multi INTERFACE Libxc::xc_Fortran)
-    else()      
-      message(CHECK_FAIL "not found")
-      set(_GOOD_LIBRARY FALSE)
-    endif()
-  endif()
- 
-  # quick return, if able
-  if(_GOOD_LIBRARY)
-    add_library(libgridxc::libgridxc ALIAS PkgConfig::gridxc_multi)
-    found_return()
-  else()
-    unset(_GOOD_LIBRARY)
-  endif()
-  
-endif()
-
-
-# we did not find the pkg-config multiconfig
-# Now we will try pkg-config single-config
-
-set(_GOOD_LIBRARY TRUE)
-
-pkg_check_modules(gridxc IMPORTED_TARGET GLOBAL libgridxc>=0.10.0)
-if(gridxc_FOUND)
-  message(STATUS "Found ${_lib} (single) through pkgconfig -- checking compatibility")
-
-  if (WITH_MPI)
-    message(CHECK_START "${_lib}: checking for MPI support")
-    list(APPEND CMAKE_MESSAGE_INDENT "  ")
-    include(CheckFortranSourceCompiles)
-    set(CMAKE_REQUIRED_LIBRARIES PkgConfig::gridxc)
-    check_fortran_source_compiles("use gridxc, only: gridxc_init; call gridxc_init(1); end"
-                             GRIDXC_HAS_MPI SRC_EXT F90)
-    unset(CMAKE_REQUIRED_LIBRARIES)
-    list(POP_BACK CMAKE_MESSAGE_INDENT)
-
-    if( GRIDXC_HAS_MPI )
-      message(CHECK_PASS "found")
-    else()
-      message(CHECK_FAIL "not found")
-      set(_GOOD_LIBRARY FALSE)
-    endif()
-  endif()
-
-  if (WITH_LIBXC)
-    message(CHECK_START "${_lib}: checking for libxc support")
-    list(APPEND CMAKE_MESSAGE_INDENT "  ")
-    include(CheckFortranSourceCompiles)
-    set(CMAKE_REQUIRED_LIBRARIES PkgConfig::gridxc)
-    check_fortran_source_compiles("use gridxc, only: gridxc_setXC_libxc; end"
-                             GRIDXC_USES_LIBXC SRC_EXT F90)
-    unset(CMAKE_REQUIRED_LIBRARIES)
-    list(POP_BACK CMAKE_MESSAGE_INDENT)
-
-    if (GRIDXC_USES_LIBXC)
-      message(CHECK_PASS "found")
-      target_link_libraries(PkgConfig::gridxc INTERFACE Libxc::xc_Fortran)
-    else()      
-      message(CHECK_FAIL "not found")
-      set(_GOOD_LIBRARY FALSE)
-    endif()
-  endif()
-
-  if (WITH_GRID_SP)
-    message(CHECK_START "${_lib}: checking for single precision")
-    list(APPEND CMAKE_MESSAGE_INDENT "  ")
-    include(CheckFortranSourceRuns)
-    set(CMAKE_REQUIRED_LIBRARIES PkgConfig::gridxc)
-    check_fortran_source_runs(
-        "use gridxc, only: grid_p; if (kind(1.0) /= grid_p) ERROR STOP 1; end"
-         GRIDXC_USES_SP SRC_EXT F90)
-    unset(CMAKE_REQUIRED_LIBRARIES)
-    list(POP_BACK CMAKE_MESSAGE_INDENT)
-
-    if( GRIDXC_USES_SP )
-      message(CHECK_PASS "has support")
-    else()
-      message(CHECK_FAIL "no support")
-      set(_GOOD_LIBRARY FALSE)
-    endif()
-  endif()
-  
-  if (_GOOD_LIBRARY)
-    add_library(libgridxc::libgridxc ALIAS PkgConfig::gridxc)
-    found_return()
-  else()
-    unset(_GOOD_LIBRARY)
+    set(pkg_configs "gridxc_multi libgridxc_dp>=0.10.0")
+    #pkg_check_modules(gridxc_multi IMPORTED_TARGET GLOBAL libgridxc_dp>=0.10.0)
   endif()
 endif()
 
+# When dealing with single-installs the name is the same, always.
+# Then later down we will check the compatibility.
+list(APPEND "gridxc libgridxc>=0.10.0")
 
-# None of the pkg-config's were found.
-# Fallback to sub-projects.
-
-# We will fall-back to shipped libgridxc
-set(GRIDXC_SOURCE_DIR "${PROJECT_SOURCE_DIR}/External/libgridxc")
-set(GRIDXC_BINARY_DIR "${PROJECT_BINARY_DIR}/External/libgridxc")
-
-if(EXISTS "${GRIDXC_SOURCE_DIR}/CMakeLists.txt")
-  message(STATUS "Include ${_lib} from subprojects")
-  add_subdirectory(
-    "${GRIDXC_SOURCE_DIR}"
-    "${GRIDXC_BINARY_DIR}"
+# Required flag is from outside
+# This should locate some libgridxc and provide the proper target libgridxc::libgridxc
+Siesta_find_package(${_name}
+  PKG_CONFIG ${pkg_configs}
+  GIT_REPOSITORY "https://gitlab.com/siesta-project/libraries/libgridxc"
+  GIT_TAG "master"
+  SOURCE_DIR "${PROJECT_SOURCE_DIR}/External/libgridxc"
   )
 
-  add_library(libgridxc::libgridxc INTERFACE IMPORTED)
-  target_link_libraries(libgridxc::libgridxc INTERFACE libgridxc)
+set(_compat TRUE)
 
-  # We need the module directory in the subproject before we finish the configure stage
-  if(NOT EXISTS "${GRIDXC_BINARY_DIR}/include")
-    make_directory("${GRIDXC_BINARY_DIR}/include")
+# Start conversation about compatibility
+list(APPEND CMAKE_MESSAGE_INDENT "  ")
+message(CHECK_START "Checking for libgridxc compatibility")
+
+# Check libxc support (if requested!)
+if (WITH_LIBXC)
+
+  message(CHECK_START "... checking for libxc support")
+  list(APPEND CMAKE_MESSAGE_INDENT "  ")
+
+  set(CMAKE_REQUIRED_LIBRARIES libgridxc::libgridxc)
+  check_fortran_source_compiles("use gridxc, only: gridxc_setXC_libxc; end;
+  ${_libgridxc_stub}
+  "
+                             GRIDXC_USES_LIBXC SRC_EXT F90)
+
+  # In case the library does not have libxc as a dependency, lets add it
+  if (NOT GRIDXC_USES_LIBXC)
+    message(VERBOSE " trying by explicitly adding libxc as a dependency")
+    target_link_libraries(libgridxc::libgridxc INTERFACE Libxc::xc_Fortran)
+    check_fortran_source_compiles("use gridxc, only: gridxc_setXC_libxc; end
+    ${_libgridxc_stub}"
+      GRIDXC_USES_LIBXC SRC_EXT F90)
+  endif()
+  unset(CMAKE_REQUIRED_LIBRARIES)
+
+  list(POP_BACK CMAKE_MESSAGE_INDENT)
+
+  if( GRIDXC_USES_LIBXC )
+    message(CHECK_PASS "found")
+  else()
+    message(CHECK_FAIL "not found")
+    set(_compat FALSE)
   endif()
 
-  found_return()
 endif()
 
-if (LIBGRIDXC_ALLOW_FETCH)
-  # -- Fetch
-  message(STATUS "Retrieving ${_lib} from ${_url}")
-  include(FetchContent)
-  FetchContent_Declare(
-      libgridxc
-      GIT_REPOSITORY "${_url}"
-      GIT_TAG "${_tag}"
-  )
-  FetchContent_MakeAvailable(libgridxc)
+if (WITH_MPI)
 
-  add_library(libgridxc::libgridxc INTERFACE IMPORTED)
-  target_link_libraries(libgridxc::libgridxc INTERFACE libgridxc)
+  message(CHECK_START "... checking for MPI support")
+  list(APPEND CMAKE_MESSAGE_INDENT "  ")
 
-  # We need the module directory in the subproject before we finish the configure stage
-  FetchContent_GetProperties(libgridxc BINARY_DIR GRIDXC_BINARY_DIR)
-  if(NOT EXISTS "${GRIDXC_BINARY_DIR}/include")
-     make_directory("${GRIDXC_BINARY_DIR}/include")
+  set(CMAKE_REQUIRED_LIBRARIES libgridxc::libgridxc)
+  check_fortran_source_compiles("use gridxc, only: gridxc_init; call gridxc_init(1); end
+  ${_libgridxc_stub}"
+    GRIDXC_HAS_MPI SRC_EXT F90)
+  unset(CMAKE_REQUIRED_LIBRARIES)
+
+  list(POP_BACK CMAKE_MESSAGE_INDENT)
+
+  if( GRIDXC_HAS_MPI )
+    message(CHECK_PASS "found")
+  else()
+    message(CHECK_FAIL "not found")
+    set(_compat FALSE)
+  endif()
+endif()
+
+
+if (WITH_GRID_SP)
+  message(CHECK_START "... checking for single precision")
+  list(APPEND CMAKE_MESSAGE_INDENT "  ")
+
+  set(CMAKE_REQUIRED_LIBRARIES libgridxc::libgridxc)
+  check_fortran_source_runs("use gridxc, only: grid_p; if (kind(1.0) /= grid_p) ERROR STOP 1; end
+  ${_libgridxc_stub}"
+    GRIDXC_USES_SP SRC_EXT F90)
+  unset(CMAKE_REQUIRED_LIBRARIES)
+
+  list(POP_BACK CMAKE_MESSAGE_INDENT)
+
+  if( GRIDXC_USES_SP )
+    message(CHECK_PASS "has support")
+  else()
+    message(CHECK_FAIL "no support")
+    set(_compat FALSE)
+  endif()
+else()
+  message(CHECK_START "... checking for double precision")
+  list(APPEND CMAKE_MESSAGE_INDENT "  ")
+
+  set(CMAKE_REQUIRED_LIBRARIES libgridxc::libgridxc)
+  check_fortran_source_runs("use gridxc, only: grid_p; if (kind(1.d0) /= grid_p) ERROR STOP 1; end
+  ${_libgridxc_stub}"
+    GRIDXC_USES_DP SRC_EXT F90)
+  unset(CMAKE_REQUIRED_LIBRARIES)
+
+  list(POP_BACK CMAKE_MESSAGE_INDENT)
+
+  if( GRIDXC_USES_DP )
+    message(CHECK_PASS "has support")
+  else()
+    message(CHECK_FAIL "no support")
+    set(_compat FALSE)
   endif()
 
-  found_return()
+endif()
 
-else(LIBGRIDXC_ALLOW_FETCH)
-
-  message(WARNING "** Note that fetching is disabled for ${_lib}")
-  message(WARNING "** Enable through LIBGRIDXC_ALLOW_FETCH")
-
-endif(LIBGRIDXC_ALLOW_FETCH)
-
-set(LIBGRIDXC_FOUND FALSE)
+# Final clean-up of the search
+if(LIBGRIDXC_FOUND AND _compat)
+  message(CHECK_PASS "found")
+elseif(LIBGRIDXC_FOUND)
+  message(CHECK_FAIL "missing compatibility")
+  if( CustomLibGridxc_FIND_REQUIRED )
+    message(STATUS "Compatibility could not be asserted. Try one of the other search options: libgridxc_FIND_METHOD (not ${${_name}_FOUND_METHOD})")
+    message(FATAL_ERROR "Required package libgridxc was not compatible with options")
+  endif()
+else()
+  message(CHECK_FAIL "not found")
+  if( CustomLibGridxc_FIND_REQUIRED )
+    message(FATAL_ERROR "Required package libgridxc cannot be found")
+  endif()
+endif()
 list(POP_BACK CMAKE_MESSAGE_INDENT)
-message(CHECK_FAIL "not found")

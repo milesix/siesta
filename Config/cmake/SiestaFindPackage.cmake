@@ -20,6 +20,8 @@
 # This changed version streamlines the effects and uses a function rather
 # than a macro.
 # It enables a bit more things and ensures expressivity in the options.
+# Upon return it returns in ${NAME}_FOUND_METHOD the method by which it
+# was found (only if ${NAME}_FOUND is true).
 
 # Handling of subproject dependencies
 # This function should be used in FindXXX.cmake files since
@@ -31,12 +33,13 @@ function(Siesta_find_package)
     # the package name:
     # Used for variable lookups {NAME}_FIND_METHODS etc.
     NAME
-    CMAKE # name of cmake package (default to NAME)
-    PKG_CONFIG # name of pkg-config package (default to NAME)
     GIT_REPOSITORY GIT_TAG # for git repo's
     TARGET # name of the created target (defaluts to NAME::NAME)
     SOURCE_DIR)
-  set(multiValueArgs)
+  set(multiValueArgs
+    CMAKE # name(s) of cmake package (default to NAME)
+    PKG_CONFIG # name(s) of pkg-config package (default to NAME)
+    )
   cmake_parse_arguments(_f "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
   # check arguments
@@ -65,6 +68,12 @@ function(Siesta_find_package)
   # convert package name to lower and upper case
   string(TOLOWER "${pkg}" pkg_lc)
   string(TOUPPER "${pkg}" pkg_uc)
+
+  # Default to not have been found.
+  # These are looked up in the loop constructs, so we
+  # will change them while running (and in the end)
+  set("${pkg}_FOUND" FALSE PARENT_SCOPE)
+  set("${pkg_uc}_FOUND" FALSE PARENT_SCOPE)
 
   macro(mymsg check msg)
     if(NOT ${_f_NAME}_FIND_QUIETLY)
@@ -148,6 +157,9 @@ function(Siesta_find_package)
     set(f_methods)
   endif()
 
+
+  set(f_method)
+
   message(STATUS "Siesta_find_package[${pkg}] METHODS | ALLOWED = ${f_methods} | ${allowed_f_methods}")
 
   foreach(method IN ITEMS ${f_methods})
@@ -157,39 +169,96 @@ function(Siesta_find_package)
     endif()
 
     if("${method}" STREQUAL "cmake")
-      mymsg(CHECK_START "CMake package lookup")
 
-      find_package("${_f_CMAKE}" CONFIG)
-      if("${${_f_CMAKE}_FOUND}")
-        mymsg(CHECK_PASS "found")
-        break()
-      else()
+      foreach(_cmake IN LISTS _f_CMAKE)
+
+        mymsg(CHECK_START "CMake package lookup [${_cmake}]")
+
+        find_package("${_cmake}" CONFIG)
+        if("${${_cmake}_FOUND}")
+          # signal to outer loop
+          set(${_pkg}_FOUND TRUE)
+
+          # try and figure out targets
+          if(NOT TARGET "${_f_TARGET}")
+
+            # we have to point to the other things
+            if(TARGET "${_cmake}::${_cmake}")
+              add_library("${_f_TARGET}" INTERFACE IMPORTED GLOBAL)
+              target_link_libraries("${_f_TARGET}" INTERFACE "${_cmake}::${_cmake}")
+
+            elseif(TARGET "${_cmake}")
+              add_library("${_f_TARGET}" INTERFACE IMPORTED GLOBAL)
+              target_link_libraries("${_f_TARGET}" INTERFACE "${_cmake}")
+
+            else()
+              message(STATUS "Located [${pkg}] through CMake package=${_cmake} but could not figure out target")
+              set(${_pkg}_FOUND FALSE)
+            endif()
+
+          endif()
+
+          if(${_pkg}_FOUND)
+            mymsg(CHECK_PASS "found")
+            break()
+          endif()
+
+        endif()
+
         mymsg(CHECK_FAIL "not found")
+      endforeach()
+
+      if(${_pkg}_FOUND)
+        set(f_method "cmake")
+        break()
       endif()
+
     endif()
 
     if("${method}" STREQUAL "pkgconf")
       find_package(PkgConfig QUIET REQUIRED)
 
-      mymsg(CHECK_START "pkg-config package lookup")
 
-      pkg_check_modules("${_f_PKG_CONFIG}" "${pkg}")
-      if("${${_f_PKG_CONFIG}_FOUND}")
-        mymsg(CHECK_PASS "found")
+      foreach(pkg_config IN LISTS _f_PKG_CONFIG)
 
-        add_library("${_f_TARGET}" INTERFACE IMPORTED GLOBAL)
-        target_link_libraries("${_f_TARGET}"
-          INTERFACE
-          "${${pkg_uc}_LINK_LIBRARIES}"
-        )
-      target_include_directories("${_f_TARGET}"
-          INTERFACE
-          "${${pkg_uc}_INCLUDE_DIRS}"
-        )
+        # extract the pkg-config details
+        # format:
+        #  NAME1 pack1 pack2;NAME2 pack3 pack4 ...
+        separate_arguments(pkg_config)
+        list(POP_FRONT pkg_config pkg_name)
+        list(LENGTH pkg_config pkg_config_len)
+        if(${pkg_config_len} EQUAL 0)
+          # same package name as the package itself
+          set(pkg_config ${pkg_name})
+        endif()
+
+        mymsg(CHECK_START "pkg-config package lookup[${pkg_name}]")
+
+        pkg_check_modules(${pkg_name}
+          IMPORTED_TARGET GLOBAL
+          ${pkg_config}
+          )
+
+        if("${${pkg_name}_FOUND}")
+          mymsg(CHECK_PASS "found")
+
+          #add_library("${_f_TARGET}" ALIAS PkgConfig::${pkg_name})
+          add_library("${_f_TARGET}" INTERFACE IMPORTED GLOBAL)
+          target_link_libraries("${_f_TARGET}" INTERFACE "PkgConfig::${pkg_name}")
+
+          set(${_pkg}_FOUND TRUE)
+          break()
+        else()
+          mymsg(CHECK_FAIL "not found")
+        endif()
+
+      endforeach()
+
+      if(${_pkg}_FOUND)
+        set(f_method "pkgconf")
         break()
-      else()
-        mymsg(CHECK_FAIL "not found")
       endif()
+
     endif()
 
     if("${method}" STREQUAL "source")
@@ -201,9 +270,11 @@ function(Siesta_find_package)
 
         add_subdirectory("${${pkg_uc}_SOURCE_DIR}")
 
+        #add_library("${_f_TARGET}" ALIAS ${pkg})
         add_library("${_f_TARGET}" INTERFACE IMPORTED GLOBAL)
-        target_link_libraries("${_f_TARGET}" INTERFACE "${pkg}")
+        target_link_libraries("${_f_TARGET}" INTERFACE ${pkg})
 
+        set(f_method "source")
         break()
       else()
         mymsg(CHECK_FAIL "not found")
@@ -227,6 +298,7 @@ function(Siesta_find_package)
       FetchContent_GetProperties("${pkg}" BINARY_DIR "${pkg_uc}_BINARY_DIR")
 
       mymsg(CHECK_PASS "fetched")
+      set(f_method "fetch")
 
       break()
     endif()
@@ -237,16 +309,14 @@ function(Siesta_find_package)
   if(TARGET "${_f_TARGET}")
     mymsg(CHECK_PASS "found")
 
-    # notify about the found-variables
-    set("${pkg}_FOUND" TRUE PARENT_SCOPE)
-    set("${pkg_uc}_FOUND" TRUE PARENT_SCOPE)
+    foreach(n IN ITEMS ${pkg} ${pkg_lc} ${pkg_uc})
+      # notify about the found-variables
+      set("${n}_FOUND" TRUE PARENT_SCOPE)
+      set("${n}_FOUND_METHOD" ${f_method} PARENT_SCOPE)
+    endforeach()
 
   else()
     mymsg(CHECK_FAIL "not found")
-
-    # notify about the found-variables
-    set("${pkg}_FOUND" FALSE PARENT_SCOPE)
-    set("${pkg_uc}_FOUND" FALSE PARENT_SCOPE)
 
     if( ${_f_NAME}_FIND_REQUIRED )
       # package hasn't been found but REQUIRED. Emit an error.
