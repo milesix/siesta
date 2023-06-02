@@ -48,6 +48,7 @@ program fat_atomic
   complex(dp), allocatable  :: S_k(:,:)
   complex(dp), pointer  :: psi_coeffs(:) => null()
   complex(dp), pointer  :: coeff(:,:) => null()
+  complex(dp), allocatable, target  :: wf_gamma(:)   ! For Gamma-point calculations
 
   real(dp) :: projs(9), old_projs(9)
  
@@ -148,6 +149,10 @@ program fat_atomic
   max_eigval_in_band_set = -huge(1.0_dp)
 
   if (non_coll) then
+     !----
+     write(0,*) 'This program does not work yet with non-collinear spin'
+     error stop 1
+     !----
      nspin_blocks = 1
   else
      nspin_blocks = nsp
@@ -342,7 +347,9 @@ program fat_atomic
      else
         if (gamma_wfsx) then
            allocate(wf_single(1,1:no_u))
-           allocate(wf(1,1:no_u))
+           ! Use complex array to fit the complex-case machinery
+           !!  allocate(wf(1,1:no_u))     
+           allocate(wf_gamma(1:no_u))
         else
            allocate(wf_single(2,1:no_u))
            allocate(wf(2,1:no_u))
@@ -439,10 +446,16 @@ program fat_atomic
                  ib = ib + 1
                  write(proj_u,"(/,a,i4,f12.6,a,i3,a)") 'Wf: ', iw, eigval, " (in set: ", ib, ")"
 
-                    read(wfs_u) (wf_single(:,io), io=1,no_u)
-                    ! Use a double precision form in what follows
-                    wf(:,:) = real(wf_single(:,:), kind=dp)
-                    call c_f_pointer(c_loc(wf), psi_coeffs, [no_u])
+                 read(wfs_u) (wf_single(:,io), io=1,no_u)
+                 
+                 ! Use a double precision form in what follows
+                    if (gamma_wfsx) then
+                       wf_gamma(:) = cmplx(wf_single(1,:),0.0_dp,kind=dp)
+                       psi_coeffs => wf_gamma
+                    else
+                       wf(:,:) = real(wf_single(:,:), kind=dp)
+                       call c_f_pointer(c_loc(wf), psi_coeffs, [no_u]) ! Note: only for collinear spin...
+                    endif
 
                     ! For spinors:
                     !call c_f_pointer(c_loc(wf), psi_coeffs, [2*no_u])
