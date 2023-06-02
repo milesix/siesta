@@ -21,7 +21,8 @@ function(siesta_print_feature_info)
     VARIABLES
     DEPENDENCIES OPTIONAL_DEPENDENCIES
     MSGOFF MSGON
-    HEADER FOOTER)
+    HEADER FOOTER
+    TARGETS)
   cmake_parse_arguments(_pi "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
   # add an empty line
@@ -29,6 +30,13 @@ function(siesta_print_feature_info)
 
   if( NOT DEFINED _pi_NAME )
     message(FATAL_ERROR "NAME argument to print_feature_info is required")
+  endif()
+
+  # Default TARGETS to NAME::NAME
+  if( NOT DEFINED _pi_TARGETS )
+    if(TARGET "${_pi_NAME}::${_pi_NAME}")
+      set(_pi_TARGETS "${_pi_NAME}::${_pi_NAME}")
+    endif()
   endif()
   
   set(_pi_used "${_pi_REQUIRED}")
@@ -180,7 +188,89 @@ function(siesta_print_feature_info)
     endif( ${_pi_used} )
 
   endif()
-  
+
+  if(DEFINED _pi_TARGETS)
+    message(DEBUG "Defined targets")
+
+    function(_print_target _target)
+
+      if(NOT TARGET "${_target}")
+        return()
+      endif()
+
+      message(DEBUG "- ${_target} information:")
+      list(APPEND CMAKE_MESSAGE_INDENT " * ")
+
+      # Get the type to check which variables are available
+      get_target_property(type ${_target} TYPE)
+      message(DEBUG "TYPE=${type}")
+
+      # global properties
+      set(_props
+          IMPORTED
+          IMPORTED_GLOBAL
+          IMPORTED_LIBNAME
+        )
+      if("${type}" STREQUAL "INTERFACE_LIBRARY")
+
+        # interface library properties
+        get_target_property(_interface_libraries ${_target} INTERFACE_LINK_LIBRARIES)
+        list(APPEND _props
+          INTERFACE_COMPILE_DEFINITIONS
+          INTERFACE_LINK_DIRECTORIES
+          INTERFACE_LINK_LIBRARIES
+          )
+
+      else()
+
+        # *standard* library properties
+        get_target_property(_interface_libraries ${_target} LINK_INTERFACE_LIBRARIES)
+        list(APPEND _props
+          BINARY_DIR
+          C_STANDARD
+          COMPILE_DEFINITIONS
+          CXX_EXTENSIONS
+          CXX_MODULE_DIRS
+          CXX_STANDARD
+          Fortran_MODULE_DIRECTORY
+          IMPORTED_LINK_DEPENDENT_LIBRARIES
+          IMPORTED_LINK_INTERFACE_LIBRARIES
+          IMPORTED_LOCATION
+          INCLUDE_DIRECTORIES
+          LINK_DEPENDS
+          LINK_INTERFACE_LIBRARIES
+          LINK_LIBRARIES
+          VERSION
+          )
+
+      endif()
+
+      foreach(prop IN LISTS _props)
+        get_target_property(out ${_target} ${prop})
+        if(NOT "${out}" STREQUAL "out-NOTFOUND")
+          message(DEBUG "${prop}=${out}")
+        endif()
+      endforeach()
+
+      # prepare next target (nested)
+      list(POP_BACK CMAKE_MESSAGE_INDENT)
+
+      if(NOT "${_interface_libraries}" STREQUAL "_interface_libraries-NOTFOUND")
+        foreach(_t IN LISTS _interface_libraries)
+          _print_target("${_t}")
+        endforeach()
+      endif()
+
+    endfunction()
+
+    foreach(_target IN LISTS _pi_TARGETS)
+
+      # Print out information for this target
+      _print_target("${_target}")
+
+    endforeach()
+  endif()
+
   if(DEFINED _pi_FOOTER)
     foreach(line IN LISTS _pi_FOOTER)
       message(NOTICE "${line}")
@@ -292,6 +382,7 @@ siesta_print_feature_info(
   FOUND MPI_Fortran_FOUND
   MSGOFF "Parallel support is highly advised to allow scalable and faster calculations"
   DEPENDENCIES "ScaLAPACK"
+  TARGETS mpi_siesta
 )
 
 siesta_print_end_section()
@@ -353,6 +444,7 @@ siesta_print_feature_info(
     SCALAPACK_DETECTION
     SCALAPACK_HAS_MRRR
   MSGOFF "Parallel support is highly advised to allow scalable and faster calculations"
+  TARGETS SCALAPACK::SCALAPACK
   )
 
 siesta_print_feature_info(
@@ -373,6 +465,7 @@ siesta_print_feature_info(
     ELPA_INCLUDE_DIRS
     ELPA_FCFLAGS
   DEPENDENCIES "MPI" "ScaLAPACK"
+  TARGETS Elpa::elpa
   )
 
 siesta_print_end_section()
@@ -398,7 +491,10 @@ siesta_print_feature_info(REQUIRED
   NAME LibGridXC
   OPTIONAL_DEPENDENCIES Libxc MPI
   FOUND LIBGRIDXC_FOUND
+  VARIABLES
+    LIBGRIDXC_USES_PROCEDURE_POINTER
   SIESTA_FIND_PACKAGE LIBGRIDXC
+  TARGETS libgridxc::libgridxc
   )
 
 siesta_print_feature_info(REQUIRED
@@ -406,10 +502,12 @@ siesta_print_feature_info(REQUIRED
   HEADER "Allows using pseudo-potentials from pseudo-dojo.org"
   FOUND LIBPSML_FOUND
   VARIABLES
+    LIBPSML_USES_PROCEDURE_POINTER
     LIBPSML_LINK_LIBRARIES
     LIBPSML_INCLUDE_DIRS
     LIBPSML_INCLUDEDIR
   SIESTA_FIND_PACKAGE LIBPSML
+  TARGETS libpsml::libpsml
   )
 
 siesta_print_end_section()
@@ -442,6 +540,7 @@ siesta_print_feature_info(
     LIBXC_F90_INCLUDE_DIRS
   OPTION WITH_LIBXC
   FOUND LIBXC_Fortran_FOUND
+  TARGETS Libxc::xc Libxc::xc_Fortran
   )
 
 siesta_print_feature_info(
@@ -502,7 +601,6 @@ siesta_print_feature_info(
   OPTION WITH_FFTW
   FOUND FFTW_DOUBLE_LIB_FOUND
   )
-
 
 
 siesta_print_end_section()

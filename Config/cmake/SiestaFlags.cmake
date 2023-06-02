@@ -43,15 +43,15 @@ set_property(CACHE SIESTA_TOOLCHAIN PROPERTY STRINGS
 
 foreach(_toolchain IN LISTS SIESTA_TOOLCHAIN)
   # Now load the toolchain
-  if(EXISTS ${PROJECT_SOURCE_DIR}/Config/cmake/toolchains/${_toolchain}.cmake)
+  if(EXISTS "${PROJECT_SOURCE_DIR}/Config/cmake/toolchains/${_toolchain}.cmake")
     message(STATUS "Using toolchain: Config/cmake/toolchains/${_toolchain}.cmake")
-    include(${PROJECT_SOURCE_DIR}/Config/cmake/toolchains/${_toolchain}.cmake)
-  elseif(EXISTS ${_toolchain}.cmake)
+    include("${PROJECT_SOURCE_DIR}/Config/cmake/toolchains/${_toolchain}.cmake")
+  elseif(EXISTS "${_toolchain}.cmake")
     message(STATUS "Using toolchain: ${_toolchain}.cmake")
-    include(${_toolchain}.cmake)
-  elseif(EXISTS ${_toolchain})
+    include("${_toolchain}.cmake")
+  elseif(EXISTS "${_toolchain}")
     message(STATUS "Using toolchain: ${_toolchain}")
-    include(${_toolchain})
+    include("${_toolchain}")
   else()
     message(FATAL_ERROR "Unknown toolchain searched: Config/cmake/toolchains/${_toolchain}.cmake, ${_toolchain}.cmake and ${_toolchain}.")
   endif()
@@ -61,11 +61,32 @@ endforeach()
 # Get all languages, enables easy extensions
 get_property(_languages GLOBAL PROPERTY ENABLED_LANGUAGES)
 
+# Default build-type
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+  message(STATUS "
+No build type selected. ${PROJECT_NAME} will default to 'Release'.
+To override pass -DCMAKE_BUILD_TYPE=<type> in order to configure ${PROJECT_NAME}.
+Available options are:
+  * -DCMAKE_BUILD_TYPE=Release - For an optimized build with no assertions or debug info.
+  * -DCMAKE_BUILD_TYPE=Debug - For an unoptimized build with assertions and debug info.
+  * -DCMAKE_BUILD_TYPE=Check - For an unoptimized build with assertions and debug info + code checks.
+  * -DCMAKE_BUILD_TYPE=RelWithDebInfo - For an optimized build with no assertions but with debug info.
+  * -DCMAKE_BUILD_TYPE=MinSizeRel - For a build optimized for size instead of speed.
+")
+  set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build" FORCE)
+endif()
+
+# For cmake-gui
+set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
+  "Debug" "Check" "Release" "MinRelSize" "RelWithDebInfo")
+
+
 if(CMAKE_BUILD_TYPE)
   set(_buildtypes ${CMAKE_BUILD_TYPE})
 else()
   set(_buildtypes ${CMAKE_CONFIGURATION_TYPES})
 endif()
+
 foreach(_buildtype IN LISTS _buildtypes)
   foreach(lang IN LISTS _languages)
     string(TOUPPER "${_buildtype}" _buildtype_upper)

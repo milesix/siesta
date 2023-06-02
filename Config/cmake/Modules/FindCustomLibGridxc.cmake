@@ -101,16 +101,15 @@ if (WITH_LIBXC)
 
   set(CMAKE_REQUIRED_LIBRARIES libgridxc::libgridxc)
   check_fortran_source_compiles("use gridxc, only: gridxc_setXC_libxc; end;
-  ${_libgridxc_stub}
-  "
-                             GRIDXC_USES_LIBXC SRC_EXT F90)
+    ${_libgridxc_stub}"
+    GRIDXC_USES_LIBXC SRC_EXT F90)
 
   # In case the library does not have libxc as a dependency, lets add it
   if (NOT GRIDXC_USES_LIBXC)
     message(VERBOSE " trying by explicitly adding libxc as a dependency")
     target_link_libraries(libgridxc::libgridxc INTERFACE Libxc::xc_Fortran)
     check_fortran_source_compiles("use gridxc, only: gridxc_setXC_libxc; end
-    ${_libgridxc_stub}"
+      ${_libgridxc_stub}"
       GRIDXC_USES_LIBXC SRC_EXT F90)
   endif()
   unset(CMAKE_REQUIRED_LIBRARIES)
@@ -133,7 +132,7 @@ if (WITH_MPI)
 
   set(CMAKE_REQUIRED_LIBRARIES libgridxc::libgridxc)
   check_fortran_source_compiles("use gridxc, only: gridxc_init; call gridxc_init(1); end
-  ${_libgridxc_stub}"
+    ${_libgridxc_stub}"
     GRIDXC_HAS_MPI SRC_EXT F90)
   unset(CMAKE_REQUIRED_LIBRARIES)
 
@@ -154,7 +153,7 @@ if (WITH_GRID_SP)
 
   set(CMAKE_REQUIRED_LIBRARIES libgridxc::libgridxc)
   check_fortran_source_runs("use gridxc, only: grid_p; if (kind(1.0) /= grid_p) ERROR STOP 1; end
-  ${_libgridxc_stub}"
+    ${_libgridxc_stub}"
     GRIDXC_USES_SP SRC_EXT F90)
   unset(CMAKE_REQUIRED_LIBRARIES)
 
@@ -172,7 +171,7 @@ else()
 
   set(CMAKE_REQUIRED_LIBRARIES libgridxc::libgridxc)
   check_fortran_source_runs("use gridxc, only: grid_p; if (kind(1.d0) /= grid_p) ERROR STOP 1; end
-  ${_libgridxc_stub}"
+    ${_libgridxc_stub}"
     GRIDXC_USES_DP SRC_EXT F90)
   unset(CMAKE_REQUIRED_LIBRARIES)
 
@@ -187,8 +186,21 @@ else()
 
 endif()
 
+
+# Figure out whether psml uses the procedure pointer, or not
+set(CMAKE_REQUIRED_LIBRARIES libgridxc::libgridxc)
+check_fortran_source_compiles("use gridxc, only: gridxc_set_error_handler; end
+  ${_libgridxc_stub}"
+  LIBGRIDXC_HAS_ERROR_PROCEDURE_POINTER SRC_EXT F90)
+unset(CMAKE_REQUIRED_LIBRARIES)
+
 # Final clean-up of the search
 if(LIBGRIDXC_FOUND AND _compat)
+  if( LIBGRIDXC_HAS_ERROR_PROCEDURE_POINTER )
+    set(LIBGRIDXC_USES_PROCEDURE_POINTER TRUE)
+  else()
+    set(LIBGRIDXC_USES_PROCEDURE_POINTER FALSE)
+  endif()
   message(CHECK_PASS "found")
 elseif(LIBGRIDXC_FOUND)
   message(CHECK_FAIL "missing compatibility")

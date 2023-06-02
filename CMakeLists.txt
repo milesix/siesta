@@ -1,4 +1,3 @@
-
 cmake_minimum_required(VERSION 3.17)
 
 # CMAKE_MODULE_PATH is locally searched for *.cmake files
@@ -7,9 +6,9 @@ cmake_minimum_required(VERSION 3.17)
 list(APPEND
   CMAKE_MODULE_PATH
   # add the generic configuration cmake directory
-  ${CMAKE_CURRENT_SOURCE_DIR}/Config/cmake
+  "${CMAKE_CURRENT_SOURCE_DIR}/Config/cmake"
   # add the external modules directory
-  ${CMAKE_CURRENT_SOURCE_DIR}/Config/cmake/Modules
+  "${CMAKE_CURRENT_SOURCE_DIR}/Config/cmake/Modules"
   )
 
 # Define project details
@@ -26,14 +25,6 @@ set(SIESTA_LICENSE "GPLv3")
 # Include Siesta specific utility functions
 include(SiestaUtils)
 siesta_util_ensure_out_of_source_build()
-
-# Default build-type
-if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build" FORCE)
-endif()
-# For cmake-gui
-set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
-  "Debug" "Check" "Release" "MinRelSize" "RelWithDebInfo")
 
 # Compiler flags
 include(SiestaFlags)
@@ -53,7 +44,6 @@ include(GNUInstallDirs)
 # Many of our sub-inclusions requires this one, so we will catch errors here
 # To not confuse users!
 find_package(PkgConfig REQUIRED)
-
 
 # Look for blas, if needed, it is not required if LAPACK ships BLAS
 find_package(CustomBlas)
@@ -80,6 +70,7 @@ endif()
 
 option(WITH_MPI "Build Siesta with MPI support" ${MPI_Fortran_FOUND})
 if( WITH_MPI )
+
   if(NOT MPI_Fortran_FOUND)
     message(WARNING
       "MPI could not be found by CMake"
@@ -96,6 +87,7 @@ if( WITH_MPI )
       )
     message(FATAL_ERROR "MPI was requested, but ScaLAPACK could not be found by CMake")
   endif()
+
 endif()
 
 # Now we can check for linear algebra stuff
@@ -193,6 +185,28 @@ endif()
 if (NOT TARGET libpsml::libpsml)
   find_package(Customlibpsml REQUIRED)
 endif()
+# ensure libpsml links with xmlf90
+target_link_libraries(libpsml::libpsml INTERFACE xmlf90::xmlf90)
+
+if(NOT LIBPSML_USES_PROCEDURE_POINTER )
+
+  # Work around bug in shared library linking
+  # This should only temporarily be a hack since future
+  # psml versions will always rely on procedure pointers
+  add_library(${PROJECT_NAME}-psml_wrappers
+    STATIC
+    "${CMAKE_CURRENT_SOURCE_DIR}/Src/psml_wrappers.F90"
+  )
+
+  # One cannot use OBJECT libraries as their objects are not
+  # passed down to subsequent dependent usages. I.e. that would cause
+  # name-collisions for static libraries.
+  target_link_libraries(libpsml::libpsml
+    INTERFACE
+    ${PROJECT_NAME}-psml_wrappers
+  )
+
+endif()
 
 if (NOT TARGET Libxc::xc_Fortran)
   find_package(CustomLibxc)
@@ -207,11 +221,24 @@ endif()
 if (NOT TARGET libgridxc::libgridxc)
   find_package(CustomLibGridxc REQUIRED)
 endif()
+if(NOT LIBGRIDXC_USES_PROCEDURE_POINTER)
+
+  add_library(${PROJECT_NAME}-gridxc_wrappers
+    STATIC
+    "${CMAKE_CURRENT_SOURCE_DIR}/Src/gridxc_wrappers.F90"
+  )
+
+  target_link_libraries(libgridxc::libgridxc
+    INTERFACE
+    ${PROJECT_NAME}-gridxc_wrappers
+  )
+
+endif()
 
 
 # Search for DFTD3
 # TODO use the utility for locating it, but then revert here
-add_subdirectory_option(
+siesta_add_subdirectory_option(
   DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/External/DFTD3/"
   HELP "Include support for DFT-D3 corrections"
   NITEMS 2
@@ -220,12 +247,13 @@ add_subdirectory_option(
 # TODO add a fallback for failure in DFTD3
 
 # Search for flook
-add_subdirectory_option(
+siesta_add_subdirectory_option(
   DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/External/Lua-Engine/"
   HELP "Include support for Lua engine through flook (custom MD + SCF interaction)"
   NITEMS 2
   OPTION WITH_FLOOK
   )
+
 
 if( WITH_MPI )
   # no need to search for ELPA in non-mpi environments

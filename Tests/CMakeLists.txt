@@ -132,12 +132,12 @@ function(siesta_test)
 if( WITH_MPI AND (NOT _stest_SERIAL) )
   add_test(
     NAME "siesta-${_stest_test}"
-    COMMAND ${MPIEXEC_EXECUTABLE} ${_stest_pre} $<TARGET_FILE:siesta-siesta> -out OUT ${_stest_NAME}.fdf ${_stest_post}
+    COMMAND ${MPIEXEC_EXECUTABLE} ${_stest_pre} $<TARGET_FILE:${PROJECT_NAME}-siesta> -out OUT ${_stest_NAME}.fdf ${_stest_post}
     WORKING_DIRECTORY "${_stest_wdir}"  )
 else()
   add_test(
     NAME "siesta-${_stest_test}"
-    COMMAND $<TARGET_FILE:siesta-siesta> -out OUT ${_stest_NAME}.fdf ${_stest_post}
+    COMMAND $<TARGET_FILE:${PROJECT_NAME}-siesta> -out OUT ${_stest_NAME}.fdf ${_stest_post}
     WORKING_DIRECTORY "${_stest_wdir}"  )
 endif()
 

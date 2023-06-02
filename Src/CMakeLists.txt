@@ -420,7 +420,6 @@ set(libsiesta_sources
   projected_DOS.F90
   propor.f
   proximity_check.F
-  psml_die.F90
   pspltm1.F
   pxf.F90
   qsort.F
@@ -516,21 +515,86 @@ set(libsiesta_sources
 )
 
 add_library(${PROJECT_NAME}-libsiesta "${libsiesta_sources}")
-set_target_properties(
-  ${PROJECT_NAME}-libsiesta
+# this makes it easier to build using cmake --target libsiesta
+add_library(libsiesta ALIAS ${PROJECT_NAME}-libsiesta)
+# Add to namespace
+add_library(${PROJECT_NAME}::libsiesta ALIAS ${PROJECT_NAME}-libsiesta)
+
+set_target_properties(${PROJECT_NAME}-libsiesta
   PROPERTIES
   OUTPUT_NAME "SiestaForces"
 )
 
-add_executable(${PROJECT_NAME}-siesta siesta.F )
-target_link_libraries(
-    ${PROJECT_NAME}-siesta
-    PRIVATE
+target_compile_definitions(${PROJECT_NAME}-libsiesta
+  PUBLIC
+  $<$<BOOL:${WITH_MPI}>:MPI>
+  $<$<BOOL:${WITH_GRID_SP}>:GRID_SP>
+  $<$<BOOL:${WITH_ELPA}>:SIESTA__ELPA>
+  $<$<BOOL:${WITH_NETCDF}>:CDF>
+  $<$<BOOL:${WITH_NCDF}>:NCDF>
+  $<$<BOOL:${WITH_NCDF}>:NCDF_4>
+  $<$<BOOL:${WITH_NCDF_PARALLEL}>:NCDF_PARALLEL>
+  $<$<BOOL:${WITH_FLOOK}>:SIESTA__FLOOK>
+  $<$<BOOL:${WITH_DFTD3}>:SIESTA__DFTD3>
+)
+
+#get_target_property(out SCALAPACK::SCALAPACK INTERFACE_LINK_LIBRARIES)
+#message(FATAL_ERROR "scalapc ${WITH_MPI} ${WITH_ELPA} ${out}")
+
+# CMake linking order I do not understand
+# The xmlf90 order seems important, but it shouldn't be since
+# cmake should be able to determine correct dependency order.
+# 1. xmlf90 before libpsml does not work
+# 2. xmlf90 after libpsml works
+# 3. removing xmlf90 works, since libpsml depends on xmlf90 (see top-level CMakeLists.txt)
+# Huh..?
+target_link_libraries(${PROJECT_NAME}-libsiesta
+  PUBLIC
+  $<$<BOOL:${WITH_NCDF}>:${PROJECT_NAME}-libncdf>
+  $<$<BOOL:${WITH_NETCDF}>:NetCDF::NetCDF_Fortran>
+  # Internal projects
+  ${PROJECT_NAME}-libsys
+  ${PROJECT_NAME}-libncps
+  ${PROJECT_NAME}-libpsop
+  ${PROJECT_NAME}-libms
+  libfdf::libfdf
+  libpsml::libpsml
+  xmlf90::xmlf90
+  libgridxc::libgridxc
+  $<$<BOOL:${WITH_MPI}>:mpi_siesta>
+  # Optional dependencies
+  $<$<BOOL:${WITH_FLOOK}>:flook::flook>
+  $<$<OR:$<BOOL:${WITH_NCDF}>,$<BOOL:${WITH_FLOOK}>>:${PROJECT_NAME}-libfdict>
+  $<$<BOOL:${WITH_DFTD3}>:s-dftd3::s-dftd3>
+  $<$<BOOL:${WITH_ELPA}>:Elpa::elpa>
+  $<$<BOOL:${WITH_MPI}>:SCALAPACK::SCALAPACK>
+  # Forced external dependencies
+  LAPACK::LAPACK
+  $<$<BOOL:${WITH_OPENMP}>:OpenMP::OpenMP_Fortran>
+)
+
+#get_target_property(out ${PROJECT_NAME}-libsiesta INTERFACE_LINK_LIBRARIES)
+#message(FATAL_ERROR "siesta ${WITH_MPI} ${WITH_ELPA} ${out}")
+
+## For stuff that depends on libsiesta, add its include directory
+target_include_directories(${PROJECT_NAME}-libsiesta
+  INTERFACE
+	"${CMAKE_CURRENT_BINARY_DIR}"
+	"${CMAKE_CURRENT_BINARY_DIR}/generated"
+  )
+
+
+add_executable(${PROJECT_NAME}-siesta siesta.F)
+# for target
+add_executable(siesta ALIAS ${PROJECT_NAME}-siesta)
+add_executable(${PROJECT_NAME}::siesta ALIAS ${PROJECT_NAME}-siesta)
+
+target_link_libraries(${PROJECT_NAME}-siesta
+  PRIVATE
     ${PROJECT_NAME}-libsiesta
   )
 
-set_target_properties(
-  ${PROJECT_NAME}-siesta
+set_target_properties(${PROJECT_NAME}-siesta
   PROPERTIES
   OUTPUT_NAME "siesta"
   )
@@ -538,10 +602,12 @@ set_target_properties(
 # Add diagonalization options
 # grep -e SIESTA__MRRR -e SIESTA__DIAG_2STAGE * | tr ':' ' ' | awk '{print $1}' | uniq
 set_property(
-  SOURCE diag.F90 diag_option.F90
+  SOURCE
+    diag.F90
+    diag_option.F90
   APPEND PROPERTY COMPILE_DEFINITIONS
-  "$<$<BOOL:${HAS_MRRR}>:SIESTA__MRRR>"
-  "$<$<BOOL:${HAS_2STAGE}>:SIESTA__DIAG_2STAGE>"
+  $<$<BOOL:${HAS_MRRR}>:SIESTA__MRRR>
+  $<$<BOOL:${HAS_2STAGE}>:SIESTA__DIAG_2STAGE>
   )
 
 # Add 3m options
@@ -559,51 +625,27 @@ set_property(
     version.F90
     version-info-template.inc
   APPEND PROPERTY COMPILE_DEFINITIONS
-  "$<$<BOOL:${BLAS_HAS_GEMM3M}>:USE_GEMM3M>"
+  $<$<BOOL:${BLAS_HAS_GEMM3M}>:USE_GEMM3M>
   )
 
-target_compile_definitions(
-  ${PROJECT_NAME}-libsiesta
-  PUBLIC
-  "$<$<BOOL:${WITH_MPI}>:MPI>"
-  "$<$<BOOL:${WITH_GRID_SP}>:GRID_SP>"
-  "$<$<BOOL:${WITH_ELPA}>:SIESTA__ELPA>"
-  "$<$<BOOL:${WITH_NETCDF}>:CDF>"
-  "$<$<BOOL:${WITH_NCDF}>:NCDF>"
-  "$<$<BOOL:${WITH_NCDF}>:NCDF_4>"
-  "$<$<BOOL:${WITH_NCDF_PARALLEL}>:NCDF_PARALLEL>"
-  "$<$<BOOL:${WITH_FLOOK}>:SIESTA__FLOOK>"
-  "$<$<BOOL:${WITH_DFTD3}>:SIESTA__DFTD3>"
-)
 
-target_link_libraries(
-  ${PROJECT_NAME}-libsiesta
-  PUBLIC
-  $<$<BOOL:${WITH_OPENMP}>:OpenMP::OpenMP_Fortran>
-  libfdf::libfdf
-  xmlf90::xmlf90
-  libpsml::libpsml
-  libgridxc::libgridxc
-  ${PROJECT_NAME}-libncps
-  ${PROJECT_NAME}-libpsop
-  ${PROJECT_NAME}-libms
-  "$<$<BOOL:${WITH_FLOOK}>:flook::flook>"
-  "$<$<BOOL:${WITH_MPI}>:mpi_siesta>"
-  "$<$<BOOL:${WITH_NETCDF}>:NetCDF::NetCDF_Fortran>"
-  "$<$<BOOL:${WITH_NCDF}>:${PROJECT_NAME}-libncdf>"
-  # Generator OR: does not work! I have no idea why
-  "$<$<BOOL:WITH_NCDF OR WITH_FLOOK>:${PROJECT_NAME}-libfdict>"
-   $<$<BOOL:${WITH_ELPA}>:Elpa::elpa>
-  "$<$<BOOL:${WITH_MPI}>:SCALAPACK::SCALAPACK>"
-  "$<$<BOOL:${WITH_DFTD3}>:s-dftd3::s-dftd3>"
-  ${PROJECT_NAME}-libsys
-  LAPACK::LAPACK
-)
+if( LIBPSML_USES_PROCEDURE_POINTER )
+  # Deal correctly with libpsml support
+  set_property(SOURCE siesta_handlers_m.F90
+    APPEND PROPERTY COMPILE_DEFINITIONS
+    SIESTA__PSML_HAS_PP
+  )
+endif()
+if( LIBGRIDXC_USES_PROCEDURE_POINTER )
+  # Deal correctly with libgridxc support
+  set_property(SOURCE
+      siesta_handlers_m.F90
+      alloc_handlers_m.F90
+    APPEND PROPERTY COMPILE_DEFINITIONS
+    SIESTA__GRIDXC_HAS_PP
+  )
+endif()
 
-# For stuff that depends on libsiesta, add its include directory
-target_include_directories(${PROJECT_NAME}-libsiesta
-                           INTERFACE
-			   ${CMAKE_CURRENT_BINARY_DIR})
 
 #
 #  Compile some files with no optimization for the Intel compiler
@@ -614,42 +656,37 @@ if(CMAKE_Fortran_COMPILER_ID MATCHES Intel)
   separate_arguments(DEBUG_OPTIONS_LIST)   # Turns empty space to ';'
   message(STATUS "Debug flags for some files in Src: ${DEBUG_OPTIONS_LIST}")
   set_source_files_properties(
-             atom.F
-	     state_analysis.F
-	     create_Sparsity_SC.F90
-             PROPERTIES  COMPILE_OPTIONS "${DEBUG_OPTIONS_LIST}")
+    atom.F
+	  state_analysis.F
+	  create_Sparsity_SC.F90
+    PROPERTIES
+    COMPILE_OPTIONS "${DEBUG_OPTIONS_LIST}"
+  )
 endif()
 
 # -- Version information
-
-execute_process(COMMAND sh ${CMAKE_CURRENT_SOURCE_DIR}/SIESTA_cmake_vgen.sh
-                WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+execute_process(COMMAND sh "${CMAKE_CURRENT_SOURCE_DIR}/SIESTA_cmake_vgen.sh"
+                WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
                 OUTPUT_VARIABLE SIESTA_VERSION
 		ERROR_VARIABLE VERSION_STDERR)
 
 string(STRIP "${SIESTA_VERSION}" SIESTA_VERSION)
 message(STATUS "SIESTA_VERSION: ${SIESTA_VERSION}")
-## message(STATUS " --- stderr from version script:  ${VERSION_STDERR}")
-#
+message(VERBOSE " --- stderr from version script:  ${VERSION_STDERR}")
+
 configure_file(
   version-info-template.inc
-  ${CMAKE_CURRENT_BINARY_DIR}/generated/version-info.inc
+  "${CMAKE_CURRENT_BINARY_DIR}/generated/version-info.inc"
   @ONLY
   )
 
-target_include_directories(
-  ${PROJECT_NAME}-libsiesta
-  PUBLIC
-    ${CMAKE_CURRENT_BINARY_DIR}/generated
-  )
 
 install(
   TARGETS ${PROJECT_NAME}-libsiesta
-  RUNTIME DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  RUNTIME DESTINATION "${CMAKE_INSTALL_LIBDIR}"
   )
 install(
   TARGETS ${PROJECT_NAME}-siesta
-  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+  RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
   )
-
 

@@ -23,14 +23,18 @@ CONTAINS
     use alloc_handlers_m, only: alloc_memory_event
     use alloc, only: set_alloc_event_handler
 
+#ifdef SIESTA__GRIDXC_HAS_PP
     ! libgridxc handlers
     use gridxc, only: gridxc_set_timer_start_handler
     use gridxc, only: gridxc_set_timer_stop_handler
     use gridxc, only: gridxc_set_error_handler
     use gridxc, only: gridxc_set_alloc_event_handler
+#endif
 
+#ifdef SIESTA__PSML_HAS_PP
     ! psml handlers
     use m_psml, only: ps_set_error_handler
+#endif
     
     call set_die_handler(die)
     call set_bye_handler(bye)
@@ -42,12 +46,15 @@ CONTAINS
     call set_mpi_timer_handler(timer_mpi)
 #endif
 
+#ifdef SIESTA__GRIDXC_HAS_PP
     call gridxc_set_error_handler(die)
     call gridxc_set_alloc_event_handler(alloc_memory_event)
     call gridxc_set_timer_start_handler(gridxc_timer_start)
     call gridxc_set_timer_stop_handler(gridxc_timer_stop)
-
+#endif
+#ifdef SIESTA__PSML_HAS_PP
     call ps_set_error_handler(die)
+#endif
   
 end subroutine siesta_set_handlers
 

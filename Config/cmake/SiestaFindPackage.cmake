@@ -158,6 +158,7 @@ function(Siesta_find_package)
   endif()
 
 
+  # A placeholder for what we actually used to find the package
   set(f_method)
 
   message(STATUS "Siesta_find_package[${pkg}] METHODS | ALLOWED = ${f_methods} | ${allowed_f_methods}")
@@ -317,6 +318,11 @@ function(Siesta_find_package)
 
   else()
     mymsg(CHECK_FAIL "not found")
+
+    foreach(n IN ITEMS ${pkg} ${pkg_lc} ${pkg_uc})
+      # notify about the found-variables
+      set("${n}_FOUND" FALSE PARENT_SCOPE)
+    endforeach()
 
     if( ${_f_NAME}_FIND_REQUIRED )
       # package hasn't been found but REQUIRED. Emit an error.

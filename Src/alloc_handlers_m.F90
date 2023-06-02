@@ -91,3 +91,18 @@ CONTAINS
       end subroutine alloc_memory_event
     
     end module alloc_handlers_m
+
+#ifndef SIESTA__GRIDXC_HAS_PP
+subroutine alloc_error_report(str,code)
+  use alloc_handlers_m, only: report => alloc_error_report
+  character(len=*), intent(in)  :: str
+  integer, intent(in)  :: code
+  call report(str,code)
+end subroutine
+subroutine alloc_memory_event(bytes,name)
+  use alloc_handlers_m, only: event => alloc_memory_event
+  integer, intent(in) :: bytes
+  character(len=*), intent(in)  :: name
+  call event(bytes,name)
+end subroutine
+#endif

@@ -11,7 +11,7 @@ add_library(
 target_include_directories(
   ${PROJECT_NAME}-libfdict
   INTERFACE
-  ${CMAKE_CURRENT_BINARY_DIR}
+  "${CMAKE_CURRENT_BINARY_DIR}"
 )
 
 

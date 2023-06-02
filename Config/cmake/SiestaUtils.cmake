@@ -39,25 +39,25 @@ are added.
     Defaults to TRUE.
 
 #]==========================]
-function(add_subdirectory_option)
+function(siesta_add_subdirectory_option)
   set(options "")
   set(oneValueArgs DIRECTORY OPTION HELP NITEMS DEFAULT)
   set(multiValueArgs "")
   cmake_parse_arguments(_asop "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
   if(NOT DEFINED _asop_DIRECTORY)
-    message(FATAL_ERROR "add_subdirectory_option requires DIRECTORY argument")
+    message(FATAL_ERROR "siesta_add_subdirectory_option requires DIRECTORY argument")
   endif()
   if(NOT DEFINED _asop_OPTION)
-    message(FATAL_ERROR "add_subdirectory_option requires OPTION argument")
+    message(FATAL_ERROR "siesta_add_subdirectory_option requires OPTION argument")
   endif()
   if(NOT DEFINED _asop_NITEMS)
     set(_asop_NFILES 1)
-    message(VERBOSE "add_subdirectory_option set NITEMS to 1 (more than 1 file+directory in DIRECTORY)")
+    message(VERBOSE "siesta_add_subdirectory_option set NITEMS to 1 (more than 1 file+directory in DIRECTORY)")
   endif()
   if(NOT DEFINED _asop_DEFAULT)
     set(_asop_DEFAULT TRUE)
-    message(VERBOSE "add_subdirectory_option set DEFAULT to TRUE if the directory exists")
+    message(VERBOSE "siesta_add_subdirectory_option set DEFAULT to TRUE if the directory exists")
   endif()
   if(NOT DEFINED _asop_HELP)
     set(_asop_HELP

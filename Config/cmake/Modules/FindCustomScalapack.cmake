@@ -67,13 +67,13 @@ The following cache variables may be set to influence the library detection:
 include(FindPackageHandleStandardArgs)
 include(SiestaCustomLibraryFinder)
 
+set(_target "SCALAPACK::SCALAPACK")
 # indent for cleaner output
 message(STATUS "Parsing ScaLAPACK options")
 list(APPEND CMAKE_MESSAGE_INDENT "  ")
 
 
 if(TARGET scalapack)
-
   set(CUSTOMSCALAPACK_FOUND True)
   set(CustomScalapack_FOUND True)
   set(SCALAPACK_FOUND True)
@@ -82,13 +82,11 @@ if(TARGET scalapack)
   message(STATUS "ScaLAPACK already defined")
 
 else()
-
   # We are already locating MPI at the top-level, or at least we should do that!
   find_package(MPI ${Find_Scalapack_REQUIRED} QUIET)
 
   option(SCALAPACK_DETECTION "Whether ScaLAPACK library should be detected" TRUE)
   message(CHECK_START "Locating ScaLAPACK library")
-
   if(SCALAPACK_DETECTION)
     if(NOT "${SCALAPACK_LIBRARY_DIR}" STREQUAL "")
       message(STATUS "Searching in: ${SCALAPACK_LIBRARY_DIR}")
@@ -100,7 +98,6 @@ else()
       find_package(scalapack)
       if(scalapack_FOUND)
       	message(STATUS "Found intrinsic package")
-
         get_target_property(_scalapack_library scalapack INTERFACE_LINK_LIBRARIES)
 
         if("${_scalapack_library}" STREQUAL "")
@@ -163,13 +160,7 @@ else()
       if(NOT "${SCALAPACK_LIBRARY}" STREQUAL "NONE")
         target_link_libraries(scalapack INTERFACE "${SCALAPACK_LIBRARY}")
       endif()
-      target_link_Libraries(scalapack INTERFACE MPI::MPI_Fortran)
-      if(TARGET LAPACK::LAPACK)
-      	# lapack should have the logic for adding BLAS::BLAS, if needed
-      	target_link_libraries(scalapack INTERFACE LAPACK::LAPACK)
-      elseif(TARGET BLAS::BLAS)
-        target_link_libraries(scalapack INTERFACE BLAS::BLAS)
-      endif()
+
     endif()
 
   endif()
@@ -179,9 +170,24 @@ else()
 endif()
 
 # Add namespaced library name variant
-if(TARGET scalapack AND NOT TARGET SCALAPACK::SCALAPACK)
-  add_library(SCALAPACK::SCALAPACK INTERFACE IMPORTED)
-  target_link_libraries(SCALAPACK::SCALAPACK INTERFACE scalapack)
+if(TARGET scalapack AND NOT TARGET ${_target})
+
+  add_library(${_target} INTERFACE IMPORTED)
+  target_link_libraries(${_target}
+    INTERFACE
+      scalapack
+      MPI::MPI_Fortran
+  )
+  if(TARGET LAPACK::LAPACK)
+    # lapack should have the logic for adding BLAS::BLAS, if needed
+    target_link_libraries(${_target} INTERFACE LAPACK::LAPACK)
+  elseif(TARGET BLAS::BLAS)
+    target_link_libraries(${_target} INTERFACE BLAS::BLAS)
+  endif()
+endif()
+
+if(CustomScalapack_FIND_REQUIRED AND NOT TARGET ${_target})
+  message(FATAL_ERROR "Required package SCALAPACK cannot be found")
 endif()
 
 list(POP_BACK CMAKE_MESSAGE_INDENT)
