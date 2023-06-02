@@ -1,5 +1,5 @@
 ! ---
-! Copyright (C) 1996-2016       The SIESTA group
+! Copyright (C) 1996-2023      The SIESTA group
 !  This file is distributed under the terms of the
 !  GNU General Public License: see COPYING in the top directory
 !  or http://www.gnu.org/copyleft/gpl.txt .
@@ -7,48 +7,53 @@
 ! ---
 !==================================================================
 !
-program fatband_atomic
+program fat_atomic
 !
 !
-! Computes the generalized projection of each eigenvector on a given
-! orbital set.
-! The syntax for orbital sets is the same as in mprop, so this
-! program can re-use as description file the same DOS-type file
-! as mprop.
+! Computes the projection of each eigenvector (nk) on a given Ilm subspace,
+! where I is an atom index and lm are the angular momentum quantum numbers.
+! 
+! Two ways of computing these projections are offered:
+! a) The traditional way, modelled after the computation of the pDOS  
+!    with mprop, using
+!          g_mu = Real(SUM_{ c_mu  S(k)_mu_nu c_nu})
 !
+!     The 'real part' is inherited from pDOS calculations in which a sum  
+!     over k-points is done).  This sometimes results in negative, although
+!     typically very small, projections in some cases. To get the Ilm projection,
+!     the contributions of all the mu's in the Ilm set are added.
+!
+! b) An orthogonal projection, using implicitly the Lowdin  
+!    orthogonal basis associated the the basis set, and taking advantage
+!    of the "optimal resemblance" feature of the Lowdin orthonormalization
+!    to compute the projection over a given orbital mu as the square modulus of the
+!    coefficient of wfs_nk in the Lowdin basis' mu. To get the Ilm projection,
+!    the contributions of all the mu's in the Ilm set are added.
+!
+! The program computes both projections, using '&n' and '&o' markers that
+! allow selection of the 'new' (Lowdin) and 'old' methods with grep.
 !
 
   use main_vars
-  use orbital_set, only: get_orbital_set
   use io_hs, only: read_hs_file
-  use read_curves, only: read_curve_information, mask_to_arrays
 
   use iso_c_binding, only: c_loc, c_f_pointer
 
   implicit none
 
-  logical :: gamma_wfsx, got_qcos
-  integer :: ii1, ii2, ind, ind_red, no1, no2, n_int, nnz
-  real(dp) :: factor
-
-  real(dp), parameter  :: tol_overlap = 1.0e-10_dp
-
-  logical, allocatable   :: mask2(:)
-  logical, allocatable   :: orb_mask_atomic(:,:)
-  integer, allocatable   :: num_red(:), ptr(:), list_io2(:), list_ind(:)
-  real(dp), allocatable  :: eig(:,:), fat(:,:,:,:)
+  logical :: gamma_wfsx
 
   complex(dp), allocatable  :: S_sqroot(:,:)
-  complex(dp), allocatable  :: S_inv_sqroot(:,:)
+  complex(dp), allocatable, target  :: S_inv_sqroot(:,:)
   complex(dp), allocatable  :: S_k(:,:)
   complex(dp), pointer  :: psi_coeffs(:) => null()
-  complex(dp), allocatable  :: coeff(:,:)
+  complex(dp), pointer  :: coeff(:,:) => null()
 
   real(dp) :: projs(9), old_projs(9)
  
   real(dp) :: sum_projs
   complex(dp) :: proj_new, proj_old, norm, phase
-  integer :: n_orbs_atom, ja
+  integer :: ja
 
 
   integer  :: nwfmx, nwfmin
@@ -68,7 +73,7 @@ program fatband_atomic
   integer  :: ib, nbands, nspin_blocks
   logical  :: non_coll
 
-  integer :: proj_u, nc_p
+  integer :: proj_u
   logical :: write_lowdin_basis = .false.
   character(len=2) :: mark
 
@@ -99,7 +104,7 @@ program fatband_atomic
         call manual()
      case ('?',':')
         write(0,*) "Invalid option: ", opt_arg(1:1)
-        write(0,*) "Usage: fat [ options ] DescriptionFile "
+        write(0,*) "Usage: fat [ options ] SystemLabel "
         write(0,*) "Use -h option for manual"
         STOP
      end select
@@ -113,26 +118,15 @@ program fatband_atomic
      STOP
   endif
 
-  call get_command_argument(n_opts,value=mflnm,status=iostat)
+  call get_command_argument(n_opts,value=sflnm,status=iostat)
   if (iostat /= 0) then
-     STOP "Cannot get .mpr file root"
+     STOP "Cannot get SystemLabel string prefix"
   endif
 
   band_interval_set = (min_band_set .or. max_band_set)
 
   !==================================================
-
-  ierr=0
-
-  ! Read type of job
-
-  open(mpr_u,file=trim(mflnm) // ".mpr", status='old')
-  read(mpr_u,*) sflnm
-  read(mpr_u,*) what
-  if (trim(what) /= "DOS") STOP "Fatbands needs DOS-style jobfile"
-  
-  !==================================================
-  ! Read WFSX file
+  ! Read WFSX file with wave-function information
 
   write(6,"(a)") "Reading wf file: " // trim(sflnm) // ".WFSX"
 
@@ -222,13 +216,14 @@ program fatband_atomic
   print "(a,3i4)", "Band set used: (min, max):",  min_band, max_band
 
   ! Read HSX file
+  ! We do not really neeed H here; only S, but there is other relevant
+  ! information in the file.
   ! Will pick up atoms, zval, and thus the nominal number of electrons,
   ! but the total charge is read as qtot.
 
   call read_hs_file(trim(sflnm)//".HSX")
 
   if (energies_only) STOP
-
 
   !====================
 
@@ -259,8 +254,8 @@ program fatband_atomic
 
   ! ==================================
 
-  write(6,"('Writing files: ',a,'.stt ...')") trim(mflnm)
-  open(stt_u,file=trim(mflnm)//'.info')
+  write(6,"('Writing files: ',a,'.stt ...')") trim(sflnm)
+  open(stt_u,file=trim(sflnm)//'.info')
   write(stt_u,"(/'UNIT CELL ATOMS:')")
   write(stt_u,"(3x,i4,2x,i3,2x,a20)") (i, isa(i), label(isa(i)), i=1,na_u)
   write(stt_u,"(/'BASIS SET:')")
@@ -333,17 +328,10 @@ program fatband_atomic
   allocate(S_k(no_u,no_u))
   allocate(S_sqroot(no_u,no_u), S_inv_sqroot(no_u,no_u))
 
-  ! Assume binary compound with atoms with the same number of orbitals...
-  n_orbs_atom = no_u/2
-
-  allocate(coeff(1:no_u,1:no_u))
-
-
   ! * Fatband weights
 
   ! nspin has been read in iohs
   nbands = max_band - min_band + 1
-  allocate(eig(nbands,nspin_blocks), fat(nbands,nspin_blocks,nkp,ncb))
 
      ! The first dimension is the number of real numbers per orbital
      ! 1 for real wfs, 2 for complex, and four for the two spinor components
@@ -360,13 +348,11 @@ program fatband_atomic
            allocate(wf(2,1:no_u))
         endif
      endif
-     allocate (mask2(1:no_u))
 
-           ! Write in a format appropriate for Pyprocar and others
-           
-           ! Use the structure of the file to get the wavefunctions per k-point, etc
+     ! Second pass for computation of projections and Writing in a
+     ! format appropriate for Pyprocar and others
 
-        open(newunit=proj_u,file=trim(mflnm)// '.projs')
+        open(newunit=proj_u,file=trim(sflnm)// '.projs')
         write(proj_u,"(a,2i5)") "# " // trim(sflnm) // " min_band, max_band: ", min_band, max_band
         write(proj_u,"(3i6)")   nbands, nspin_blocks, nkp
 
@@ -387,7 +373,7 @@ program fatband_atomic
            compute_Sk: block
              complex(dp), parameter :: ii = (0.0_dp, 1.0_dp)
              complex(dp) :: phase
-             integer jo
+             integer jo, ind
 
              do io = 1,no_u
                 S_k(:,io) = 0.0_dp
@@ -418,8 +404,8 @@ program fatband_atomic
               ! those in the ith COLUMN of S_inv_sqroot
 
            if (write_lowdin_basis) then
+              coeff => S_inv_sqroot
               do i = 1, no_u
-                 coeff(1:no_u,i) = S_inv_sqroot(1:no_u,i)
                  print "(/,a,i0)", "coeffs of orthog orbital number: ", i
                  do ja = 1, no_u
                        write(*,"(1x,a1,f6.3,f7.3,a1)",advance="no") '(', coeff(ja,i), ')'
@@ -513,15 +499,15 @@ program fatband_atomic
 
       subroutine manual()
 
-      write(6,"('* FAT_ATOMIC(BANDS) PROGRAM')")
-      write(6,"('  Alberto Garcia, ICMAB-CSIC, 2012 ')")
+      write(6,"('* FAT_ATOMIC (lm projections)')")
+      write(6,"('  Alberto Garcia, ICMAB-CSIC, 2023 ')")
       write(6,*)
       write(6,"('    FAT_ATOMIC calculates eigenvector projections ')")
       write(6,"('    using output files obtained with SIESTA. ')")
       write(6,"('    The Lowdin basis is used implicitly for projections. ')")
       write(6,"('    The output is in Pyprocar style.')")
       write(6,"('  ')")
-      write(6,*) "Usage: fat_atomic [ options ] FILE_BASENAME"
+      write(6,*) "Usage: fat_atomic [ options ] SystemLabel"
       write(6,*) "Options:"
       write(6,*) "           -h:  print manual                    "
       write(6,*) "           -d:  debug                    "
@@ -566,31 +552,6 @@ program fatband_atomic
 
       end function sqroot_contraction
 
-!!$      function sqroot_contraction_spinor(i) result (res)
-!!$        integer, intent(in) :: i
-!!$        complex(dp) :: res
-!!$        integer  j
-!!$
-!!$        res = 0.0_dp
-!!$        ! Full projection, not spin resolved
-!!$        do j = 1, no_u
-!!$           res = res + psi_spinor(1,j) * S_sqroot(i,j) + &
-!!$                       psi_spinor(2,j) * S_sqroot(i,j)
-!!$        end do
-!!$
-!!$        ! Does this make sense?
-!!$        
-!!$        ! Use Pauli matrices
-!!$        ! z
-!!$           res = res + (psi_spinor(1,j) - psi_spinor(2,j)) * S_sqroot(i,j)
-!!$        ! y
-!!$           res = res + (-ii*psi_spinor(1,j) + ii*psi_spinor(2,j)) * S_sqroot(i,j)
-!!$        ! x  --- would be equal to the full!!
-!!$           res = res + (psi_spinor(1,j) + psi_spinor(2,j)) * S_sqroot(i,j)
-!!$        
-!!$
-!!$         end function sqroot_contraction_spinor
-
       function inner_prod(a,b,S) result (res)
         complex(dp), intent(in) :: a(:)
         complex(dp), intent(in) :: b(:)
@@ -609,18 +570,6 @@ program fatband_atomic
         deallocate(wrk)
         
       end function inner_prod
-
-      function sqroot(x) result(res)
-        real(dp), intent(in) :: x
-        real(dp)             :: res
-        res = sqrt(x)
-      end function sqroot
-
-      function inv_sqroot(x) result(res)
-        real(dp), intent(in) :: x
-        real(dp)             :: res
-        res = 1.0_dp/sqrt(x)
-      end function inv_sqroot
 
       ! Compute functions of S_k
 
@@ -742,6 +691,6 @@ program fatband_atomic
   end function MODP
 
 
-end program fatband_atomic
+end program fat_atomic
 
 
