@@ -379,7 +379,7 @@ program fatband_atomic
      
         do ik=1,nkp
 
-           write(proj_u,"(//,a,i4,3(1x,f10.5))") 'K-point: ', ik, pk(1:3,ik)
+           write(proj_u,"(//,a,i4,3(1x,f10.5),2x,a,1x,f12.8)") 'K-point: ', ik, pk(1:3,ik), ' weight: ', wk(ik)
 
            !-------------------------------------
            ! Process S_k and friends here
