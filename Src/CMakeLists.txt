@@ -577,8 +577,9 @@ target_link_libraries(${PROJECT_NAME}-libsiesta
 #message(FATAL_ERROR "siesta ${WITH_MPI} ${WITH_ELPA} ${out}")
 
 ## For stuff that depends on libsiesta, add its include directory
+## (and for libsiesta itself, hence 'PUBLIC'
 target_include_directories(${PROJECT_NAME}-libsiesta
-  INTERFACE
+  PUBLIC
 	"${CMAKE_CURRENT_BINARY_DIR}"
 	"${CMAKE_CURRENT_BINARY_DIR}/generated"
   )
@@ -622,7 +623,7 @@ set_property(
     m_ts_mumps_scat.F90
     m_ts_trimat_invert.F90
     m_ts_tri_scat.F90
-    version.F90
+##    version.F90
     version-info-template.inc
   APPEND PROPERTY COMPILE_DEFINITIONS
   $<$<BOOL:${BLAS_HAS_GEMM3M}>:USE_GEMM3M>
