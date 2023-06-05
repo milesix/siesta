@@ -12,7 +12,7 @@ list(APPEND
 # Define project details
 project(
   siesta
-  LANGUAGES Fortran C
+  LANGUAGES Fortran C CXX
   VERSION "5.1.0"
   # HOMEPAGE_URL requires >=3.12
   HOMEPAGE_URL "https://siesta-project.org/siesta"
@@ -68,7 +68,7 @@ find_package(PkgConfig)
 if (WITH_MPI)
   if (NOT TARGET MPI::MPI_Fortran)
    # Find MPI
-   find_package(MPI OPTIONAL_COMPONENTS Fortran C)
+   find_package(MPI OPTIONAL_COMPONENTS Fortran C CXX)
    if( NOT MPI_Fortran_FOUND )
      # To change the setting to not build Siesta with parallel support,
      # use the following line
@@ -241,7 +241,14 @@ if (WITH_ELSI AND NOT TARGET elsi::elsi)
     enable_language(CXX)
     # Avoid to link everything associated with PEXSI with C++
     set(CMAKE_CXX_LINKER_PREFERENCE_PROPAGATES 0)
-  else()
+  elseif(ELSI_HAS_EXTERNAL_PEXSI)
+    message(STATUS "You affirm that the ELSI library links to an external PEXSI")
+    find_package(PEXSI REQUIRED)
+    set(ELSI_WITH_PEXSI TRUE)
+    enable_language(CXX)
+    # Avoid to link everything associated with PEXSI with C++
+    set(CMAKE_CXX_LINKER_PREFERENCE_PROPAGATES 0)
+  else()  
     set(ELSI_WITH_PEXSI FALSE)
   endif()
 endif()
