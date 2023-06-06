@@ -25,4 +25,24 @@ subroutine reset_messages_file()
   call reset_messages_file_sys()
 end subroutine reset_messages_file
 
+! Versions of the alloc module handlers for libgridxc
+! The alloc_memory_event is dummy (suitable for dependencies, but
+! inhibiting Siesta's reporting of gridxc allocations/deallocations.
+! This is a temporary kludge to enable compilation when the libgridxc
+! library does not use procedure pointers for its handlers.
+! 
+#ifndef SIESTA__GRIDXC_HAS_PP
+subroutine alloc_error_report(str,code)
+
+  character(len=*), intent(in)  :: str
+  integer, intent(in)  :: code
+  if (code == 0) call die(str)
+
+end subroutine
+subroutine alloc_memory_event(bytes,name)
+  integer, intent(in) :: bytes
+  character(len=*), intent(in)  :: name
+  ! do nothing
+end subroutine
+#endif
 

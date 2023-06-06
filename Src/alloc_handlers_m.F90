@@ -92,7 +92,7 @@ CONTAINS
     
     end module alloc_handlers_m
 
-#ifndef SIESTA__GRIDXC_HAS_PP
+#ifdef DEACTIVATE_SIESTA__GRIDXC_HAS_PP
 subroutine alloc_error_report(str,code)
   use alloc_handlers_m, only: report => alloc_error_report
   character(len=*), intent(in)  :: str
