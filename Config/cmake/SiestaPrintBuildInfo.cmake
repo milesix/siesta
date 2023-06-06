@@ -192,11 +192,17 @@ function(siesta_print_feature_info)
   if(DEFINED _pi_TARGETS)
     message(DEBUG "Defined targets")
 
-    function(_print_target _target)
+    function(_print_target _target _printed_targets)
 
       if(NOT TARGET "${_target}")
         return()
       endif()
+      if("${_target}" IN_LIST "${_printed_targets}")
+        return()
+      endif()
+      list(APPEND "${_printed_targets}" "${_target}")
+      # we need to propagate it up
+      set(${_printed_targets} "${${_printed_targets}}" PARENT_SCOPE)
 
       message(DEBUG "- ${_target} information:")
       list(APPEND CMAKE_MESSAGE_INDENT " * ")
@@ -246,7 +252,7 @@ function(siesta_print_feature_info)
       endif()
 
       foreach(prop IN LISTS _props)
-        get_target_property(out ${_target} ${prop})
+        get_target_property(out "${_target}" ${prop})
         if(NOT "${out}" STREQUAL "out-NOTFOUND")
           message(DEBUG "${prop}=${out}")
         endif()
@@ -257,16 +263,19 @@ function(siesta_print_feature_info)
 
       if(NOT "${_interface_libraries}" STREQUAL "_interface_libraries-NOTFOUND")
         foreach(_t IN LISTS _interface_libraries)
-          _print_target("${_t}")
+          _print_target("${_t}" ${_printed_targets})
         endforeach()
       endif()
 
     endfunction()
 
+    # initialize a list for targets that has been printed
+    set(_ptargets "")
+
     foreach(_target IN LISTS _pi_TARGETS)
 
       # Print out information for this target
-      _print_target("${_target}")
+      _print_target("${_target}" _ptargets)
 
     endforeach()
   endif()

@@ -559,7 +559,6 @@ target_link_libraries(${PROJECT_NAME}-libsiesta
   ${PROJECT_NAME}-libms
   libfdf::libfdf
   libpsml::libpsml
-  xmlf90::xmlf90
   libgridxc::libgridxc
   $<$<BOOL:${WITH_MPI}>:mpi_siesta>
   # Optional dependencies
@@ -577,11 +576,9 @@ target_link_libraries(${PROJECT_NAME}-libsiesta
 #message(FATAL_ERROR "siesta ${WITH_MPI} ${WITH_ELPA} ${out}")
 
 ## For stuff that depends on libsiesta, add its include directory
-## (and for libsiesta itself, hence 'PUBLIC'
 target_include_directories(${PROJECT_NAME}-libsiesta
   PUBLIC
 	"${CMAKE_CURRENT_BINARY_DIR}"
-	"${CMAKE_CURRENT_BINARY_DIR}/generated"
   )
 
 
@@ -623,8 +620,7 @@ set_property(
     m_ts_mumps_scat.F90
     m_ts_trimat_invert.F90
     m_ts_tri_scat.F90
-##    version.F90
-    version-info-template.inc
+    simple-version.F90
   APPEND PROPERTY COMPILE_DEFINITIONS
   $<$<BOOL:${BLAS_HAS_GEMM3M}>:USE_GEMM3M>
   )
@@ -632,7 +628,8 @@ set_property(
 
 if( LIBPSML_USES_PROCEDURE_POINTER )
   # Deal correctly with libpsml support
-  set_property(SOURCE siesta_handlers_m.F90
+  set_property(SOURCE
+      siesta_handlers_m.F90
     APPEND PROPERTY COMPILE_DEFINITIONS
     SIESTA__PSML_HAS_PP
   )
@@ -641,7 +638,6 @@ if( LIBGRIDXC_USES_PROCEDURE_POINTER )
   # Deal correctly with libgridxc support
   set_property(SOURCE
       siesta_handlers_m.F90
-      alloc_handlers_m.F90
     APPEND PROPERTY COMPILE_DEFINITIONS
     SIESTA__GRIDXC_HAS_PP
   )
@@ -667,17 +663,23 @@ endif()
 
 # -- Version information
 execute_process(COMMAND sh "${CMAKE_CURRENT_SOURCE_DIR}/SIESTA_cmake_vgen.sh"
-                WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
-                OUTPUT_VARIABLE SIESTA_VERSION
-		ERROR_VARIABLE VERSION_STDERR)
+  WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+  OUTPUT_VARIABLE SIESTA_VERSION
+  ERROR_VARIABLE VERSION_STDERR)
 
+# fix omission from vgen which sometimes has a newline
+string(REGEX REPLACE "\n" " " SIESTA_VERSION "${SIESTA_VERSION}")
 string(STRIP "${SIESTA_VERSION}" SIESTA_VERSION)
 message(STATUS "SIESTA_VERSION: ${SIESTA_VERSION}")
 message(VERBOSE " --- stderr from version script:  ${VERSION_STDERR}")
 
+# Create version file with the version string implemented
+# TODO this will only be generated at cmake generation, i.e.
+#  git pull | cmake --build_build -- siesta-siesta
+# will not regenerate the version information.
 configure_file(
   version-info-template.inc
-  "${CMAKE_CURRENT_BINARY_DIR}/generated/version-info.inc"
+  version-info.inc
   @ONLY
   )
 
