@@ -30,7 +30,16 @@
 find_package(PkgConfig REQUIRED QUIET)
 
 message(CHECK_START "Searching for ELPA library")
-pkg_check_modules(ELPA elpa)
+if( WITH_OPENMP )
+  pkg_check_modules(ELPA elpa_openmp)
+  if( NOT ELPA_FOUND )
+    message(WARNING "ELPA could not locate elpa_openmp package, resorting to non-threaded version")
+    pkg_check_modules(ELPA elpa)
+  endif()
+elseif()
+  pkg_check_modules(ELPA elpa)
+endif()
+
 if(NOT ELPA_FOUND)
   return()
 endif()
