@@ -6,6 +6,9 @@ Siesta_find_package(libpsml
   SOURCE_DIR ${PROJECT_SOURCE_DIR}/External/libpsml
   )
 
+if( "${${_name}_FOUND_METHOD}" STREQUAL "cmake" OR
+    "${${_name}_FOUND_METHOD}" STREQUAL "pkgconf")
+
 include(CheckFortranSourceCompiles)
 
 # Figure out whether psml uses the procedure pointer, or not
@@ -18,4 +21,11 @@ if( LIBPSML_HAS_ERROR_PROCEDURE_POINTER )
   set(LIBPSML_USES_PROCEDURE_POINTER TRUE)
 else()
   set(LIBPSML_USES_PROCEDURE_POINTER FALSE)
+endif()
+
+else()
+
+set(LIBPSML_USES_PROCEDURE_POINTER TRUE CACHE BOOL "Whether the sources uses the procedure pointer or not")
+mark_as_advanced(LIBPSML_USES_PROCEDURE_POINTER)
+
 endif()

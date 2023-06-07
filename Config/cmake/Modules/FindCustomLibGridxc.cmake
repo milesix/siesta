@@ -89,6 +89,10 @@ Siesta_find_package(${_name}
 
 set(_compat TRUE)
 
+if( "${${_name}_FOUND_METHOD}" STREQUAL "cmake" OR
+    "${${_name}_FOUND_METHOD}" STREQUAL "pkgconf")
+
+
 # Start conversation about compatibility
 list(APPEND CMAKE_MESSAGE_INDENT "  ")
 message(CHECK_START "Checking for libgridxc compatibility")
@@ -193,6 +197,13 @@ check_fortran_source_compiles("use gridxc, only: gridxc_set_error_handler; end
   ${_libgridxc_stub}"
   LIBGRIDXC_HAS_ERROR_PROCEDURE_POINTER SRC_EXT F90)
 unset(CMAKE_REQUIRED_LIBRARIES)
+
+else()# check for source download
+
+set(LIBGRIDXC_USES_PROCEDURE_POINTER TRUE CACHE BOOL "Whether the sources uses the procedure pointer or not")
+mark_as_advanced(LIBGRIDXC_USES_PROCEDURE_POINTER)
+
+endif()
 
 # Final clean-up of the search
 if(LIBGRIDXC_FOUND AND _compat)
