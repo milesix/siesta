@@ -12,11 +12,6 @@ module m_mesh_node
 
 ! Module for retaining information about the mesh.
 ! It is used by the Hartree module and the bias module.
-!
-! Created and copyrighted by: Nick Papior Andersen, 2014
-! The use of this program is allowed for not-for-profit research only.
-! Copy or disemination of all or part of this package is not
-! permitted without prior and explicit authorization by the author.
 
   use precision, only : dp
 
