@@ -361,7 +361,7 @@ program fat_atomic
 
         open(newunit=proj_u,file=trim(sflnm)// '.projs')
         write(proj_u,"(a,2i5)") "# " // trim(sflnm) // " min_band, max_band: ", min_band, max_band
-        write(proj_u,"(3i6)")   nbands, nspin_blocks, nkp
+        write(proj_u,"(6i6)")   nkp, nbands, nspin_blocks, na_u, 9
 
         rewind(wfs_u)
 
