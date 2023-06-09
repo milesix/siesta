@@ -64,6 +64,7 @@ function(Siesta_find_package)
     set(_f_TARGET "${_f_NAME}::${_f_NAME}")
   endif()
 
+
   set(pkg "${_f_NAME}")
   # convert package name to lower and upper case
   string(TOLOWER "${pkg}" pkg_lc)
@@ -154,7 +155,7 @@ function(Siesta_find_package)
   if(TARGET "${_f_TARGET}")
     # skip all methods
     message(DEBUG "Target already found, no searching done.")
-    set(f_methods)
+    set(f_methods "")
   endif()
 
 
@@ -176,7 +177,7 @@ function(Siesta_find_package)
         mymsg(CHECK_START "CMake package lookup [${_cmake}]")
 
         find_package("${_cmake}" CONFIG)
-        if("${${_cmake}_FOUND}")
+        if( ${_cmake}_FOUND OR TARGET "${_f_TARGET}")
           # signal to outer loop
           set(${_pkg}_FOUND TRUE)
 
