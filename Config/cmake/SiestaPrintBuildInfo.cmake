@@ -601,6 +601,7 @@ siesta_print_feature_info(
     "Adding support for DFT-D3 can improve force descriptions"
     "using simple but heuristically determined corrections to forces"
   SIESTA_FIND_PACKAGE s-dftd3
+  TARGETS s-dftd3::s-dftd3
   )
 
 
