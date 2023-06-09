@@ -6,8 +6,8 @@ Siesta_find_package(libpsml
   SOURCE_DIR ${PROJECT_SOURCE_DIR}/External/libpsml
   )
 
-if( "${${_name}_FOUND_METHOD}" STREQUAL "cmake" OR
-    "${${_name}_FOUND_METHOD}" STREQUAL "pkgconf")
+if( "${libpsml_FOUND_METHOD}" STREQUAL "cmake" OR
+    "${libpsml_FOUND_METHOD}" STREQUAL "pkgconf")
 
 include(CheckFortranSourceCompiles)
 

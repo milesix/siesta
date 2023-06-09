@@ -135,7 +135,7 @@ function(siesta_print_feature_info)
   if(DEFINED _pi_SIESTA_FIND_PACKAGE)
     set(p "${_pi_SIESTA_FIND_PACKAGE}")
     list(APPEND _pi_VARIABLES
-      ${p}_FIND_METHOD
+      ${p}_FOUND_METHOD
       ${p}_GIT_REPOSITORY ${p}_GIT_TAG
       ${p}_SOURCE_DIR
       )
@@ -509,6 +509,7 @@ siesta_print_feature_info(REQUIRED
 siesta_print_feature_info(REQUIRED
   NAME LibPSML
   HEADER "Allows using pseudo-potentials from pseudo-dojo.org"
+  DEPENDENCIES xmlf90
   FOUND LIBPSML_FOUND
   VARIABLES
     LIBPSML_USES_PROCEDURE_POINTER
@@ -599,7 +600,7 @@ siesta_print_feature_info(
   MSGOFF
     "Adding support for DFT-D3 can improve force descriptions"
     "using simple but heuristically determined corrections to forces"
-  SIESTA_FIND_PACKAGE S-DFTD3
+  SIESTA_FIND_PACKAGE s-dftd3
   )
 
 

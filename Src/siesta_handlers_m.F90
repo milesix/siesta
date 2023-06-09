@@ -219,6 +219,7 @@ end subroutine siesta_set_handlers
 
   END SUBROUTINE timer_mpi
 
+#ifdef SIESTA__GRIDXC_HAS_PP
   !----------
   subroutine gridxc_timer_start(str)
     character(len=*), intent(in)  :: str
@@ -229,5 +230,6 @@ end subroutine siesta_set_handlers
     character(len=*), intent(in)  :: str
     call timer("gridxc@"//trim(str),2)
   end subroutine gridxc_timer_stop
+#endif
 
   end module siesta_handlers_m

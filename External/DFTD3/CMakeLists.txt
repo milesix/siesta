@@ -9,9 +9,12 @@
 
 
 set(WITH_TESTS "${WITH_DFTD3_TESTS}" CACHE BOOL "Perform s-dftd3 tests")
+# We need to forcefully disable OpenMP, s-dftd3 is defaulting to true for this.
+set(WITH_OpenMP "${WITH_OPENMP}")
 
 ### Re-use information already found by Siesta itself
 ### and skip BLAS search in s-dftd3
+
 
 if (TARGET BLAS::BLAS)
   # Re-use target
