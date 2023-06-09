@@ -43,6 +43,6 @@ if(NOT TARGET "toml-f::toml-f")
 endif()
 
 if (NOT TARGET s-dftd3::s-dftd3)
-    find_package(s-dftd3)
+  find_package(s-dftd3 REQUIRED)
 endif()
 
