@@ -160,11 +160,11 @@ C     Output current mesh dimensions and cut-off
       endif
 
 C     Create the first mesh distribution
-      call initMeshDistr( oDistr=UNIFORM, nm=nm, nsm=nsm )
+      call initMeshDistr( oDistr=UNIFORM, nm=nm )
 
 C     Find and sets local number of Mesh points of each kind
 !     Sets nml, nmpl, ntml and ntpl
-      call setMeshDistr( UNIFORM, nml, nmpl, ntml, ntpl )
+      call setMeshDistr( UNIFORM, nsm, nsp, nml, nmpl, ntml, ntpl )
 
 C     Find volume of unit cell and of mesh cell
       volume = volcel( cell )
@@ -1373,7 +1373,7 @@ C  - Linear:    We try to distribute those points of the mesh that have
 C               at least one orbital intersection. Used in cellxc.
 C
 C ==================================================================
-      use mesh,         only: mop, ipa, idop, nsm, nsp, xdop, xdsp, dxa,
+      use mesh,         only: mop, ipa, idop, nsp, xdop, xdsp, dxa,
      &                        indexp, meshLim
       use precision,    only: dp, grid_p
       use atmfuncs,     only: rcut
@@ -1438,7 +1438,7 @@ C           If within range, add one to number of point orbitals
         do ip0= 1, nmpl
           wload(ip0) = numphi(ip0)*(numphi(ip0)+1) + 1
         enddo
-        call initMeshDistr( UNIFORM, QUADRATIC, nm, nsm, wload)
+        call initMeshDistr( UNIFORM, QUADRATIC, nm, wload)
 
         do ip0= 1, nmpl
 !         The computational work of a mesh point in cellxc is almost 0 when
@@ -1449,7 +1449,7 @@ C           If within range, add one to number of point orbitals
             wload(ip0) = 1
           endif
         enddo
-        call initMeshDistr( UNIFORM, LINEAR, nm, nsm, wload )
+        call initMeshDistr( UNIFORM, LINEAR, nm, wload )
         if (need_gradients_in_xc) call initMeshExtencil( LINEAR, nm )
 
 C       Free local memory
