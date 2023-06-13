@@ -70,6 +70,7 @@ C Internal variables ......................................................
       integer  :: div, mod, first, last
 
 C ......................
+
       div   = nua / Nodes
       mod   = nua - div*Nodes
       first = 1 + Node*div + MIN(Node,mod)

@@ -292,7 +292,7 @@ contains
       !
       ! -- At the change to a TranSiesta GF run the variable "first_scf"
       !    is implicitly reset to "true".
-      
+
       ! Start of SCF loop
       iscf = 0
       do while ( iscf < nscf )
@@ -357,7 +357,7 @@ contains
              
              call setup_hamiltonian( iscf )
              call compute_max_diff(Hold, H, dHmax)
-             
+                          
              call compute_DM( iscf )
              
              call compute_max_diff(Dold, Dscf, dDmax)
@@ -374,6 +374,7 @@ contains
           if ( mix_charge ) then
              call compute_charge_diff( drhog )
           end if
+
 
           ! Note: For DM and H convergence checks. At this point:
           ! If mixing the DM:

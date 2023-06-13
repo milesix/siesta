@@ -277,6 +277,7 @@ set(libsiesta_sources
   m_monitor.F90
   m_mpi_inplace.F90
   m_mpi_utils.F
+  m_mpi_inplace.F90
   m_ncdf_siesta.F90
   m_new_dm.F90
   m_noccbands.f
