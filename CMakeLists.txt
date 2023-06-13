@@ -276,7 +276,22 @@ if( WITH_MPI )
 endif()
 
 if (WITH_PEXSI)
- include(search_for_pexsi)
+
+ find_package(PEXSI REQUIRED)
+ enable_language(CXX)
+ # Avoid to link everything associated with PEXSI with C++
+ set(CMAKE_CXX_LINKER_PREFERENCE_PROPAGATES 0)
+
+  if (WITH_MPI)
+    if (NOT TARGET MPI::MPI_CXX)
+      # Find MPI
+      find_package(MPI OPTIONAL_COMPONENTS CXX)
+      if( NOT MPI_CXX_FOUND )
+        message(FATAL_ERROR "MPI_CXX, needed by PEXSI, could not be found by CMake")
+      endif()
+    endif()
+  endif()
+
 endif()
 
 # For STM/ol-stm only for now

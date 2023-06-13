@@ -28,8 +28,8 @@ subroutine pexsi_dos(no_u, no_l, nspin_in,  &
     use f_ppexsi_interface, only: f_ppexsi_options
     use f_ppexsi_interface, only: f_ppexsi_plan_finalize
     use f_ppexsi_interface, only: f_ppexsi_plan_initialize
-    use f_ppexsi_interface, only: f_ppexsi_inertia_count_real_symmetric_matrix
-    use f_ppexsi_interface, only: f_ppexsi_load_real_symmetric_hs_matrix
+    use f_ppexsi_interface, only: f_ppexsi_inertia_count_real_matrix
+    use f_ppexsi_interface, only: f_ppexsi_load_real_hs_matrix
     use f_ppexsi_interface, only: f_ppexsi_set_default_options
     use f_ppexsi_interface, &
           only: f_ppexsi_symbolic_factorize_real_symmetric_matrix
@@ -296,7 +296,7 @@ options%npSymbFact = fdf_get("PEXSI.np-symbfact",1)
 verbosity = fdf_get("PEXSI.verbosity",1)
 options%verbosity = verbosity
 
-call f_ppexsi_load_real_symmetric_hs_matrix(&
+call f_ppexsi_load_real_hs_matrix(&
       plan,&
       options,&
       nrows,&
@@ -310,7 +310,7 @@ call f_ppexsi_load_real_symmetric_hs_matrix(&
       SnzvalLocal,&
       info) 
 
-call check_info(info,"load_real_sym_hs_matrix")
+call check_info(info,"load_real_hs_matrix")
 
 
 call f_ppexsi_symbolic_factorize_real_symmetric_matrix(&
@@ -350,14 +350,14 @@ if(mpirank == 0) then
                 " Nshifts: ", npoints
 endif
 
-call f_ppexsi_inertia_count_real_symmetric_matrix(&
+call f_ppexsi_inertia_count_real_matrix(&
   plan,&
   options,&
   npoints,&
   edos,&
   intdos,&
   info) 
-call check_info(info,"inertia_count_real_symmetric_matrix in DOS")
+call check_info(info,"inertia_count_real_matrix in DOS")
 
 call timer("pexsi-raw-inertia-ct", 2)
 

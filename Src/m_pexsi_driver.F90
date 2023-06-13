@@ -395,7 +395,7 @@ if (scf_step == 1) then
    call pexsi_initialize_scfloop(PEXSI_Spatial_Comm,npPerPole,spatial_rank,info)
    call check_info(info,"initialize_plan")
 endif
-call f_ppexsi_load_real_symmetric_hs_matrix(&
+call f_ppexsi_load_real_hs_matrix(&
       plan,&
       options,&
       nrows,&
@@ -535,7 +535,7 @@ call timer("pexsi-solver", 2)
 
 
 if( PEXSI_worker ) then
-   call f_ppexsi_retrieve_real_symmetric_dft_matrix(&
+   call f_ppexsi_retrieve_real_dft_matrix(&
         plan,&
         DMnzvalLocal,&
         EDMnzvalLocal,&
@@ -788,7 +788,7 @@ subroutine do_inertia_count(plan,muMin0,muMax0,muInertia)
          shiftList(i) = muMin0 + (i-1) * (muMax0-muMin0)/(numShift-1)
       enddo
       
-      call f_ppexsi_inertia_count_real_symmetric_matrix(&
+      call f_ppexsi_inertia_count_real_matrix(&
            plan,&
            options,&
            numShift,&
