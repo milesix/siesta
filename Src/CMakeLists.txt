@@ -530,6 +530,7 @@ target_compile_definitions(${PROJECT_NAME}-libsiesta
   $<$<BOOL:${WITH_MPI}>:MPI>
   $<$<BOOL:${WITH_GRID_SP}>:GRID_SP>
   $<$<BOOL:${WITH_ELPA}>:SIESTA__ELPA>
+  $<$<BOOL:${WITH_PEXSI}>:SIESTA__PEXSI>
   $<$<BOOL:${WITH_NETCDF}>:CDF>
   $<$<BOOL:${WITH_NCDF}>:NCDF>
   $<$<BOOL:${WITH_NCDF}>:NCDF_4>
@@ -566,6 +567,7 @@ target_link_libraries(${PROJECT_NAME}-libsiesta
   $<$<OR:$<BOOL:${WITH_NCDF}>,$<BOOL:${WITH_FLOOK}>>:${PROJECT_NAME}-libfdict>
   $<$<BOOL:${WITH_DFTD3}>:s-dftd3::s-dftd3>
   $<$<BOOL:${WITH_ELPA}>:Elpa::elpa>
+  $<$<BOOL:${WITH_ELPA}>:PEXSI::PEXSI>
   $<$<BOOL:${WITH_MPI}>:SCALAPACK::SCALAPACK>
   # Forced external dependencies
   LAPACK::LAPACK

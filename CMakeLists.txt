@@ -33,6 +33,7 @@ include(SiestaFlags)
 option(WITH_GRID_SP "Use single-precision for grid magnitudes" FALSE)
 
 option(BUILD_DOCS "Create Doxygen-based documentation (WIP)" FALSE)
+option(WITH_PEXSI "Use the PEXSI library (direct interface)" FALSE)
 #--------------------------------------
 
 
@@ -272,6 +273,10 @@ if( WITH_MPI )
   # no need to search for ELPA in non-mpi environments
   find_package(CustomElpa)
   option(WITH_ELPA "Include ELPA support" ${ELPA_FOUND})
+endif()
+
+if (WITH_PEXSI)
+ include(search_for_pexsi)
 endif()
 
 # For STM/ol-stm only for now
