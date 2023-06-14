@@ -159,7 +159,6 @@ siesta_test(wannier
   EXTRA_FILES wannier.nnkp wannier.win)
   
 if (WITH_PEXSI)
-  message(STATUS "Fix-me: Prepare a native-interface PEXSI test")
   siesta_test(si-qdot-pexsi-native
     EXTRA_FILES coords.Si987H372.fdf)
 endif()
