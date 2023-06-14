@@ -81,6 +81,7 @@ list(APPEND "gridxc libgridxc>=0.10.0")
 # Required flag is from outside
 # This should locate some libgridxc and provide the proper target libgridxc::libgridxc
 Siesta_find_package(${_name}
+  REQUIRED
   PKG_CONFIG ${pkg_configs}
   GIT_REPOSITORY "https://gitlab.com/siesta-project/libraries/libgridxc"
   GIT_TAG "master"

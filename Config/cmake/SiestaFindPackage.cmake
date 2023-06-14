@@ -29,6 +29,8 @@
 # This is important to not duplicate efforts.
 function(Siesta_find_package)
   # Define options
+  set(options
+    REQUIRED)
   set(oneValueArgs
     # the package name:
     # Used for variable lookups {NAME}_FIND_METHODS etc.
@@ -241,7 +243,7 @@ function(Siesta_find_package)
           ${pkg_config}
           )
 
-        if("${${pkg_name}_FOUND}")
+        if( ${pkg_name}_FOUND OR TARGET PkgConfig::${pkg_name})
           mymsg(CHECK_PASS "found")
 
           #add_library("${_f_TARGET}" ALIAS PkgConfig::${pkg_name})
@@ -325,7 +327,7 @@ function(Siesta_find_package)
       set("${n}_FOUND" FALSE PARENT_SCOPE)
     endforeach()
 
-    if( ${_f_NAME}_FIND_REQUIRED )
+    if( ${_f_NAME}_FIND_REQUIRED OR _f_REQUIRED )
       # package hasn't been found but REQUIRED. Emit an error.
       message(FATAL_ERROR "Required package ${_f_NAME} cannot be found")
     endif()
