@@ -201,7 +201,7 @@ unset(CMAKE_REQUIRED_LIBRARIES)
 
 else()# check for source download
 
-set(LIBGRIDXC_USES_PROCEDURE_POINTER TRUE CACHE BOOL "Whether the sources uses the procedure pointer or not")
+set(LIBGRIDXC_USES_PROCEDURE_POINTER FALSE CACHE BOOL "Whether the sources uses the procedure pointer or not")
 mark_as_advanced(LIBGRIDXC_USES_PROCEDURE_POINTER)
 
 endif()

@@ -26,7 +26,7 @@ endif()
 
 else()
 
-set(LIBPSML_USES_PROCEDURE_POINTER TRUE CACHE BOOL "Whether the sources uses the procedure pointer or not")
+set(LIBPSML_USES_PROCEDURE_POINTER FALSE CACHE BOOL "Whether the sources uses the procedure pointer or not")
 mark_as_advanced(LIBPSML_USES_PROCEDURE_POINTER)
 
 endif()
