@@ -44,5 +44,17 @@ endif()
 
 if (NOT TARGET s-dftd3::s-dftd3)
   find_package(s-dftd3 REQUIRED)
+#  find_package(Custom-s-dftd3 REQUIRED)
 endif()
+#
+# This is necessary in case a cmake package is found
+# for s-dftd3, as imported targets are not global by
+# default, and we are running this in a "subdirectory"
+# scope. If s-dftd3 is compiled ("source" method), this would not be
+# necessary, since we manually add the library as IMPORTED GLOBAL
+# in SiestaFindPackage.
+#
+set_target_properties(s-dftd3::s-dftd3
+                      PROPERTIES
+                      IMPORTED_GLOBAL TRUE)
 
