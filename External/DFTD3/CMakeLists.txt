@@ -1,12 +1,16 @@
 #
 # s-dftd3 depends on a number of libraries
 # They can be included as submodules in this directory,
-# and this file processes them in order and configures
-# those options that can be configured externally.
+# and this file takes care of the details.
+#
+# Originally we processed the dependencies in order, but
+# now we just look for s-dftd3 and let its own build system
+# (or cmake config file) start a search for the dependencies.
 #
 # It would be good to have an option to build only
 # the library itself.
 
+# Configuration of sub-project variables ----------------
 
 set(WITH_TESTS "${WITH_DFTD3_TESTS}" CACHE BOOL "Perform s-dftd3 tests")
 # We need to forcefully disable OpenMP, s-dftd3 is defaulting to true for this.
@@ -26,35 +30,59 @@ elseif(TARGET LAPACK::LAPACK)
   set(BLAS_FOUND "TRUE")
 endif()
 
-if(NOT TARGET "mctc-lib::mctc-lib")
-  find_package("mctc-lib" REQUIRED)
-endif()
+#
+# How do we turn off the auxiliary tests for toml-f et al?
+# 
 
-if(NOT TARGET "mstore::mstore" AND WITH_TESTS)
-  find_package("mstore" REQUIRED)
-endif()
+#-----------------------------------------
 
-if(NOT TARGET "test-drive::test-drive")
-  find_package("test-drive" REQUIRED)
-endif()
+# These were the old-style pre-configurations steps for the dependencies
 
-if(NOT TARGET "toml-f::toml-f")
-  find_package("toml-f" REQUIRED)
-endif()
+#### if(NOT TARGET "mctc-lib::mctc-lib")
+####   find_package("mctc-lib" REQUIRED)
+#### endif()
+
+#### if(NOT TARGET "mstore::mstore" AND WITH_TESTS)
+####   find_package("mstore" REQUIRED)
+#### endif()
+
+#### if(NOT TARGET "test-drive::test-drive")
+####   find_package("test-drive" REQUIRED)
+#### endif()
+
+#### if(NOT TARGET "toml-f::toml-f")
+####   find_package("toml-f" REQUIRED)
+#### endif()
+
+# Just search for s-dftd3 ----------------------------------
+#
+# Use our own finders for possible s-dftd3 dependencies, as we can have source directories
+# in places different from the expectation of s-dftd3's finders.
+#
+list(PREPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/Config/cmake/Modules/DFTD3")
+message(DEBUG "CMAKE_MODULE_PATH: ${CMAKE_MODULE_PATH}")
+
+# Define the source directory root
+set(DFTD3_SOURCE_ROOT "${PROJECT_SOURCE_DIR}/External/DFTD3")
 
 if (NOT TARGET s-dftd3::s-dftd3)
-  find_package(s-dftd3 REQUIRED)
-#  find_package(Custom-s-dftd3 REQUIRED)
+
+  # The REQUIRED flag might not be passed to the module... check
+  find_package(Custom-s-dftd3 REQUIRED MODULE)
+
+  if (TARGET s-dftd3::s-dftd3)
+    # This is necessary in case a cmake package is found
+    # for s-dftd3, as imported targets are not global by
+    # default, and we are running this in a "subdirectory"
+    # scope. If s-dftd3 is compiled ("source" method), this would not be
+    # necessary, since we manually add the library as IMPORTED GLOBAL
+    # in SiestaFindPackage.
+    #
+    set_target_properties(s-dftd3::s-dftd3
+                          PROPERTIES
+                          IMPORTED_GLOBAL TRUE)
+  endif()
 endif()
-#
-# This is necessary in case a cmake package is found
-# for s-dftd3, as imported targets are not global by
-# default, and we are running this in a "subdirectory"
-# scope. If s-dftd3 is compiled ("source" method), this would not be
-# necessary, since we manually add the library as IMPORTED GLOBAL
-# in SiestaFindPackage.
-#
-set_target_properties(s-dftd3::s-dftd3
-                      PROPERTIES
-                      IMPORTED_GLOBAL TRUE)
+list(POP_FRONT CMAKE_MODULE_PATH)
+# ---------------------------------------
 
