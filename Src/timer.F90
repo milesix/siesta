@@ -53,6 +53,10 @@ recursive subroutine timer( prog, iOpt )
   use extrae_eventllist
 #endif
 
+#ifdef __PROFILE_NVTX
+  use nvtx
+#endif
+  
 ! Arguments
   implicit none
   character(len=*),intent(in):: prog   ! Name of program to time
@@ -86,6 +90,25 @@ recursive subroutine timer( prog, iOpt )
     call die('timer: ERROR: invalid iOpt value')
   end if
 
+#endif
+
+
+#ifdef __PROFILE_NVTX
+  
+  if (iOpt==0) then
+     ! do nothing?
+  else if (iOpt==1) then
+     call nvtxStartRange(prog)
+  else if (iOpt==2) then
+     ! This might NOT work as is, depending on the internal workings of
+     ! the library.
+     ! We might need a stack, as in tree_timer...
+     call nvtxEndRange()
+  else if (iOpt==3) then
+     ! do nothing?
+  else
+     call die('timer: ERROR: invalid iOpt value')
+  end if
 #endif
 
 if (use_tree_timer) then
