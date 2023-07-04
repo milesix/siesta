@@ -42,7 +42,7 @@ module nvtx
        Z'00ff0000', Z'00ffffff'/
   
   character(len=256),private, target :: tempName
-!  logical, save :: __PROFILE_NVTX=.false.
+
   type, bind(C):: nvtxEventAttributes
      integer(C_INT16_T):: version=1
      integer(C_INT16_T):: size=48 !
@@ -56,31 +56,34 @@ module nvtx
      type(C_PTR):: message  ! ascii char
   end type nvtxEventAttributes
 
-  interface nvtxRangePush
+  interface
      ! push range with custom label and standard color
-     subroutine nvtxRangePushA(name) bind(C, name='nvtxRangePushA')
+     subroutine f_nvtxRangePushA(name) bind(C, name='nvtxRangePushA')
        use iso_c_binding
-       character(kind=C_CHAR,len=*) :: name
-     end subroutine nvtxRangePushA
+       character(kind=C_CHAR) :: name(*)
+     end subroutine f_nvtxRangePushA
 
      ! push range with custom label and custom color
-     subroutine nvtxRangePushEx(event) bind(C, name='nvtxRangePushEx')
+     subroutine f_nvtxRangePushEx(event) bind(C, name='nvtxRangePushEx')
        use iso_c_binding
        import:: nvtxEventAttributes
        type(nvtxEventAttributes):: event
-     end subroutine nvtxRangePushEx
-  end interface nvtxRangePush
+     end subroutine f_nvtxRangePushEx
 
-  interface nvtxRangePop
-     subroutine nvtxRangePop() bind(C, name='nvtxRangePop')
-     end subroutine nvtxRangePop
-  end interface nvtxRangePop
+     subroutine f_nvtxRangePop() bind(C, name='nvtxRangePop')
+     end subroutine f_nvtxRangePop
+  end interface 
 #endif
 
+  private
+
+  public :: nvtxStartRange, nvtxStartRangeAsync
+  public :: nvtxEndRange, nvtxEndRangeAsync
+  
 contains
 
   subroutine nvtxStartRange(name,id)
-    character(kind=c_char,len=*) :: name
+    character(len=*) :: name
     integer, optional:: id
 #ifdef __PROFILE_NVTX
     type(nvtxEventAttributes):: event
@@ -89,32 +92,32 @@ contains
     istat = cudaDeviceSynchronize()
 #endif
 
-    tempName=trim(name)//c_null_char
+    tempName = name // c_null_char
 
     if ( .not. present(id)) then
-       call nvtxRangePush(tempName)
+       call f_nvtxRangePushA(tempName)
     else
        event%color=col(mod(id,7)+1)
        event%message=c_loc(tempName)
-       call nvtxRangePushEx(event)
+       call f_nvtxRangePushEx(event)
     end if
 #endif
   end subroutine nvtxStartRange
 
   subroutine nvtxStartRangeAsync(name,id)
-    character(kind=c_char,len=*) :: name
+    character(len=*) :: name
     integer, optional:: id
 #ifdef __PROFILE_NVTX
     type(nvtxEventAttributes):: event
 
-    tempName=trim(name)//c_null_char
+    tempName= name // c_null_char
 
     if ( .not. present(id)) then
-       call nvtxRangePush(tempName)
+       call f_nvtxRangePushA(tempName)
     else
        event%color=col(mod(id,7)+1)
        event%message=c_loc(tempName)
-       call nvtxRangePushEx(event)
+       call f_nvtxRangePushEx(event)
     end if
 #endif
   end subroutine nvtxStartRangeAsync
@@ -126,13 +129,13 @@ contains
     integer :: istat
     istat = cudaDeviceSynchronize()
 #endif
-    call nvtxRangePop
+    call f_nvtxRangePop
 #endif
   end subroutine nvtxEndRange
 
   subroutine nvtxEndRangeAsync
 #ifdef __PROFILE_NVTX
-    call nvtxRangePop
+    call f_nvtxRangePop
 #endif
   end subroutine nvtxEndRangeAsync
 

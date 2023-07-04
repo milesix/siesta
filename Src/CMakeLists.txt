@@ -521,9 +521,13 @@ set(libsiesta_sources
 if (WITH_PROFILE_NVTX)
   list(APPEND libsiesta_sources nvtx-profiling/nvtx_wrapper.F90)
   set_source_files_properties(
-             timer.F
+             timer.F90
 	     nvtx-profiling/nvtx_wrapper.F90
              PROPERTIES  COMPILE_DEFINITIONS "__PROFILE_NVTX")
+  if ("${PROFILE_NVTX_LIBRARY}" STREQUAL "")
+     list(APPEND libsiesta_sources dummy_nvtx.c)
+  endif()
+  
 endif()	 
 
 add_library(${PROJECT_NAME}-libsiesta "${libsiesta_sources}")
@@ -582,6 +586,7 @@ target_link_libraries(
    $<$<BOOL:${WITH_ELPA}>:Elpa::elpa>
   "$<$<BOOL:${WITH_MPI}>:Scalapack::Scalapack>"
   "$<$<BOOL:${WITH_DFTD3}>:s-dftd3::s-dftd3>"
+  "$<$<BOOL:${WITH_PROFILE_NVTX}>:nvtx-c>"
   LAPACK::LAPACK
 )
 

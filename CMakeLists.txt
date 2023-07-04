@@ -224,6 +224,15 @@ if (WITH_NCDF)
   add_subdirectory("Src/easy-ncdf")
 endif()
 
+if (WITH_PROFILE_NVTX)
+  add_library(nvtx-c INTERFACE IMPORTED)
+  target_link_libraries(nvtx-c INTERFACE ${CMAKE_DL_LIBS})
+  set_target_properties(nvtx-c
+       PROPERTIES
+       INTERFACE_LINK_LIBRARIES
+       "${PROFILE_NVTX_LIBRARY}")
+endif()
+
 # Siesta sources
 add_subdirectory("Src")
 
