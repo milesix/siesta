@@ -1,5 +1,5 @@
-set(top_srcdir "${CMAKE_SOURCE_DIR}/Src" )
-set(tbtrans_srcdir "${CMAKE_SOURCE_DIR}/Util/TS/TBtrans" )
+set(top_srcdir "${PROJECT_SOURCE_DIR}/Src" )
+set(tbtrans_srcdir "${PROJECT_SOURCE_DIR}/Util/TS/TBtrans" )
 
 set(sources
 

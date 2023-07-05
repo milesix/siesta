@@ -1,4 +1,4 @@
-set(top_src_dir "${CMAKE_SOURCE_DIR}/Src")
+set(top_src_dir "${PROJECT_SOURCE_DIR}/Src")
 add_executable(
    Eig2DOS
    Eig2DOS.f90

@@ -1,4 +1,4 @@
-set(top_srcdir "${CMAKE_SOURCE_DIR}/Src")
+set(top_srcdir "${PROJECT_SOURCE_DIR}/Src")
 
 add_library(psop_top_objs OBJECT
     "${top_srcdir}/m_getopts.f90"

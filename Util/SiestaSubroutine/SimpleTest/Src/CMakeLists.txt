@@ -2,7 +2,7 @@
 # FIXME: The names in this directory are very confusing
 #        Only a subset of the executables are built
 #
-set(top_srcdir "${CMAKE_SOURCE_DIR}/Src")
+set(top_srcdir "${PROJECT_SOURCE_DIR}/Src")
 
 
 #
