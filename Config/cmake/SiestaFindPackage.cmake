@@ -272,11 +272,14 @@ function(Siesta_find_package)
       if(EXISTS "${${pkg_uc}_SOURCE_DIR}/CMakeLists.txt")
         mymsg(CHECK_PASS "found")
 
-        add_subdirectory("${${pkg_uc}_SOURCE_DIR}")
+        file(RELATIVE_PATH _relative_path "${PROJECT_SOURCE_DIR}" "${${pkg_uc}_SOURCE_DIR}")
+        set("${pkg_uc}_BINARY_DIR" "${PROJECT_BINARY_DIR}/${_relative_path}")
+        add_subdirectory("${${pkg_uc}_SOURCE_DIR}"
+                         "${${pkg_uc}_BINARY_DIR}")
 
         #add_library("${_f_TARGET}" ALIAS ${pkg})
         add_library("${_f_TARGET}" INTERFACE IMPORTED GLOBAL)
-        target_link_libraries("${_f_TARGET}" INTERFACE ${pkg})
+        target_link_libraries("${_f_TARGET}" INTERFACE ${pkg})  # How does this work?
 
         set(f_method "source")
         break()

@@ -240,15 +240,23 @@ if(NOT LIBGRIDXC_USES_PROCEDURE_POINTER)
 
 endif()
 
+option(WITH_DFTD3  "Support for DFT-D3 corrections" TRUE)
+if(WITH_DFTD3)
+  add_subdirectory("External/DFTD3")
+  if(NOT TARGET s-dftd3::s-dftd3)
+    message(WARNING "Cannot configure DFT-D3 module. Check sources in External/DFTD3")
+    set(WITH_DFTD3  FALSE CACHE BOOL "Support for DFT-D3 corrections" FORCE)
+  endif()
+endif()
 
 # Search for DFTD3
 # TODO use the utility for locating it, but then revert here
-siesta_add_subdirectory_option(
-  DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/External/DFTD3/"
-  HELP "Include support for DFT-D3 corrections"
-  NITEMS 2
-  OPTION WITH_DFTD3
-  )
+#### siesta_add_subdirectory_option(
+####   DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/External/DFTD3/"
+####   HELP "Include support for DFT-D3 corrections"
+####   NITEMS 2
+####   OPTION WITH_DFTD3
+####   )
 # TODO add a fallback for failure in DFTD3
 
 # Search for flook
