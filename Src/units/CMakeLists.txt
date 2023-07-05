@@ -16,8 +16,8 @@ add_library(
 string(TOLOWER "${WITH_UNITS_CONVENTION}" siesta_units_convention)
 if("${siesta_units_convention}" STREQUAL "original" OR
    "${siesta_units_convention}" STREQUAL "legacy")
-  target_compile_definitions(${PROJECT_NAME}-units
-    PRIVATE
+  target_compile_definitions(${PROJECT_NAME}-libunits
+    PUBLIC
     SIESTA__UNITS_ORIGINAL)
 elseif("${siesta_units_convention}" STREQUAL "codata2018")
   # pass - do nothing - the default
