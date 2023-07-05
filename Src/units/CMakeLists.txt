@@ -1,6 +1,6 @@
 add_library(
   ${PROJECT_NAME}-libunits
-  OBJECT
+  STATIC
   units.F90
   units_legacy.f90
   units_codata2018.f90
@@ -25,7 +25,7 @@ else()
   message(FATAL_ERROR "Unknown argument for WITH_UNITS_CONVENTION; not one of [original|legacy,codata2018]")
 endif()
 
-# Add include directories for usage targets
-target_include_directories(${PROJECT_NAME}-libunits
+# Ensure module files are added to the inclusion
+target_include_directories(
+  ${PROJECT_NAME}-libunits
   INTERFACE "${CMAKE_CURRENT_BINARY_DIR}")
-

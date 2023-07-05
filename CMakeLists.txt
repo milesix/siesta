@@ -34,6 +34,8 @@ option(WITH_GRID_SP "Use single-precision for grid magnitudes" FALSE)
 
 option(BUILD_DOCS "Create Doxygen-based documentation (WIP)" FALSE)
 
+
+# Option for selecting which unit convention we will be using
 set(WITH_UNITS_CONVENTION "CODATA2018"
   CACHE STRING
   "Decide which units ${PROJECT_NAME} should be compiled with [original,legacy,codata2018]"
