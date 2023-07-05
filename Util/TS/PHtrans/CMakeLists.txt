@@ -205,6 +205,7 @@ target_link_libraries(
   $<$<BOOL:${WITH_NCDF}>:${PROJECT_NAME}-libncdf>
   ${PROJECT_NAME}-libfdict    
   ${PROJECT_NAME}-libsys
+  ${PROJECT_NAME}-libunits
   $<$<BOOL:${WITH_ELPA}>:Elpa::elpa>
   $<$<BOOL:${WITH_MPI}>:SCALAPACK::SCALAPACK>
   LAPACK::LAPACK

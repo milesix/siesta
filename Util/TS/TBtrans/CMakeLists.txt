@@ -195,7 +195,6 @@ target_link_libraries(
   $<$<BOOL:${WITH_MPI}>:mpi_siesta>
   $<$<BOOL:${WITH_NETCDF}>:NetCDF::NetCDF_Fortran>
   $<$<BOOL:${WITH_NCDF}>:${PROJECT_NAME}-libncdf>
-  ${PROJECT_NAME}-libunits
   ${PROJECT_NAME}-libfdict     # Even if not using NCDF
   ${PROJECT_NAME}-libsys
   ${PROJECT_NAME}-libunits
