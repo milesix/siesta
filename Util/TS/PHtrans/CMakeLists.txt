@@ -164,7 +164,6 @@ list(
   ${top_srcdir}/timer_tree.f90
   ${top_srcdir}/timestamp.f90
   ${top_srcdir}/ts_electrode.F90
-  ${top_srcdir}/units.f90
 )
 
 
