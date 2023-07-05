@@ -137,10 +137,17 @@ function(Siesta_find_package)
 
   foreach(n IN ITEMS ${pkg_lc} ${pkg_uc} ${pkg})
     # Parse the option of the *find-methods*
-    if(DEFINED "${n}_FIND_METHOD")
+    if(DEFINED ${n}_FIND_METHOD)
       set(f_methods "${${n}_FIND_METHOD}")
     endif()
     mark_as_advanced(${n}_FIND_METHOD)
+
+    # Also check if the FOUND method is defined from the cache
+    # This should overwrite everything
+    if(DEFINED ${n}_FOUND_METHOD)
+      set(f_methods "${${n}_FOUND_METHOD}")
+      break()
+    endif()
   endforeach()
 
   # Strip away elements that are not in the allowed-f-methods
@@ -272,14 +279,14 @@ function(Siesta_find_package)
       if(EXISTS "${${pkg_uc}_SOURCE_DIR}/CMakeLists.txt")
         mymsg(CHECK_PASS "found")
 
-        file(RELATIVE_PATH _relative_path "${PROJECT_SOURCE_DIR}" "${${pkg_uc}_SOURCE_DIR}")
-        set("${pkg_uc}_BINARY_DIR" "${PROJECT_BINARY_DIR}/${_relative_path}")
-        add_subdirectory("${${pkg_uc}_SOURCE_DIR}"
-                         "${${pkg_uc}_BINARY_DIR}")
+        add_subdirectory(
+          "${${pkg_uc}_SOURCE_DIR}"
+          "${PROJECT_BINARY_DIR}/${pkg}"
+        )
 
         #add_library("${_f_TARGET}" ALIAS ${pkg})
         add_library("${_f_TARGET}" INTERFACE IMPORTED GLOBAL)
-        target_link_libraries("${_f_TARGET}" INTERFACE ${pkg})  # How does this work?
+        target_link_libraries("${_f_TARGET}" INTERFACE ${pkg})
 
         set(f_method "source")
         break()
@@ -319,7 +326,7 @@ function(Siesta_find_package)
     foreach(n IN ITEMS ${pkg} ${pkg_lc} ${pkg_uc})
       # notify about the found-variables
       set("${n}_FOUND" TRUE PARENT_SCOPE)
-      set("${n}_FOUND_METHOD" ${f_method} PARENT_SCOPE)
+      set("${n}_FOUND_METHOD" ${f_method} CACHE STRING "How the package ${pkg} was found")
     endforeach()
 
   else()
