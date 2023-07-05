@@ -1,9 +1,0 @@
-This directory used to be the default Siesta build directory, that is, the default
-place from where Siesta was compiled.
-
-The build system has now been enhanced to allow the coexistence of multiple
-compiled flavors of Siesta and the utility programs, and this directory has
-lost its special status.
-
-Please see the file INSTALL in the top level of the distribution for more
-information about how to build Siesta.
