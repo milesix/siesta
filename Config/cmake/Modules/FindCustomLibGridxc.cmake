@@ -90,13 +90,12 @@ Siesta_find_package(${_name}
 
 set(_compat TRUE)
 
-if( "${${_name}_FOUND_METHOD}" STREQUAL "cmake" OR
-    "${${_name}_FOUND_METHOD}" STREQUAL "pkgconf")
-
-
 # Start conversation about compatibility
 list(APPEND CMAKE_MESSAGE_INDENT "  ")
 message(CHECK_START "Checking for libgridxc compatibility")
+
+if( "${${_name}_FOUND_METHOD}" STREQUAL "cmake" OR
+    "${${_name}_FOUND_METHOD}" STREQUAL "pkgconf")
 
 # Check libxc support (if requested!)
 if (WITH_LIBXC)
