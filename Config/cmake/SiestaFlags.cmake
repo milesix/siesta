@@ -25,11 +25,6 @@ if(CMAKE_Fortran_COMPILER_ID MATCHES Intel|IntelLLVM)
 elseif(CMAKE_Fortran_COMPILER_ID MATCHES GNU)
   set(_toolchain "gnu")
 
-  if(CMAKE_Fortran_COMPILER_VERSION VERSION_GREATER_EQUAL 10.0 )
-    message(STATUS "Adding '-fallow-argument-mismatch' for GNU >= 10.0")
-    set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -fallow-argument-mismatch")
-  endif()
-
 else()
   set(_toolchain "generic")
 endif()
@@ -100,6 +95,14 @@ unset(_buildtypes)
 unset(_buildtype)
 unset(_buildtype_upper)
 unset(_languages)
+
+
+if(CMAKE_Fortran_COMPILER_ID MATCHES GNU)
+  if(CMAKE_Fortran_COMPILER_VERSION VERSION_GREATER_EQUAL 10.0 )
+    message(STATUS "Adding '-fallow-argument-mismatch' for GNU >= 10.0")
+    set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -fallow-argument-mismatch")
+  endif()
+endif()
 
 # For tagging in version-info.inc
 #
