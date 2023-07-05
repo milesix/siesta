@@ -27,21 +27,20 @@ FC_SERIAL?=$(FC_DEFAULT)
 FC:=$(FC_SERIAL)         # Make it non-recursive
 
 INCFLAGS+= $(FDF_INCFLAGS) 
-
-SYSOBJ=$(SYS).o
+INCFLAGS+= $(LIBSYS_INCFLAGS) 
 
 # Note that machine-specific files are now in top Src directory.
 DEP_OBJS = precision.o parallel.o \
           chemical.o io.o m_io.o  \
           periodic_table.o \
-          atom_options.o units.o $(SYSOBJ)
+          atom_options.o units.o
 
-LOCAL_OBJS= grimme.o handlers.o local_sys.o
+LOCAL_OBJS= grimme.o
 OBJS=$(LOCAL_OBJS) $(DEP_OBJS)
 
-$(EXE): $(OBJS)
+$(EXE): $(OBJS) $(LIBSYS)
 	$(FC) -o $(EXE) \
-	       $(LDFLAGS) $(OBJS) $(FDF_LIBS)
+	       $(LDFLAGS) $(OBJS) $(FDF_LIBS) $(LIBSYS)
 
 dep:
 	sfmakedepend --depend=obj --modext=o \
@@ -60,9 +59,6 @@ install: $(PROGS)
 #
 
 # DO NOT DELETE THIS LINE - used by make depend
-atom_options.o: local_sys.o
-chemical.o: local_sys.o parallel.o precision.o
+chemical.o: parallel.o precision.o
 io.o: m_io.o
-m_io.o: local_sys.o
 grimme.o: chemical.o periodic_table.o precision.o units.o
-sys.o: local_sys.o

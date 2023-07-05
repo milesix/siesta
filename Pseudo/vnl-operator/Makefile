@@ -24,10 +24,11 @@ FC:=$(FC_SERIAL)         # Make it non-recursive
 
 INCFLAGS += $(PSML_INCFLAGS) $(NCPS_INCFLAGS) $(PSOP_INCFLAGS)
 INCFLAGS += $(XMLF90_INCFLAGS) $(GRIDXC_INCFLAGS)
+INCFLAGS += $(LIBSYS_INCFLAGS) 
 #
 OBJS = 	psop_options.o\
 	psop.o m_kb.o  \
-        local_die.o psml_die.o handlers.o periodic_table.o \
+        periodic_table.o \
         check_grid.o m_uuid.o \
         m_libxc_list.o m_libxc_sxc_translation.o \
         m_siestaxc_list.o
@@ -39,9 +40,9 @@ ALL_OBJS=$(MOD_OBJS) $(COM_OBJS)
 #
 XC=$(GRIDXC_LIBS)
 #
-psop:   $(NCPS) $(PSOP) $(ALL_OBJS)
+psop:   $(NCPS) $(PSOP) $(ALL_OBJS) $(LIBSYS)
 	$(FC) $(FFLAGS) $(LDFLAGS) -o psop $(ALL_OBJS) \
-              $(NCPS) $(PSOP) $(PSML_LIBS) $(XC) $(XMLF90_LIBS)
+              $(NCPS) $(PSOP) $(PSML_LIBS) $(XC) $(XMLF90_LIBS) $(LIBSYS)
 #
 psop.o: psop_options.o m_uuid.o m_kb.o
 psop.o: m_getopts.o periodic_table.o

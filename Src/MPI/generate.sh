@@ -38,21 +38,21 @@ for tag in v s sv vs ; do
 
 for kind in ${KINDS} ; do
   sed -e "/_type/s//_r${kind}/" -e "/type/s//real(${kind})/" \
-    ${dir}/mpi__type_${tag}.f90 >> Interfaces.f90
+    "${dir}/mpi__type_${tag}.f90" >> Interfaces.f90
   sed -e "/_type/s//_c${kind}/" -e "/type/s//complex(${kind})/" \
-    ${dir}/mpi__type_${tag}.f90 >> Interfaces.f90
+    "${dir}/mpi__type_${tag}.f90" >> Interfaces.f90
 
 done
 
 for kind in ${INT_KINDS} ; do
   sed -e "/_type/s//_i${kind}/" -e "/type/s//integer(${kind})/" \
-    ${dir}/mpi__type_${tag}.f90 >> Interfaces.f90
+    "${dir}/mpi__type_${tag}.f90" >> Interfaces.f90
 done
 
 sed -e "/_type/s//_logical/" -e "/type/s//logical/" \
-    ${dir}/mpi__type_${tag}.f90 >> Interfaces.f90
+    "${dir}/mpi__type_${tag}.f90" >> Interfaces.f90
 
 sed -e "/_type/s//_character/" -e "/type/s//character(*)/" \
-    ${dir}/mpi__type_${tag}.f90  >> Interfaces.f90
+    "${dir}/mpi__type_${tag}.f90"  >> Interfaces.f90
 
 done

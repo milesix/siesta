@@ -11,22 +11,21 @@ add_executable(
 
   check_grid.f90
   dpnint.f90
-  handlers.f
-  local_die.F
   m_kb.f90
-  psml_die.f
   psop.f90
   psop_options.f90
 )
 
 # For semicore_info_froyen...
  target_link_libraries(psop_top_objs
+  PRIVATE
   ${PROJECT_NAME}-libncps
+  ${PROJECT_NAME}-libsys
  )
  
  target_link_libraries(
   psop
-  
+  PRIVATE
   psop_top_objs
   libgridxc::libgridxc
   libpsml::libpsml
@@ -34,6 +33,7 @@ add_executable(
   ${PROJECT_NAME}-libncps
   ${PROJECT_NAME}-libpsop
   ${PROJECT_NAME}-libxc-trans
+  ${PROJECT_NAME}-libsys
  )
 
 install(

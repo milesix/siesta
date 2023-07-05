@@ -46,7 +46,7 @@ program unfold
   use sys,          only: die
 
   use units,        only: inquire_unit
-
+  use unfold_handlers_m, only: unfold_set_handlers
 
   implicit none
 
@@ -107,6 +107,8 @@ program unfold
 
 !--------------------
 
+  call unfold_set_handlers()
+  
 ! Initialize MPI
 #ifdef MPI
   call MPI_Init( ierr )

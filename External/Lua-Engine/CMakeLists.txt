@@ -1,62 +1,89 @@
-#
-# 
-#
+
+# Define the root folder of flook
 set(FLOOK_ROOT "$ENV{FLOOK_ROOT}" CACHE FILEPATH "flook installation path")
 
-#
 # Try first a proper installation with a valid pkg-config file,
 # augmenting any specified search paths with FLOOK_ROOT
 
 if(NOT "${FLOOK_ROOT}" STREQUAL "" )
-  set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH}" "${FLOOK_ROOT}")
+  list(APPEND CMAKE_PREFIX_PATH "${FLOOK_ROOT}")
 endif()
 
-find_package(PkgConfig REQUIRED)
+find_package(PkgConfig REQUIRED QUIET)
+
+macro(found_return message)
+  list(POP_BACK CMAKE_MESSAGE_INDENT)
+  set(FLOOK_FOUND TRUE)
+  if("${message}" STREQUAL "")
+    message(CHECK_PASS "found")
+  else()
+    message(CHECK_PASS "found ${message}")
+  endif()
+  return()
+endmacro()
+
+
+message(STATUS "Searching for flook library")
+list(APPEND CMAKE_MESSAGE_INDENT "  ")
+
+message(CHECK_START "trying pkg-config")
 pkg_check_modules(FLOOK flook>=0.8.1)
 
 if(FLOOK_FOUND)
 
-  message("Flook: Found installation via pkg-config")
-  message("FLOOK_LINK_LIBRARIES: ${FLOOK_LINK_LIBRARIES}")
-  message("FLOOK_INCLUDE_DIRS: ${FLOOK_INCLUDE_DIRS}")
-  add_library(flook::flook INTERFACE IMPORTED GLOBAL)
-  target_link_libraries(flook::flook
-               INTERFACE "${FLOOK_LINK_LIBRARIES}")
-  target_include_directories(flook::flook
-               INTERFACE
-              "${FLOOK_INCLUDE_DIRS}")
+  message(VERBOSE "FLOOK_LINK_LIBRARIES: ${FLOOK_LINK_LIBRARIES}")
+  message(VERBOSE "FLOOK_INCLUDE_DIRS: ${FLOOK_INCLUDE_DIRS}")
 
-  RETURN()
+  # Add libraries to namespace
+  add_library(flook::flook INTERFACE IMPORTED GLOBAL)
+  # Check if need to add dl manually, or it is already added
+  string(FIND "${FLOOK_LINK_LIBRARIES}" "dl" _dl_index)
+  if( _dl_index GREATER -1)
+    target_link_libraries(flook::flook
+      INTERFACE "${FLOOK_LINK_LIBRARIES}")
+  else()
+    target_link_libraries(flook::flook
+      INTERFACE "${FLOOK_LINK_LIBRARIES}" dl)
+  endif()
+  target_include_directories(flook::flook
+    INTERFACE "${FLOOK_INCLUDE_DIRS}")
+
+  found_return("")
+else()
+  message(CHECK_FAIL "not found")
 endif()
 
-#
 # Check for an installation without .pc file in FLOOK_ROOT and set libraries
 # manually, assuming the recommended recipe has been followed...
-#
+# Search for the library in flook_root
+message(CHECK_START "Checking libraries (flookall) in FLOOK_ROOT=${FLOOK_ROOT}")
+find_library(FLOOK_LINK_LIBRARIES
+  flookall
+  HINTS ${FLOOK_ROOT}
+  PATH_SUFFIXES lib lib64
+  DOC "Libraries for flook"
+  )
 
-if(NOT "${FLOOK_ROOT}" STREQUAL "" )
-
-  message("Flook: Using barebones flook installation in ${FLOOK_ROOT}")
-  message("Flook: ... assuming basic structure is right")
-
-  set(FLOOK_LIBS "-L${FLOOK_ROOT}/lib -lflookall -ldl")
+if("${FLOOK_LINK_LIBRARIES}" STREQUAL "FLOOK_LINK_LIBRARIES-NOTFOUND")
+  message(CHECK_FAIL "not found")
+  unset(FLOOK_LINK_LIBRARIES CACHE)
+else()
   set(FLOOK_INCLUDE_DIRS "${FLOOK_ROOT}/include")
-  message("FLOOK_LIBS: ${FLOOK_LIBS}")
-  message("FLOOK_INCLUDE_DIRS: ${FLOOK_INCLUDE_DIRS}")
+  message(VERBOSE "FLOOK_LINK_LIBRARIES: ${FLOOK_LINK_LIBRARIES}")
+  message(VERBOSE "FLOOK_INCLUDE_DIRS: ${FLOOK_INCLUDE_DIRS}")
 
   add_library(flook::flook INTERFACE IMPORTED GLOBAL)
+  # We know we have not added dl library
   target_link_libraries(flook::flook
-               INTERFACE "${FLOOK_LIBS}")
+    INTERFACE "${FLOOK_LINK_LIBRARIES}" "dl")
   target_include_directories(flook::flook
-               INTERFACE
-              "${FLOOK_INCLUDE_DIRS}")
+    INTERFACE "${FLOOK_INCLUDE_DIRS}")
+
+  found_return("")
+endif()
 
 
-else()
-
-#
-# Compile flook
-#
+# Last resort will be to compile flook on the fly
 
 include(ExternalProject)
 
@@ -85,35 +112,39 @@ configure_file(
   @ONLY
   )
 
+# Find the make-command
 find_program(MAKE_EXECUTABLE NAMES gmake make mingw32-make REQUIRED)
 
-#
+
 # Possible sources
-#
 set(url_default "https://github.com/ElectronicStructureLibrary/flook/archive/refs/tags/v0.8.1.tar.gz")
 #
 if(NOT "$ENV{FLOOK_PACKAGE}" STREQUAL "")
-     set(url "$ENV{FLOOK_PACKAGE}")
-     message("Flook: will compile on-the-fly from sources: $ENV{FLOOK_PACKAGE}")
-elseif(EXISTS
-     "${CMAKE_SOURCE_DIR}/External/Lua-Engine/flook/LICENSE")
-     #
-     # We assume that we have instantiated a submodule
-     #
-     set(url "${CMAKE_SOURCE_DIR}/External/Lua-Engine/flook")
-     message("Flook: will compile on-the-fly from submodule in External/Lua-Engine/flook")
+
+  set(url "$ENV{FLOOK_PACKAGE}")
+  message(STATUS "flook: will compile on-the-fly from sources: $ENV{FLOOK_PACKAGE}")
+
+elseif(EXISTS "${CMAKE_SOURCE_DIR}/External/Lua-Engine/flook/LICENSE")
+  
+  # The sub-module exists, or at least the LICENSE file does!
+
+  set(url "${CMAKE_SOURCE_DIR}/External/Lua-Engine/flook")
+  set(FLOOK_SOURCE_DIR "${url}" PARENT_SCOPE)
+  message(STATUS "flook: will compile on-the-fly from submodule in External/Lua-Engine/flook")
+
 else()
 
     set(url "${url_default}")
-    
-    message(STATUS "Flook: We are going to attempt to download the source from:")
-    message(STATUS "  ${url_default}")
-    message(STATUS "If this is not possible/convenient:")
-    message(STATUS "  Please set environment variable FLOOK_PACKAGE")
-    message(STATUS "  to point to a pristine (possibly remote) flook-0.8.1.tar.gz package,")
-    message(STATUS "  or populate ${CMAKE_SOURCE_DIR}/External/Lua-Engine/flook/")
-    message(STATUS "  with the sources for flook. For example, via a submodule:")
-    message(STATUS "      git submodule update --init External/Lua-Engine/flook")
+
+    message(WARNING
+      "flook: Trying to download the sources directly from:"
+      "  ${url_default}"
+      "If this is not possible (no access to internet) then please define the"
+      "environment variable FLOOK_PACKAGE pointing to a flook tarball with the sources."
+      "The easiest solution would be to check-out the submodule with the following command:"
+      "  cd <siesta-top-directory>"
+      "  git submodule update --init External/Lua-Engine/flook"
+      )
 endif()
 
 ExternalProject_Add(flook
@@ -159,13 +190,11 @@ add_dependencies(flook::flook flook)
 
 set(_flook_install_dir "${CMAKE_CURRENT_BINARY_DIR}/flook-prefix/src/flook-build")
 
-
-SET_TARGET_PROPERTIES(flook::flook PROPERTIES
-      INTERFACE_LINK_LIBRARIES
-        "${_flook_install_dir}/libflookall${CMAKE_STATIC_LIBRARY_SUFFIX};dl"
-      INTERFACE_INCLUDE_DIRECTORIES
-        "${_flook_install_dir}"
-
+set_target_properties(flook::flook
+  PROPERTIES
+  INTERFACE_LINK_LIBRARIES
+    "${_flook_install_dir}/libflookall${CMAKE_STATIC_LIBRARY_SUFFIX};dl"
+  INTERFACE_INCLUDE_DIRECTORIES
+    "${_flook_install_dir}"
 )
 
-endif(NOT "${FLOOK_ROOT}" STREQUAL "" )

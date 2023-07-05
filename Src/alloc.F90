@@ -150,31 +150,42 @@ PUBLIC ::             &
   de_alloc,           &! Deallocation
   allocDefaults        ! Derived type to hold allocation defaults
 
+public :: set_alloc_event_handler
+public :: set_alloc_error_handler
+
 PRIVATE      ! Nothing is declared public beyond this point
 
 integer, parameter :: sp = selected_real_kind(5,10)
 integer, parameter :: dp = selected_real_kind(10,100)
 integer, parameter :: i8b = selected_int_kind(18)
 
-! Interfaces to external routines that must be provided
+! Interfaces to handlers that can be provided
 ! by the calling program
 !
 interface
    ! Error message and integer code
    ! If 'code' is 0, this is the last call in a series
    ! (see below for usage)
-   subroutine alloc_error_report(str,code)
+   subroutine alloc_error_report_interf(str,code)
      character(len=*), intent(in) :: str
      integer, intent(in)          :: code
-   end subroutine alloc_error_report
+   end subroutine alloc_error_report_interf
    !
    ! Logger for memory events
    !
-   subroutine alloc_memory_event(bytes,name)
+   subroutine alloc_memory_event_interf(bytes,name)
      integer, intent(in)          :: bytes
      character(len=*), intent(in) :: name
-   end subroutine alloc_memory_event
+   end subroutine alloc_memory_event_interf
 end interface
+
+! These initializations are possible in F2008 and onwards
+
+procedure(alloc_error_report_interf), pointer ::  &
+     alloc_error_report => dummy_alloc_error_report
+
+procedure(alloc_memory_event_interf), pointer ::  &
+     alloc_memory_event => dummy_alloc_memory_event
 
   interface de_alloc
     module procedure &
@@ -228,6 +239,33 @@ end interface
   logical :: ASSOCIATED_ARRAY, NEEDS_ALLOC, NEEDS_COPY, NEEDS_DEALLOC
 
 CONTAINS
+
+  ! ----------------
+  subroutine set_alloc_event_handler(func)
+    procedure(alloc_memory_event_interf) :: func
+    alloc_memory_event => func
+  end subroutine set_alloc_event_handler
+
+  subroutine set_alloc_error_handler(func)
+    procedure(alloc_error_report_interf) :: func
+    alloc_error_report => func
+  end subroutine set_alloc_error_handler
+
+  subroutine dummy_alloc_memory_event(bytes,name)
+    integer, intent(in) :: bytes
+    character(len=*), intent(in) :: name
+    !write(*,*) "alloc: allocated ", bytes, "bytes for "//trim(name)
+  end subroutine dummy_alloc_memory_event
+
+  subroutine dummy_alloc_error_report(name,code)
+    character(len=*), intent(in) :: name
+    integer, intent(in) :: code
+    write(*,*) "alloc: "//trim(name)
+    if (code == 0) then
+       STOP
+    endif
+  end subroutine dummy_alloc_error_report
+
 
 ! ==================================================================
 
@@ -1796,10 +1834,12 @@ if (ierr/=0) then
      call alloc_error_report(trim(msg),4)
   endif
   if (present(bounds)) then
-     write(msg,'(a,i3,2i10)') ('alloc_err: dim, lbound, ubound:',  &
-          i,bounds(1,i),bounds(2,i),                         &
-          i=1,size(bounds,dim=2))            
-     call alloc_error_report(trim(msg),5)
+    write(msg,'(a)') 'alloc_err: dim, lbound, ubound:'
+    call alloc_error_report(trim(msg),5)
+    do i=1,size(bounds,dim=2)
+       write(msg,'(i3,a,2i10)')  i, ':', bounds(1,i),bounds(2,i)
+       call alloc_error_report(trim(msg),5)
+    enddo
   endif
   call alloc_error_report("alloc_err: end of error report",0)
 end if
@@ -1894,9 +1934,20 @@ END MODULE alloc
 !
 program testalloc
 use alloc, only: re_alloc, de_alloc
+use alloc, only: set_alloc_event_handler
+use alloc, only: set_alloc_error_handler
+
+external :: custom_alloc_memory_event
+external :: custom_alloc_error_report
 
 real, pointer :: x(:) => null()
 real(kind=kind(1.d0)), pointer :: y(:,:) => null()
+real(kind=kind(1.d0)), allocatable :: z(:,:)
+integer :: iostat
+character(len=256) :: errmsg = "-------------------"
+
+call set_alloc_event_handler(custom_alloc_memory_event)
+call set_alloc_error_handler(custom_alloc_error_report)
 
 call re_alloc(x,1,10,"x","testalloc")
 call re_alloc(y,-3,4,1,3,"y","testalloc")
@@ -1905,23 +1956,37 @@ print *, "Shape of y: ", shape(y)
 call de_alloc(x,"x","testalloc")
 call de_alloc(y,"y","testalloc")
 
+
+allocate(z(10000000,10000000),stat=iostat,errmsg=errmsg)
+write(*,*) 'Iostat for large z allocation: ', iostat
+write(*,*) 'Msg large z allocation: ', trim(errmsg)
+write(*,*) 'Size of z: ', size(z)
+
+write(*,*) "This should trigger an error:"
+call re_alloc(y,1,100000,1,100000,"y large","testalloc")
+write(*,*) 'Size of y: ', size(y)
+
 end program testalloc
 !
 ! Handlers
-! Note: In systems with weak symbols, these handlers
-! could be compiled marked as such. (Future extension)
 !
-subroutine alloc_memory_event(bytes,name)
+subroutine custom_alloc_memory_event(bytes,name)
 integer, intent(in) :: bytes
 character(len=*), intent(in) :: name
-write(*,*) "alloc: allocated ", bytes, "bytes for "//trim(name)
-end subroutine alloc_memory_event
+if (bytes > 0) then
+   write(*,*) "Custom alloc event: +   allocated ", bytes, "bytes for "//trim(name)
+else
+   write(*,*) "Custom alloc event: - deallocated ", -bytes, "bytes for "//trim(name)
+endif
+end subroutine custom_alloc_memory_event
 
-subroutine alloc_error_report(name,code)
+subroutine custom_alloc_error_report(name,code)
 character(len=*), intent(in) :: name
 integer, intent(in) :: code
-write(*,*) "alloc error: "//trim(name)
-end subroutine alloc_error_report
+write(*,*) "Custom alloc error: "//trim(name)
+if (code == 0) then
+   stop
+endif
+end subroutine custom_alloc_error_report
 
 #endif
-
