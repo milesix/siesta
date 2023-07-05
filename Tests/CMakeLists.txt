@@ -160,6 +160,9 @@ siesta_test(wannier
 
 siesta_test(si_pdos_kgrid)
 
+siesta_test(md_anneal
+  EXTRA_FILES md_anneal.STRUCT_IN)
+
 if(WITH_LUA)
   siesta_test(lua_h2o
     EXTRA_FILES siesta.lua)
