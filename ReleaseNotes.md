@@ -17,7 +17,18 @@ grouped under headings representing past (and upcoming) releases.
 
 * Mixtures of exchange-correlation functionals should now be specified in the XC.mix block
 
+* Unit precisions has changed. From version 5 and onwards the units used will be based on the
+  CODATA values. This change results in print-out changes and possibly some changes in many-step
+  MD simulations. Printouts of energies in eV and lengths in Ang results in a change.
+   v5 ENERGY [eV]  = 0.9999921447466303 * v4 ENERGY [eV]
+   v5 LENGTH [Ang] = 1.0000003985490675 * v4 LENGTH [Ang]
+  More details can be found in Src/units directory.
+
+
 ### Changes
+
+* New default of the units, precision increase and following CODATA-2018 values, see Backwards
+  compatibility issues
 
 * Implement a new unit-handling paradigm in fdf: the units table and associated 'inquire_unit'
   function are implemented by the client code (Siesta). The libfdf library processes units by
