@@ -1,9 +1,18 @@
 set(top_srcdir "${CMAKE_SOURCE_DIR}/Src")
 
 add_library(psop_top_objs OBJECT
+    "${top_srcdir}/alloc.F90"
     "${top_srcdir}/m_getopts.f90"
     "${top_srcdir}/m_uuid.f90"
+    "${top_srcdir}/m_walltime.f90"
+    "${top_srcdir}/m_io.f"
+    "${top_srcdir}/parallel.F"
+    "${top_srcdir}/precision.F"
     "${top_srcdir}/periodic_table.f"
+    "${top_srcdir}/timer_tree.f90"
+    "${top_srcdir}/m_timer.F90"
+    "${top_srcdir}/timer.F90"
+    "${top_srcdir}/moreParallelSubs.F90"
 )
 
 add_executable(
@@ -17,23 +26,22 @@ add_executable(
 )
 
 # For semicore_info_froyen...
- target_link_libraries(psop_top_objs
+target_link_libraries(psop_top_objs
   PRIVATE
   ${PROJECT_NAME}-libncps
   ${PROJECT_NAME}-libsys
  )
  
- target_link_libraries(
+target_link_libraries(
   psop
   PRIVATE
-  psop_top_objs
-  libgridxc::libgridxc
-  libpsml::libpsml
-  xmlf90::xmlf90
+  ${PROJECT_NAME}-libsys
   ${PROJECT_NAME}-libncps
   ${PROJECT_NAME}-libpsop
   ${PROJECT_NAME}-libxc-trans
-  ${PROJECT_NAME}-libsys
+  psop_top_objs
+  libpsml::libpsml
+  libgridxc::libgridxc
  )
 
 install(
