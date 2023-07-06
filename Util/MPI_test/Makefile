@@ -25,17 +25,17 @@ include $(MAIN_OBJDIR)/check_for_build_mk.mk
 INCFLAGS += $(MPI_WRAPPERS_INCFLAGS)
 
 #----------------------------------------------------------------------------
-pi3: $(MPI_INTERFACE) pi3.o handlers.o
-	$(FC) -o pi3 $(LDFLAGS) pi3.o handlers.o $(MPI_INTERFACE)
+pi3: $(MPI_INTERFACE) pi3.o 
+	$(FC) -o pi3 $(LDFLAGS) pi3.o $(MPI_INTERFACE)
 
 #----------------------------------------------------------------------------
-newcomm: $(MPI_INTERFACE) newcomm.o  handlers.o
-	$(FC) -o newcomm $(LDFLAGS) newcomm.o handlers.o $(MPI_INTERFACE)
+newcomm: $(MPI_INTERFACE) newcomm.o 
+	$(FC) -o newcomm $(LDFLAGS) newcomm.o $(MPI_INTERFACE)
 
 #----------------------------------------------------------------------------
 DISTOBJS=class_BlockCyclicDist.o class_PEXSIDist.o class_Dist.o \
          m_matrix.o m_transfers.o m_redist.o m_uuid.o \
-         dielocal.o object_debug.o pxf.o dist.o handlers.o
+         dielocal.o object_debug.o pxf.o dist.o 
 
 dist:   $(MPI_INTERFACE) $(DISTOBJS)
 	$(FC) -o $@ $(LDFLAGS) $(DISTOBJS) $(MPI_INTERFACE)
@@ -68,7 +68,7 @@ pblas_prb: pblas_prb.o $(EXTRA_ROUTINE)
 #
 # Siesta-specific MPI test --- iffy on some systems
 #
-MT_OBJS=precision.o m_mpi_utils.o parallel.o local_sys.o pxf.o handlers.o
+MT_OBJS=precision.o m_mpi_utils.o parallel.o local_sys.o pxf.o
 mpi_test: $(MPI_INTERFACE) $(MT_OBJS) mpi_test.o
 	$(FC) -o mpi_test \
 	       $(LDFLAGS) mpi_test.o $(MT_OBJS) $(MPI_INTERFACE) $(SCALAPACK_LIBS)

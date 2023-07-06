@@ -1,9 +1,12 @@
 SIESTA can be built:
 
 * Using CMake (see file INSTALL.CMake for details)
+  This is now the preferred way.
 
 * Using the traditional makefile-based approach, which has been
-streamlined and made more user-friendly.
+streamlined and made more user-friendly. Alas, its maintenance
+is much more costly than that of the CMake system, and it might
+be deprecated soon.
 
   mkdir _build
   cd _build

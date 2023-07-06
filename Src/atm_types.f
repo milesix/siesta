@@ -1,4 +1,4 @@
-! 
+!
 ! Copyright (C) 1996-2016	The SIESTA group
 !  This file is distributed under the terms of the
 !  GNU General Public License: see COPYING in the top directory
@@ -74,6 +74,7 @@
          integer, dimension(maxn_pjnl)   ::  pjnl_n     ! n of each nl proj
          real(dp), dimension(maxn_pjnl)
      $                                   ::  pjnl_ekb   ! energy of
+                                                        ! each nl proj
 
 !
 !        Aggregate numbers of orbitals and projectors (including 2l+1
@@ -179,7 +180,7 @@
      $                            save, public   ::  species(:)
       type(rad_func), allocatable, target,
      $                            save, public   ::  elec_corr(:)
-      
+
 
       private
 

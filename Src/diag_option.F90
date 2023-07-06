@@ -12,13 +12,13 @@
 module m_diag_option
 
   use precision, only: dp
-  
+
   implicit none
-  
+
 !  public :: read_diag, print_diag
 !  public :: diag_recognizes_neigwanted
 
-  
+
   save
 
   !-----------------------------------------------------------------------------
@@ -40,8 +40,8 @@ module m_diag_option
   !> Number of processors on the columns for the 2D distribution
   integer, protected :: ProcessorY = 1
   !> The block-size
-  integer, protected :: diag_BlockSize = 24
-  
+  integer, protected :: diag_BlockSize = 64
+
   !> Whether we should use the upper or lower part of the Hermitian/symmetric matrices
   character, protected :: UpperLower = 'L'
 
@@ -90,14 +90,15 @@ module m_diag_option
 #ifdef SIESTA__ELPA
   logical :: elpa_use_gpu = .false.
 #endif
-  
+
 contains
 
   subroutine read_diag(Gamma, nspin)
 
     use parallel, only: IONode, Nodes, BlockSize
-    use fdf, only: fdf_get, leqi
+    use fdf, only: fdf_get, fdf_deprecated, leqi
     use m_cite, only: add_citation
+    use sys, only: message
     
     logical, intent(in) :: Gamma
     integer, intent(in) :: nspin
@@ -124,6 +125,16 @@ contains
     else
        Serial = .false.
     end if
+#endif
+
+#ifdef SIESTA__ELPA
+    ! This needs to be called before the blocksize
+    ! definitions, in order to avoid blocksizes that
+    ! are not powers of two.
+
+    call fdf_deprecated( 'Diag.ELPA.UseGPU', 'Diag.ELPA.GPU' )
+    elpa_use_gpu = fdf_get( 'Diag.ELPA.UseGPU', .false.      )
+    elpa_use_gpu = fdf_get( 'Diag.ELPA.GPU'   , elpa_use_gpu )
 #endif
 
     ! Determine whether we should default a 2D block-cyclic
@@ -158,18 +169,26 @@ contains
     ! Retrieve the blocksize
     diag_BlockSize = fdf_get('Diag.BlockSize', BlockSize)
 
+#ifdef SIESTA__ELPA
+    call elpa_gpu_block_size( elpa_use_gpu, diag_BlockSize )
+#endif
+
     ! If there are very few processors, it makes
     ! no sense to make them 2D distributed
     Use2D = (ProcessorY > 1) .and. (Nodes / ProcessorY > 1)
     Use2D = Use2D .or. (BlockSize /= diag_BlockSize)
     Use2D = fdf_get('Diag.Use2D', Use2D)
-    
+
     ! Fall back to original BlockSize when not requesting 2D
     ! distribution (the 1D distribution is not implemented
     ! for different blocksize)
     if ( .not. Use2D ) then
        diag_BlockSize = BlockSize
     end if
+
+#ifdef SIESTA__ELPA
+    call elpa_gpu_block_size( elpa_use_gpu, diag_BlockSize )
+#endif
 
     algo = fdf_get('Diag.UpperLower', 'lower')
     if ( leqi(algo, 'lower') .or. leqi(algo, 'l') ) then
@@ -180,31 +199,31 @@ contains
        call die('diag: Unknown argument to Diag.UpperLower U|L')
     end if
 
-    
+
     ! Decide the default algorithm
     algo = ' '
-    
+
     if ( fdf_get('Diag.DivideAndConquer',.true.) ) then
        algo = 'Divide-and-Conquer'
     end if
-    
+
 #ifdef SIESTA__MRRR
     if ( fdf_get('Diag.MRRR',.false.) ) then
        algo = 'MRRR'
     end if
 #endif
-    
+
 #ifdef SIESTA__ELPA
     if ( fdf_get('Diag.ELPA',.false.) ) then
        algo = 'ELPA'
     end if
 #endif
-    
+
     if ( fdf_get('Diag.NoExpert',.false.) ) then
        algo = 'QR'
     end if
 
-    
+
     ! Assert that it has been set, or default to the
     ! expert driver
     if ( len_trim(algo) == 0 ) then
@@ -214,8 +233,8 @@ contains
 
     ! Get the requested algorithm by using the above default
     algo = fdf_get('Diag.Algorithm', trim(algo))
-    
-    
+
+
     ! Determine the global method
     if ( leqi(algo, 'D&C') .or. leqi(algo, 'divide-and-conquer') .or. &
          leqi(algo, 'DandC') .or. leqi(algo, 'vd') ) then
@@ -251,7 +270,7 @@ contains
        ParallelOverK = .false.
 
 #endif
-       
+
 #ifdef SIESTA__MRRR
     else if ( leqi(algo, 'MRRR') .or. leqi(algo, 'RRR') .or. &
          leqi(algo, 'vr') ) then
@@ -273,7 +292,7 @@ contains
 
     else if ( leqi(algo, 'expert') .or. leqi(algo, 'vx') ) then
        algorithm = Expert
-       
+
     else if ( leqi(algo, 'expert-2stage') .or. leqi(algo, 'expert-2') .or. &
          leqi(algo, 'vx_2stage') ) then
 #ifdef SIESTA__DIAG_2STAGE
@@ -285,7 +304,7 @@ contains
 #else
        algorithm = Expert
 #endif
-       
+
     else if ( leqi(algo, 'noexpert') .or. leqi(algo, 'qr') .or. &
          leqi(algo, 'v') ) then
        algorithm = QR
@@ -306,7 +325,7 @@ contains
     else
 
        write(*,'(a)') 'diag: Queried algorithm: '//trim(algo)
-      
+
 #ifndef SIESTA__MRRR
        write(*,'(a)') 'diag: Algorithm cannot be MRRR '// &
             '(not compiled with -DSIESTA__MRRR)'
@@ -320,10 +339,6 @@ contains
 
     end if
 
-#ifdef SIESTA__ELPA
-    elpa_use_gpu = fdf_get('Diag.ELPA.UseGPU',.false.)
-#endif
-
     ! Retrieve tolerances for the expert drivers
     abstol = fdf_get('Diag.AbsTol', 1.e-16_dp)
     orfac = fdf_get('Diag.OrFac', 1.e-6_dp)
@@ -336,10 +351,10 @@ contains
 
   !> A convenience function to keep track of which solvers in 'diag' are
   !> capable of working with a reduced number of eigenvectors/eigenvalues
-  
+
   function diag_recognizes_neigwanted() result (neig_capable)
     logical :: neig_capable
-    
+
     neig_capable =  ( algorithm == MRRR .or. &
                      algorithm == MRRR_2stage .or. &
                      algorithm == Expert .or.  &
@@ -355,11 +370,11 @@ contains
     !if ( diag_options_printed ) return
 
     write(*,*) ! new-line
-    
+
     select case ( algorithm )
-    case ( DivideConquer ) 
+    case ( DivideConquer )
        write(*,'(a,t53,''= '',a)') 'diag: Algorithm', 'D&C'
-    case ( DivideConquer_2stage ) 
+    case ( DivideConquer_2stage )
        write(*,'(a,t53,''= '',a)') 'diag: Algorithm', 'D&C-2stage'
     case ( MRRR )
        write(*,'(a,t53,''= '',a)') 'diag: Algorithm', 'MRRR'
@@ -398,7 +413,7 @@ contains
     else
        write(*,'(a,t53,''= '',a)') 'diag: Used triangular part', 'Upper'
     end if
-    
+
     write(*,'(a,t53,''= '', e10.3)') 'diag: Absolute tolerance', abstol
     write(*,'(a,t53,''= '', e10.3)') 'diag: Orthogonalization factor', orfac
 
@@ -408,5 +423,32 @@ contains
     !diag_options_printed = .true.
     
   end subroutine print_diag
-  
+
+#ifdef SIESTA__ELPA
+  subroutine elpa_gpu_block_size( using_gpu, matrix_bs )
+    !! When using GPU-enabled elpa, the block size must be a power of 2.
+    implicit none
+    logical, intent(in)    :: using_gpu
+      !! Whether we are using GPU-enabled ELPA.
+    integer, intent(inout) :: matrix_bs
+      !! The blocksize used for diagonalization.
+
+    integer :: powerof2
+
+    if (.not. using_gpu) return
+
+    powerof2 = 2
+    do while ( powerof2 < matrix_bs )
+      powerof2 = powerof2 * 2
+    enddo
+
+    ! If the blocksize is already an appropriate size,
+    ! skip this.
+    if ( powerof2 == matrix_bs ) return
+
+    ! If not, then we take the closest power of two
+    ! that is LOWER than the current blocksize.
+    matrix_bs = powerof2 / 2
+  end subroutine elpa_gpu_block_size
+#endif
 end module m_diag_option

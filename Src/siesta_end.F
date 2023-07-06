@@ -149,7 +149,6 @@
       call memory_report( printNow=.true. , shutdown=.true.)
 
 #ifdef DEBUG_XC
-! Close debug outup file
       call closeDebugOutputFile()
 #endif /* DEBUG_XC */
 

@@ -12,7 +12,7 @@ Please untick this if you want to keep your branch after merge.
 -->
 
 
-\label ~documentation
+/label ~documentation
 
 
 

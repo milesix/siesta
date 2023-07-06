@@ -494,7 +494,7 @@ C Sanity checks on values
             write(6,'(a,1x,a)')
      .        "WRONG species symbol in PS.KBprojectors:",
      .        trim(fdf_bnames(pline,1))
-            call die()
+            call die("stopping program")
           endif
           basp => basis_parameters(isp)
           basp%nkbshells = fdf_bintegers(pline,1)
@@ -599,7 +599,7 @@ C Sanity checks on values
             write(6,'(a,1x,a)')
      .        "WRONG species symbol in PS.KBprojectors:",
      .        trim(fdf_bnames(pline,1))
-            call die()
+            call die("stopping program")
           endif
           basp => basis_parameters(isp)
           basp%nkbshells = fdf_bintegers(pline,1)
@@ -707,7 +707,7 @@ C Sanity checks on values
           write(6,'(a,1x,a)')
      .      "WRONG species symbol in PAO.Basis:",
      .      trim(fdf_bnames(pline,1))
-          call die()
+          call die("stopping program")
         endif
 
         basp => basis_parameters(isp)
@@ -1183,7 +1183,7 @@ c given by the general input PAO.BasisSize, or its default value.
             write(6,'(a,1x,a)')
      .        "WRONG species symbol in PAO.BasisSizes:",
      .        trim(fdf_bnames(pline,1))
-            call die()
+            call die("stopping program")
           else
             basp => basis_parameters(isp)
             basp%basis_size = fdf_bnames(pline,2)
@@ -1358,7 +1358,7 @@ c Reads fdf block. Not necessarily all species have to be given.
           if (isp .eq. 0) then
             write(6,'(a,1x,a)') "WRONG species symbol in PS.lmax:",
      .                           trim(fdf_bnames(pline,1))
-            call die()
+            call die("stopping program")
           else
             basp => basis_parameters(isp)
             basp%lmxkb_requested = fdf_bintegers(pline,1)
@@ -1457,7 +1457,7 @@ c (according to atmass subroutine).
      .    '  TZDP, TZP2, TZ2P',
      .    '  TZTP, TZP3, TZ3P'
 
-        call die()
+        call die("stopping program")
       endif
 
       end subroutine size_name
@@ -1482,7 +1482,7 @@ c (according to atmass subroutine).
      .    'type_name: Incorrect basis-type option specified,',
      .    ' active options are:',
      .    'NODES','SPLIT','SPLITGAUSS','NONODES','FILTERET'
-         call die
+         call die("stopping program")
       endif
 
       end subroutine type_name
@@ -1513,7 +1513,7 @@ c (according to atmass subroutine).
         write(6,'(2a)')
      .    'ERROR Fractional semicore charge for species ',
      .    basp%label
-        call die()
+        call die("stopping program")
       endif
 
       charge_loc = Zval_vps-Zval
@@ -1550,7 +1550,7 @@ c (according to atmass subroutine).
          if (basp%bessel) then
             write(6,'(2a)') basp%label,
      .      ' must be in PAO.Basis (it is a floating Bessel function)'
-            call die()
+            call die("stopping program")
          endif
          !
          ! Set the default max l 

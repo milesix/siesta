@@ -87,7 +87,7 @@ WITH_GRIDXC=1
 #
 # FC_PARALLEL=mpif90
 # FC_SERIAL=gfortran
-# FFLAGS = -O2
+# FFLAGS = -g -O2
 # IPO_FLAG = -ipo  # (keep it separate from FFLAGS)
 # FFLAGS_DEBUG= -g -O0
 #
@@ -470,6 +470,14 @@ $(PSOP): DO_PSOP
 DO_PSOP:
 	@echo "+++ Compiling internal psoplib library"
 	(cd $(MAIN_OBJDIR)/Src/psoplib/src ; $(MAKE) -j 1 FFLAGS="$(FFLAGS:$(IPO_FLAG)=)" module)
+#--------------------
+.PHONY: DO_LIBSYS
+LIBSYS=$(MAIN_OBJDIR)/Src/libsys/libsys.a
+LIBSYS_INCFLAGS=-I$(MAIN_OBJDIR)/Src/libsys
+$(LIBSYS): DO_LIBSYS
+DO_LIBSYS:
+	@echo "+++ Compiling internal libsys library"
+	(cd $(MAIN_OBJDIR)/Src/libsys ; $(MAKE) -j 1 FFLAGS="$(FFLAGS:$(IPO_FLAG)=)" module)
 #--------------------
 .PHONY: DO_MS
 MS=$(MAIN_OBJDIR)/Src/MatrixSwitch/src/libMatrixSwitch.a

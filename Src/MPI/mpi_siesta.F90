@@ -131,7 +131,28 @@ MODULE MPI_SIESTA
     MODULE PROCEDURE myMPI_WAITALL
   END INTERFACE
 
+  interface
+     subroutine timer_mpi_interf( prog, iOpt )
+       character(len=*),intent(in):: prog   ! Name of program to time
+       integer,         intent(in):: iOpt   ! Action option
+     end subroutine timer_mpi_interf
+  end interface
+
+  procedure(timer_mpi_interf), pointer :: timer_mpi => dummy_timer_mpi
+  public :: set_mpi_timer_handler
+  
 CONTAINS
+
+  subroutine set_mpi_timer_handler(func)
+    procedure(timer_mpi_interf) :: func
+    timer_mpi => func
+  end subroutine set_mpi_timer_handler
+    
+  subroutine dummy_timer_mpi( prog, iOpt )
+    character(len=*),intent(in):: prog   ! Name of program to time
+    integer,         intent(in):: iOpt   ! Action option
+    ! do nothing
+  end subroutine dummy_timer_mpi
 
   SUBROUTINE myMPI_BARRIER(COMM, IERROR) 
     INTEGER, INTENT(IN)  :: COMM
@@ -220,3 +241,16 @@ CONTAINS
           
 #endif /* ! NO_MPI_INTERFACES */
 END MODULE MPI_SIESTA
+
+!
+! external version
+!
+SUBROUTINE timer_mpi( name, opt )
+  use mpi_siesta, timer_mpi_module => timer_mpi
+  character(len=*), intent(in):: name
+  integer,          intent(in):: opt
+
+  call timer_mpi_module( name, opt )
+
+END SUBROUTINE timer_mpi
+

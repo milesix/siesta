@@ -16,4 +16,12 @@ target_include_directories(
   ${CMAKE_CURRENT_BINARY_DIR}
 )
 
+target_link_libraries(
+  ${PROJECT_NAME}-libpsop
+  PRIVATE
+  ${PROJECT_NAME}-libsys
+  )
+  
+
+
 
