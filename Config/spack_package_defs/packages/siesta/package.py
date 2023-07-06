@@ -22,7 +22,7 @@ class Siesta(CMakePackage):
     variant('fftw', default=True, description='Use FFTW library (needed only for STM/ol-stm)')
     
 
-    depends_on('cmake@3.14.0:', type='build')
+    depends_on('cmake@3.17.0:', type='build')
 
     # generator = 'Ninja'
     # depends_on('ninja', type='build')
@@ -30,6 +30,7 @@ class Siesta(CMakePackage):
     depends_on('lapack')
     depends_on('xmlf90')
     depends_on('libpsml')
+    depends_on('libfdf@0.5.0:')
     depends_on('mpi', when='+mpi')
     depends_on('scalapack', when='+mpi')
     depends_on('netcdf-fortran', when='+netcdf')

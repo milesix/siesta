@@ -35,6 +35,7 @@ function(Siesta_find_package)
     # the package name:
     # Used for variable lookups {NAME}_FIND_METHODS etc.
     NAME
+    MIN_VERSION
     GIT_REPOSITORY GIT_TAG # for git repo's
     TARGET # name of the created target (defaluts to NAME::NAME)
     SOURCE_DIR)
@@ -185,7 +186,10 @@ function(Siesta_find_package)
 
         mymsg(CHECK_START "CMake package lookup [${_cmake}]")
 
-        find_package("${_cmake}" CONFIG)
+        if (DEFINED _f_MIN_VERSION)
+	   set(_version_string ${_f_MIN_VERSION})
+        endif()
+        find_package("${_cmake}" ${_version_string} CONFIG)
         if( ${_cmake}_FOUND OR TARGET "${_f_TARGET}")
           # signal to outer loop
           set(${_pkg}_FOUND TRUE)
@@ -245,9 +249,13 @@ function(Siesta_find_package)
 
         mymsg(CHECK_START "pkg-config package lookup[${pkg_name}]")
 
+        if (DEFINED _f_MIN_VERSION)
+	   set(_version_string ">=${_f_MIN_VERSION}")
+        endif()
+
         pkg_check_modules(${pkg_name}
           IMPORTED_TARGET GLOBAL
-          ${pkg_config}
+          ${pkg_config}${_version_string}
           )
 
         if( ${pkg_name}_FOUND OR TARGET PkgConfig::${pkg_name})
