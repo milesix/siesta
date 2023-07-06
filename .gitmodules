@@ -1,3 +1,7 @@
+[submodule "External/libfdf"]
+	path = External/libfdf
+	url = https://gitlab.com/siesta-project/libraries/libfdf
+	branch = master
 [submodule "External/xmlf90"]
 	path = External/xmlf90
 	url = https://gitlab.com/siesta-project/libraries/xmlf90.git
@@ -28,7 +32,3 @@
 [submodule "External/DFTD3/test-drive"]
 	path = External/DFTD3/test-drive
 	url = https://github.com/fortran-lang/test-drive
-[submodule "External/libfdf"]
-	path = External/libfdf
-	url = https://gitlab.com/siesta-project/libraries/libfdf
-	branch = master
