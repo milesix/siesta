@@ -4,7 +4,6 @@ set(libsiesta_sources
   Pair.T90
   alloc.F90
   alloc_handlers_m.F90
-  amn.F90
   arw.f
   atm_types.f
   atmfuncs.f
@@ -75,7 +74,6 @@ set(libsiesta_sources
   compute_energies.F90
   compute_max_diff.F90
   compute_norm.F
-  compute_pw_matrix.F90
   conjgr.f
   conjgr_old.f
   constr.f
@@ -114,7 +112,6 @@ set(libsiesta_sources
   diag3kp_velocity.F90
   diagmemory.F
   diagon.F
-  diagonalizeHk.F90
   diagpol.f
   digcel.f
   dipole.F90
@@ -205,12 +202,10 @@ set(libsiesta_sources
   m_char.f90
   m_charge_add.F90
   m_check_walltime.f90
-  m_chempotwann.F90 
   m_chess.F90
   m_cite.F90
   m_convergence.f90
   m_dftu_so.F90
-  m_digest_nnkp.F90
   m_diis.F90
   m_dipol.F90
   m_dminim.F90
@@ -274,13 +269,10 @@ set(libsiesta_sources
   m_mpi_utils.F
   m_ncdf_siesta.F90
   m_new_dm.F90
-  m_noccbands.f
   m_ntm.F90
   m_occ_proj_dftu.F90
   m_options.f90
-  m_orderbands.F
   m_os.F90
-  m_overkkneig.F90
   m_partial_charges.F90
   m_pexsi.F90
   m_pexsi_dos.F90
@@ -289,8 +281,6 @@ set(libsiesta_sources
   m_pivot.F90
   m_pivot_array.f90
   m_pivot_methods.F90
-  m_planewavematrix.F90
-  m_planewavematrixvar.F90
   m_pot_dftu.F90
   m_redist_spmatrix.F90
   m_region.F90
@@ -303,12 +293,10 @@ set(libsiesta_sources
   m_stress.F90
   m_supercell.F90
   m_svd.F90
-  m_switch_local_proj.F90 
   m_target_stress.F90
   m_test_io.F90
   m_timer.F90
   m_transiesta.F90
-  m_trialorbitalclass.f90
   m_trimat_invert.F90
   m_ts_aux.F90
   m_ts_cctype.f90
@@ -353,9 +341,6 @@ set(libsiesta_sources
   m_vee_integrals.F90
   m_wallclock.f90
   m_walltime.f90
-  m_wannier_in_nao.F90
-  m_w90_in_siesta.F90
-  m_writedelk.F
   m_zminim.F90
   madelung.f
   matel_registry.F90
@@ -373,7 +358,6 @@ set(libsiesta_sources
   minvec.f
   mixer.F
   mmio.F
-  mmn.F90
   mneighb.f
   molecularmechanics.F90
   moments.F
@@ -439,7 +423,6 @@ set(libsiesta_sources
   remove_intramol_pressure.f90
   reoptical.F
   reord.f
-  reordpsi.F
   restructSpData2D.F90
   rhofft.F
   rhooda.F
@@ -459,7 +442,6 @@ set(libsiesta_sources
   setup_ordern_indexes.F90
   shaper.f
   show_distribution.f
-  siesta2wannier90.F90
   siesta_analysis.F
   siesta_cml.f90
   siesta_cmlsubs.F90
@@ -504,10 +486,7 @@ set(libsiesta_sources
   vmatsp.F90
   vmb.F
   volcel.f
-  wannier90_types.f
-  w90_in_types.f 
   wavefunctions.F90
-  write_inp_wannier.F90
   write_md_record.F
   write_orb_indx.f90
   write_raw_efs.f90
