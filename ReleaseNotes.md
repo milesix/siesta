@@ -22,6 +22,13 @@ grouped under headings representing past (and upcoming) releases.
 * New "library" interface to Wannier90
 
    (Please Expand)
+   
+* Implement a new unit-handling paradigm in fdf: the units table and associated 'inquire_unit'
+  function are implemented by the client code (Siesta). The libfdf library processes units by
+  calling an appropriate procedure pointer. 
+
+* Use an external libfdf library. This is a new required dependency, which can be satisfied via
+  an installed package, a submodule, or a direct fetch from the libfdf repository.
 
 * Extend the options for pseudopotential handling with ps-file-spec in the ChemicalSpecies block
   and SIESTA_PS_PATH environment variable (Alberto Garcia).

@@ -18,10 +18,10 @@ embedded in SIESTA, it is necessary to build a modified version of its
 source code, wrapping the main wannier90 program as a subroutine (see
 below for more details). These changes allow Wannier90 to receive its
 input directly from SIESTA and to be run several times with different
-input parameters without having to stop the program. They have been
-kept minimalistic, in order not to interfere with the internals of
-Wannier90 and make it easier to keep SIESTA synchronised with the
-evolution of the source code.
+input parameters without having to stop the program. The changes are
+minimal in order not to interfere with the internals of Wannier90 and
+make it easier to keep SIESTA synchronised with the evolution of the
+source code.
 
 
 Using the modified Wannier90 in Siesta (CMake only)
@@ -50,6 +50,13 @@ implemented in the ``wannier90_m`` module.
 
 In addition, a simple CMake building system has been implemented to facilitate
 the automatic compilation of the wrapper.
+
+The wrapper is maintained in a branch of a forked wannier90 repository in GitHub:
+
+  https://github.com/albgar/wannier90/tree/new-patch-3.1.0
+
+rooted in the 3.1.0 version. Patch files are created by simply doing a `git diff`
+from the 3.1.0 version. A copy of the patch file is kept in the `Patches` subdirectoy here.
 
 The ``wannier90_wrapper`` subroutine accepts as arguments:
 
@@ -83,7 +90,7 @@ of the wannier90 run, so that the wrapper can be called repeatedly without error
 
 ### Compilation of the wrapper with CMake
 
-(Note that the standard makefile-based building system with **NOT** work for the wrapper.)
+(Note that the legacy makefile-based building system with **NOT** work for the wrapper.)
 
 Basic incantation (items in brackets are optional, needed for MPI operation and to help finding
 an appropriate Lapack library):

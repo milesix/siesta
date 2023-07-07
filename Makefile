@@ -22,56 +22,57 @@ MAIN_OBJDIR=.
 include $(MAIN_OBJDIR)/arch.make
 include $(MAIN_OBJDIR)/check_for_build_mk.mk
 
-UTILS = Util/Denchar/Src \
+UTILS = Util/Unfolding/Src \
+	Util/Macroave/Src \
         Util/VCA \
-        Util/Eig2DOS \
 	Util/Grid \
 	Util/WFS \
-	Util/HSX \
-	Util/DensityMatrix \
+        Util/Eig2DOS \
 	Util/Bands \
-	Util/Gen-basis \
-	Util/Grimme \
 	Util/Helpers \
 	Util/COOP \
-	Util/Sockets \
-	Util/TS/TBtrans \
-	Util/TS/tscontour \
+	Util/Gen-basis \
+	Util/Grimme \
+        Util/Denchar/Src \
+	Util/DensityMatrix \
+        Util/HSX \
+        Util/TS/TBtrans \
+        Util/TS/PHtrans \
+        Util/TS/tscontour \
 	Util/TS/tshs2tshs \
 	Util/TS/ts2ts \
-	Util/Vibra/Src \
-	Util/Macroave/Src \
 	Util/ON \
+	Util/Optical \
+	Util/Optimizer \
 	Util/STM/ol-stm/Src \
 	Util/STM/simple-stm \
 	Util/SpPivot \
-	Util/Unfolding/Src \
-        Pseudo/converters/psml2psf \
-        Pseudo/vnl-operator \
-        Util/SiestaSubroutine/SimpleTest/Src \
-	Util/SiestaSubroutine/FmixMD/Src \
-	Util/SiestaSubroutine/ProtoNEB/Src \
         Util/Contrib/APostnikov \
         Util/Contour \
 	Util/JobList/Src \
-	Util/Optical \
-	Util/Optimizer \
+	Util/pdosxml \
+	Util/Sockets \
+        Util/Vibra/Src \
 	Util/Projections \
-	Util/pdosxml
+        Util/SiestaSubroutine/SimpleTest/Src \
+	Util/SiestaSubroutine/FmixMD/Src \
+	Util/SiestaSubroutine/ProtoNEB/Src \
+        Pseudo/converters/psml2psf \
+        Pseudo/vnl-operator
 
 .PHONY: utils clean_utils install_utils siesta $(UTILS)
 .PHONY: install_siesta create_install_directory
 
 extlibs: $(EXTLIBS)
 
-siesta: $(EXTLIBS) 
+siesta: $(EXTLIBS) $(LIBSYS) 
 	(cd Src; $(MAKE) siesta )
 
 clean_siesta:
 	(cd Src; $(MAKE) clean)
 #
 utils:  MODE= 
-utils:  $(EXTLIBS) $(UTILS)
+utils:  $(EXTLIBS) $(LIBSYS) $(UTILS)
 
 clean_utils: MODE=clean
 clean_utils: $(UTILS)

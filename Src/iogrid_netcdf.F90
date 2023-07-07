@@ -112,7 +112,7 @@ subroutine set_box_limits(mesh,nsm)
         if (Node == 0) then
            write(6,*) "Nominal npt: ", npt_mesh, " /= assigned npt:", npt_total
         endif
-        call die()
+        call die("stopping program")
      endif
 
 ! JMS: commented out. 2009/02/06

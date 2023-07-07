@@ -2,12 +2,10 @@ set(top_srcdir "${CMAKE_SOURCE_DIR}/Src" )
 
 set(sources
 
-  local_sys.f
   atompla.f
   colinear.f
   denchar.f
   length.f
-  local_die.F
   local_reinit.f
   matvect.f
   neighb.f
@@ -20,7 +18,6 @@ set(sources
   wavofr.f
   wannofr.f
   wrout.f
-  alloc_handlers.f90
 )
 
 list(
@@ -38,6 +35,7 @@ list(
   ${top_srcdir}/files.f
   ${top_srcdir}/parallel.F
   ${top_srcdir}/printmatrix.F
+  ${top_srcdir}/pxf.F90
   ${top_srcdir}/schecomm.F
   ${top_srcdir}/class_Geometry.F90
   ${top_srcdir}/class_Data2D.F90
@@ -55,7 +53,6 @@ list(
   ${top_srcdir}/iodm.F
   ${top_srcdir}/memory_log.F90
   ${top_srcdir}/memory.F
-  ${top_srcdir}/pxf.F90
   ${top_srcdir}/m_fft_gpfa.F
   ${top_srcdir}/radfft.f
   ${top_srcdir}/volcel.f
@@ -80,6 +77,7 @@ list(
   ${top_srcdir}/object_debug.F90
   ${top_srcdir}/class_Pair_Data1D.F90
   ${top_srcdir}/class_Fstack_Pair_Data1D.F90
+  ${top_srcdir}/units.f90
 )
 
 add_executable(denchar "${sources}")
@@ -87,9 +85,10 @@ add_executable(denchar "${sources}")
 target_link_libraries(
   denchar
   PRIVATE
-  fdf
+  libfdf::libfdf
   libpsml::libpsml
   ${PROJECT_NAME}-libncps
+  ${PROJECT_NAME}-libsys
   )
 
 

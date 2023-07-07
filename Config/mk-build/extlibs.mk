@@ -56,6 +56,23 @@ $(CMAKE_BUILD_DIR_libpsml)/libpsml.a: $(CMAKE_BUILD_DIR_libpsml)/Makefile
 libpsml: check_cmake_version
 libpsml: xmlf90 $(CMAKE_BUILD_DIR_libpsml)/libpsml.a
 #-----------------------------------------
+CMAKE_BUILD_DIR_libfdf := $(MAIN_OBJDIR)/__extlib_libfdf
+CMAKE_SOURCE_DIR_libfdf := $(TOPDIR)/External/libfdf
+
+$(CMAKE_BUILD_DIR_libfdf)/Makefile: $(CMAKE_SOURCE_DIR_libfdf)/CMakeLists.txt
+	cmake -S $(<D) -B $(@D) \
+             -DCMAKE_INSTALL_PREFIX=$(EXTLIBS_INSTALL_PREFIX) \
+             -DCMAKE_Fortran_COMPILER=$(FC_SERIAL) \
+             -DCMAKE_INSTALL_LIBDIR=$(LIBPREFIX)
+
+.PHONY: $(CMAKE_BUILD_DIR_libfdf)/libfdf.a  # to allow CMake's make check the build
+$(CMAKE_BUILD_DIR_libfdf)/libfdf.a: $(CMAKE_BUILD_DIR_libfdf)/Makefile
+	cmake --build $(CMAKE_BUILD_DIR_libfdf)
+	cmake --install $(CMAKE_BUILD_DIR_libfdf)
+
+libfdf: check_cmake_version
+libfdf: $(CMAKE_BUILD_DIR_libfdf)/libfdf.a
+#-----------------------------------------
 CMAKE_BUILD_DIR_libgridxc := $(MAIN_OBJDIR)/__extlib_libgridxc
 CMAKE_SOURCE_DIR_libgridxc := $(TOPDIR)/External/libgridxc
 

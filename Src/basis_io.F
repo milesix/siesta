@@ -342,7 +342,7 @@
       integer, intent(in):: status
       if (status .ne. nf90_noerr) then
          print  *, trim(nf90_strerror(status))
-         call die()
+         call die("stopping program")
       endif
       end subroutine check
 
@@ -659,7 +659,7 @@
       integer, intent(in):: status
       if (status .ne. nf90_noerr) then
          print  *, trim(nf90_strerror(status))
-         call die()
+         call die("stopping program")
       endif
       end subroutine check
 

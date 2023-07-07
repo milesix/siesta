@@ -293,6 +293,7 @@
       subroutine siesta_write_energies( iscf, dDmax, dHmax )
       USE siesta_options
       use siesta_cml
+      use precision, only: dp
       use units
       use m_energies 
       use m_spin

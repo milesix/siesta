@@ -23,7 +23,7 @@ c
 c **********************************************************************
 
       use fdf
-      use units, only: Pi
+      use units, only: Pi, Ang, inquire_unit
       use precision, only: dp
 
       implicit none
@@ -123,6 +123,7 @@ c Set up fdf ...
       filein = 'stdin'
       fileout = 'out.fdf'
       call fdf_init(filein,fileout)
+      call fdf_set_unit_handler(inquire_unit)
 c ...
 
 c Defile Name of the system ...
@@ -154,7 +155,7 @@ c ...
       ndof = natoms * 3
 
 c Lattice constant of unit cell...
-      alat = fdf_get('LatticeConstant',0.d0,'Bohr')
+      alat = fdf_get('LatticeConstant',Ang,'Bohr')
       if (alat .eq. 0.d0) then
         write(6,'(a)') 
      . 'ERROR: No valid lattice constant specified.'
@@ -807,22 +808,8 @@ c Write eigenvalues ...
      .                label, kpoint, ek, 0.0d0)
       endif
 C ...
-
-
    33 format(7(f10.4,2x))
 Cc
       stop
-
-      CONTAINS
-
-      subroutine die(str)
-      character(len=*), intent(in), optional:: str
-      if (present(str)) then
-         write(6,"(a)") str
-         write(0,"(a)") str
-      endif
-      STOP
-      end subroutine die
-
 
       end

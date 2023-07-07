@@ -2,10 +2,9 @@
 add_library(mpi_siesta
   # Sources
   mpi_siesta.F90
-  mpi_interfaces.F
+  mpi_interfaces.F90
   mpi__include.f90
   Interfaces.f90
-  timer_mpi.F90
   )
 
 # We need to find "Interfaces.f90", which is generated in the build

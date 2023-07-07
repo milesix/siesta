@@ -30,10 +30,9 @@ FC_DEFAULT:=$(FC)
 FC_SERIAL?=$(FC_DEFAULT)
 FC:=$(FC_SERIAL)         # Make it non-recursive
 
-INCFLAGS:=$(NETCDF_INCFLAGS) $(FDF_INCFLAGS) \
-          $(NCPS_INCFLAGS) $(PSOP_INCFLAGS) $(PSML_INCFLAGS) \
-          $(INCFLAGS)
-SYSOBJ=$(SYS).o
+INCFLAGS += $(NETCDF_INCFLAGS) $(FDF_INCFLAGS) \
+          $(NCPS_INCFLAGS) $(PSOP_INCFLAGS) $(PSML_INCFLAGS)
+INCFLAGS += $(LIBSYS_INCFLAGS)
 
 #
 # Note that machine-specific files are now in top Src directory.
@@ -46,9 +45,9 @@ DEPS_GEN-BASIS=m_io.o io.o alloc.o basis_types.o precision.o  parallel.o \
           pxf.o dot.o  atom_options.o arw.o \
           xml.o m_walltime.o read_xc_info.o  $(SYSOBJ) \
           m_fft_gpfa.o m_cite.o version.o posix_calls.o reclat.o units.o \
-          hamann.o files.o sys.o m_spin.o m_vee_integrals.o
+          hamann.o files.o  m_spin.o m_vee_integrals.o
 
-GEN-BASIS_LOCAL_OBJS=gen-basis.o handlers.o 
+GEN-BASIS_LOCAL_OBJS=gen-basis.o  
 OBJS_GEN-BASIS=$(DEPS_GEN-BASIS) $(GEN-BASIS_LOCAL_OBJS)
 
 DEPS_IONCAT=m_getopts.o basis_types.o precision.o  parallel.o \
@@ -58,28 +57,29 @@ DEPS_IONCAT=m_getopts.o basis_types.o precision.o  parallel.o \
           basis_specs.o periodic_table.o pxf.o \
           atom.o atmfuncs.o spher_harm.o interpolation.o arw.o \
           xml.o m_walltime.o dftu_specs.o m_spin.o m_vee_integrals.o \
-          hamann.o m_cite.o version.o posix_calls.o units.o files.o sys.o $(SYSOBJ)
+          hamann.o m_cite.o version.o posix_calls.o units.o files.o  $(SYSOBJ)
 
-IONCAT_LOCAL_OBJS=ioncat.o handlers.o 
+IONCAT_LOCAL_OBJS=ioncat.o  
 OBJS_IONCAT=$(DEPS_IONCAT) $(IONCAT_LOCAL_OBJS)
 
 #
 XC = $(GRIDXC_LIBS)
 INCFLAGS:= $(INCFLAGS) $(GRIDXC_INCFLAGS)
 
-gen-basis: $(NCPS) $(PSOP) $(FDF_LIBS) $(OBJS_GEN-BASIS) $(COMP_LIBS)
+gen-basis ioncat: $(LIBSYS)
+
+gen-basis: $(NCPS) $(PSOP) $(OBJS_GEN-BASIS) $(COMP_LIBS)
 	$(FC) -o gen-basis \
-	       $(LDFLAGS) $(OBJS_GEN-BASIS) $(FDF_LIBS) $(XC) \
-              $(NCPS) $(PSOP) $(PSML_LIBS) $(XMLF90_LIBS) $(NETCDF_LIBS) $(COMP_LIBS) $(LIBS)
-ioncat:  $(NCPS) $(PSOP) $(FDF_LIBS) $(OBJS_IONCAT) $(COMP_LIBS)
+	       $(LDFLAGS) $(OBJS_GEN-BASIS) $(FDF_LIBS) $(XC) $(NCPS) $(PSOP)\
+               $(PSML_LIBS) $(XMLF90_LIBS) $(NETCDF_LIBS) $(LIBSYS) $(COMP_LIBS) $(LIBS)
+ioncat:  $(NCPS) $(PSOP) $(OBJS_IONCAT) $(COMP_LIBS)
 	$(FC) -o ioncat \
-	       $(LDFLAGS) $(OBJS_IONCAT) $(FDF_LIBS) \
-              $(NCPS) $(PSOP) $(XC) $(PSML_LIBS) $(XMLF90_LIBS) $(NETCDF_LIBS) $(COMP_LIBS) $(LIBS)
+	       $(LDFLAGS) $(OBJS_IONCAT) $(FDF_LIBS) $(NCPS) $(PSOP) $(XC)\
+               $(PSML_LIBS) $(XMLF90_LIBS) $(NETCDF_LIBS) $(LIBSYS) $(COMP_LIBS) $(LIBS)
 clean:
 	@echo "==> Cleaning object, library, and executable files"
 	rm -f gen-basis ioncat *.o  *.a
 	rm -f *.mod
-	rm -f _tmp_deps deps.list  protomake*
 
 PROGS:= gen-basis ioncat
 install: $(PROGS)
@@ -99,37 +99,34 @@ dep:
                 || true
 
 # DO NOT DELETE THIS LINE - used by make depend
-arw.o: alloc.o parallel.o precision.o sys.o
+arw.o: alloc.o parallel.o precision.o 
 atm_types.o: precision.o radial.o
-atmfuncs.o: atm_types.o precision.o radial.o spher_harm.o sys.o
+atmfuncs.o: atm_types.o precision.o radial.o spher_harm.o 
 atom.o: atm_types.o atmparams.o atom_options.o basis_specs.o basis_types.o
 atom.o: hamann.o interpolation.o m_filter.o periodic_table.o precision.o
-atom.o: radial.o sys.o
-atom_options.o: sys.o
+atom.o: radial.o 
 basis_io.o: atm_types.o atmparams.o atom_options.o basis_types.o chemical.o
-basis_io.o: precision.o radial.o sys.o xml.o
+basis_io.o: precision.o radial.o  xml.o
 basis_specs.o: atom_options.o basis_types.o chemical.o periodic_table.o
-basis_specs.o: precision.o sys.o
-basis_types.o: alloc.o atmparams.o precision.o sys.o
-bessph.o: precision.o sys.o
-chemical.o: parallel.o precision.o sys.o
-chkdim.o: sys.o
+basis_specs.o: precision.o 
+basis_types.o: alloc.o atmparams.o precision.o 
+bessph.o: precision.o 
+chemical.o: parallel.o precision.o 
 dftu_specs.o: alloc.o atm_types.o atmparams.o atom.o atom_options.o
 dftu_specs.o: basis_specs.o basis_types.o interpolation.o m_cite.o m_spin.o
-dftu_specs.o: m_vee_integrals.o parallel.o precision.o radial.o sys.o units.o
+dftu_specs.o: m_vee_integrals.o parallel.o precision.o radial.o  units.o
 io.o: m_io.o
-m_filter.o: bessph.o precision.o radfft.o sys.o
-m_io.o: sys.o
+m_filter.o: bessph.o precision.o radfft.o 
 m_spin.o: precision.o
-m_vee_integrals.o: precision.o sys.o
+m_vee_integrals.o: precision.o 
 radfft.o: alloc.o bessph.o m_fft_gpfa.o precision.o
 radial.o: alloc.o interpolation.o precision.o xml.o
-read_xc_info.o: parallel.o precision.o sys.o
-spher_harm.o: alloc.o precision.o sys.o
+read_xc_info.o: parallel.o precision.o 
+spher_harm.o: alloc.o precision.o 
 units.o: precision.o
 xml.o: precision.o
 gen-basis.o: atm_types.o atom.o atom_options.o basis_io.o basis_specs.o
-gen-basis.o: basis_types.o chemical.o dftu_specs.o sys.o
+gen-basis.o: basis_types.o chemical.o dftu_specs.o  units.o
 ioncat.o: atm_types.o atmfuncs.o basis_io.o m_getopts.o precision.o
 aux_proj.o: atom.o
 gpfa_core_dp.o: m_fft_gpfa.o

@@ -144,7 +144,7 @@ C Determine Fermi level
             write (6,'(/a)') 
      .            'Fermid: Bands full, no excitation possible'
           endif
-          call die()
+          call die("stopping program")
           else
 #ifdef DEBUG
           call write_debug( '    POS fermid' )
@@ -157,7 +157,7 @@ C Determine Fermi level
           write(6,*) 'Fermid: Not enough states'
           write(6,*) 'Fermid: qtot,sumq=',qtot,sumq
         endif
-        call die()
+        call die("stopping program")
       endif
       T = max(temp,1.d-6)
       Tinv = 1._dp / T
@@ -339,7 +339,7 @@ C calculated here if ne < maxe
             write(6,*) 'Fermid: ispin,qtot,sumq=',
      .                 ispin,qtot(ispin),sumq(ispin)
           endif
-          call die()
+          call die("stopping program")
         ENDIF
       enddo
       T = max(temp,1.0d-6)

@@ -19,7 +19,7 @@ C **********************************************************************
       use precision, only: dp
       USE FDF, only: block_fdf, fdf_block, fdf_bline
       use fdf, only: fdf_bmatch, fdf_bintegers
-      USE PARSE, only: parsed_line, digest, match
+      USE fdf_parse, only: parsed_line, digest, match
       USE SYS, only: die
 
       IMPLICIT NONE

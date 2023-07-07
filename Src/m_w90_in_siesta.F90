@@ -581,13 +581,13 @@ module m_w90_in_siesta
             j = -1
             allocate(tmp(1))
             ! Query number of elements in the list
-            call fdf_blists(pline, i, j, tmp)
+            call fdf_bilists(pline, i, j, tmp)
             deallocate(tmp)
             ! In case there are no entries, simply skip
             if ( j <= 0 ) cycle
 
             allocate(tmp(j))
-            call fdf_blists(pline, i, j, tmp)
+            call fdf_bilists(pline, i, j, tmp)
             call int_array_extend(orbs, tmp)
             deallocate(tmp)
           end do
