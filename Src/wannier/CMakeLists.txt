@@ -4,6 +4,8 @@ list(
   APPEND libsiesta_sources
   
   "${dir}/amn.F90"
+  "${dir}/broadcast_projections.F"
+  "${dir}/delk.F90"
   "${dir}/m_chempotwann.F90"
   "${dir}/m_wannier_in_nao.F90"
   "${dir}/m_w90_in_siesta.F90"

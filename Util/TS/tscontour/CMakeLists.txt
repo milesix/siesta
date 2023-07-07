@@ -1,4 +1,5 @@
 set(top_srcdir "${CMAKE_SOURCE_DIR}/Src")
+set(wannier_srcdir "${CMAKE_SOURCE_DIR}/Src/wannier")
 
 set(sources
 
@@ -72,7 +73,7 @@ list(
    ${top_srcdir}/m_mpi_utils.F
    ${top_srcdir}/mneighb.f
    ${top_srcdir}/errorf.f
-   ${top_srcdir}/m_trialorbitalclass.f90
+   ${wannier_srcdir}/m_trialorbitalclass.f90
    ${top_srcdir}/matel_registry.F90
    ${top_srcdir}/new_matel.f
    ${top_srcdir}/printmatrix.F

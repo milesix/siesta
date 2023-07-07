@@ -27,7 +27,6 @@ set(libsiesta_sources
   born_charge.F
   broadcast_basis.F
   broadcast_fdf_struct.F90
-  broadcast_projections.F
   broyden_optim.F
   bsc_cellxc.F
   byte_count.F90
@@ -85,7 +84,6 @@ set(libsiesta_sources
   create_Sparsity_Union.F90
   cross.f
   debugmpi.F
-  delk.F90
   denmat.F
   denmatlomem.F
   densematrix.f90
@@ -498,6 +496,8 @@ set(libsiesta_sources
   zmatrix.F
 
 )
+
+add_subdirectory("wannier")
 
 add_library(${PROJECT_NAME}-libsiesta "${libsiesta_sources}")
 # this makes it easier to build using cmake --target libsiesta
