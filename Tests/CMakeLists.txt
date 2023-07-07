@@ -170,5 +170,13 @@ endif()
 
 if(WITH_WANNIER90)
   siesta_test(w90_as_lib)
-  siesta_test(w90-chem-h2)
+
+  if (num_ranks GREATER 2)
+     set(small_test_nprocs 2)
+  else()
+     set(small_test_nprocs ${num_ranks})
+  endif()
+  
+  siesta_test(w90-chem-h2
+              MPI_NPROC ${small_test_nprocs})
 endif()
