@@ -36,11 +36,12 @@ if( WITH_OPENMP )
     message(WARNING "ELPA could not locate elpa_openmp package, resorting to non-threaded version")
     pkg_check_modules(ELPA elpa)
   endif()
-elseif()
+else()
   pkg_check_modules(ELPA elpa)
 endif()
 
 if(NOT ELPA_FOUND)
+  message(CHECK_FAIL "not found")
   return()
 endif()
 
@@ -67,6 +68,8 @@ else()
 endif()
  
 message(STATUS "ELPA Fortran search path to be used: ${ELPA_Fortran_INCLUDE_DIRS}")
+
+message(CHECK_PASS "found")
 
 # Manual adding the library
 add_library(Elpa::elpa INTERFACE IMPORTED)
