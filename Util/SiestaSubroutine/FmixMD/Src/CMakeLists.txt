@@ -1,5 +1,5 @@
 #
-set(top_srcdir "${CMAKE_SOURCE_DIR}/Src")
+set(top_srcdir "${PROJECT_SOURCE_DIR}/Src")
 
 # Driver for mixed (coarse/fine)  MD using pipes
 #

@@ -5,7 +5,7 @@
 #
 # This is a major annoyance.
 #
-set(top_srcdir "${CMAKE_SOURCE_DIR}/Src")
+set(top_srcdir "${PROJECT_SOURCE_DIR}/Src")
 
 add_library(coop_common_objs OBJECT
 
