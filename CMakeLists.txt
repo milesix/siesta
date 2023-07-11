@@ -277,7 +277,8 @@ endif()
 
 if (WITH_PEXSI)
 
- find_package(PEXSI REQUIRED)
+ find_package(CustomPEXSI REQUIRED)
+# find_package(PEXSI REQUIRED)
  enable_language(CXX)
  # Avoid to link everything associated with PEXSI with C++
  set(CMAKE_CXX_LINKER_PREFERENCE_PROPAGATES 0)

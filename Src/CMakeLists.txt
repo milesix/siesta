@@ -557,7 +557,6 @@ target_link_libraries(${PROJECT_NAME}-libsiesta
   ${PROJECT_NAME}-libncps
   ${PROJECT_NAME}-libpsop
   ${PROJECT_NAME}-libms
-<<<<<<< HEAD
   libfdf::libfdf
   libpsml::libpsml
   libgridxc::libgridxc
@@ -567,20 +566,10 @@ target_link_libraries(${PROJECT_NAME}-libsiesta
   $<$<OR:$<BOOL:${WITH_NCDF}>,$<BOOL:${WITH_FLOOK}>>:${PROJECT_NAME}-libfdict>
   $<$<BOOL:${WITH_DFTD3}>:s-dftd3::s-dftd3>
   $<$<BOOL:${WITH_ELPA}>:Elpa::elpa>
-  $<$<BOOL:${WITH_ELPA}>:PEXSI::PEXSI>
+  $<$<BOOL:${WITH_PEXSI}>:PEXSI::PEXSI>
+#  $<$<BOOL:${WITH_PEXSI}>:MPI::MPI_CXX>
   $<$<BOOL:${WITH_MPI}>:SCALAPACK::SCALAPACK>
   # Forced external dependencies
-=======
-  "$<$<BOOL:${WITH_LUA}>:flook::flook>"
-  "$<$<BOOL:${WITH_MPI}>:mpi_siesta>"
-  "$<$<BOOL:${WITH_NETCDF}>:NetCDF::NetCDF_Fortran>"
-  "$<$<BOOL:${WITH_NCDF}>:${PROJECT_NAME}-libncdf>"
-  "$<$<BOOL:${WITH_NCDF}>:${PROJECT_NAME}-libfdict>"
-   $<$<BOOL:${WITH_ELPA}>:Elpa::elpa>
-   $<$<BOOL:${WITH_PEXSI}>:PEXSI::PEXSI>
-  "$<$<BOOL:${WITH_MPI}>:Scalapack::Scalapack>"
-  "$<$<BOOL:${WITH_DFTD3}>:s-dftd3::s-dftd3>"
->>>>>>> 9b2341135 (Modifications to compile native PEXSI interface with 2.0.0 version)
   LAPACK::LAPACK
   $<$<BOOL:${WITH_OPENMP}>:OpenMP::OpenMP_Fortran>
 )
