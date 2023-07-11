@@ -606,6 +606,15 @@ with Siesta which are required for TBtrans.
 See `Config/cmake/Modules/FindCustomElpa.cmake` for details on
 how to link against ELPA.
 
+#### PEXSI (optional, native interface)
+
+Enabled by `-DWITH_PEXSI`.
+
+See the top-level `CMakeLists.txt` and
+`Config/cmake/Modules/FindCustomPEXSI.cmake` for details on how the
+PEXSI discovery is carried out. The variable PEXSI_2_0 can be set to
+"on" to enable discovery of pexsi v2.0. For 2.1 (which uses a new
+scheme with subordinate libraries) nothing extra is needed.
 
 
 #### FFTW

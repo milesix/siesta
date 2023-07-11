@@ -277,13 +277,26 @@ endif()
 
 if (WITH_PEXSI)
 
- find_package(CustomPEXSI REQUIRED)
-# find_package(PEXSI REQUIRED)
- enable_language(CXX)
- # Avoid to link everything associated with PEXSI with C++
- set(CMAKE_CXX_LINKER_PREFERENCE_PROPAGATES 0)
+   # We want to support PEXSI-2.1, which has some issues
+   # with target installation. Hence we provide a "Custom" finder.
+   # If we are dealing with PEXSI-2.0, a proper cmake package is
+   # available
 
-  if (WITH_MPI)
+   if (PEXSI_2_0)
+     find_package(PEXSI CONFIG REQUIRED)
+     enable_language(CXX)
+     # Avoid to link everything associated with PEXSI with C++
+     set(CMAKE_CXX_LINKER_PREFERENCE_PROPAGATES 0)
+   else()
+     find_package(CustomPEXSI REQUIRED)
+     enable_language(CXX)
+   endif()
+
+   # Some of the following settings might apply only to 2.0,
+   # since 2.1 discovery is through library archives and not
+   # through a target that might have some properties set
+
+   if (WITH_MPI)
     if (NOT TARGET MPI::MPI_CXX)
       # Find MPI
       find_package(MPI OPTIONAL_COMPONENTS CXX)
@@ -291,7 +304,7 @@ if (WITH_PEXSI)
         message(FATAL_ERROR "MPI_CXX, needed by PEXSI, could not be found by CMake")
       endif()
     endif()
-  endif()
+   endif()
 
 endif()
 
