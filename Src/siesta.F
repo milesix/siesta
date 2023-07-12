@@ -14,12 +14,11 @@
       use m_siesta_forces
       use m_siesta_tddft
       use m_ts_global_vars, only: onlyS
-      use sys, only: bye
-
+      
       USE m_steps, only: inicoor, fincoor
-      use alloc
       use siesta_options, only: td_elec_dyn
-
+      use siesta_handlers_m, only: siesta_set_handlers
+      
       use parallel, only: SIESTA_worker ! whether part of Siesta's communicator
       use parallel, only: ionode
 #ifdef MPI      
@@ -33,6 +32,7 @@
 
       implicit none
 
+      
       integer :: istep
       logical :: relaxd
 
@@ -55,6 +55,8 @@
 !----------------------------------------------------------------- BEGIN
 !      if (ionode) call memory_snapshot("at start of program")
 
+      call siesta_set_handlers()
+      
       call siesta_init()
 
 #ifdef TRACING_SOLVEONLY

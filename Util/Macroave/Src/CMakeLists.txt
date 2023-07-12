@@ -1,4 +1,4 @@
-set(top_srcdir "${CMAKE_SOURCE_DIR}/Src" )
+set(top_srcdir "${PROJECT_SOURCE_DIR}/Src" )
 
 set(sources
 
@@ -11,7 +11,6 @@ set(sources
   surpla.f
   volcel.f
   hdr_io.f90
-  local_die.f
   dpnint1.f90
 
 )
@@ -26,7 +25,12 @@ list(
 )
 
 add_executable(macroave "${sources}")
+add_executable(permute permute.F)
 
+target_link_libraries(macroave
+                      PRIVATE
+		      ${PROJECT_NAME}-libsys)
+		      
 install(
   TARGETS macroave
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}

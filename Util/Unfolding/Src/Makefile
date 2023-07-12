@@ -55,6 +55,7 @@ what:
 INCFLAGS += $(NETCDF_INCFLAGS) $(FDF_INCFLAGS) \
             $(NCPS_INCFLAGS) $(PSML_INCFLAGS) $(PSOP_INCFLAGS)
 INCFLAGS += $(MPI_WRAPPERS_INCFLAGS)
+INCFLAGS += $(LIBSYS_INCFLAGS)
 
 XC = $(GRIDXC_LIBS)
 INCFLAGS += $(GRIDXC_INCFLAGS)
@@ -78,7 +79,7 @@ SIESTA_OBJS= precision.o m_io.o alloc.o memory_log.o memory.o pxf.o \
              coor.o chkdim.o \
              zmatrix.o m_cell.o  periodic_table.o volcel.o digcel.o \
              arw.o redcel.o broadcast_fdf_struct.o \
-             sys.o parallelsubs.o spatial.o \
+             parallelsubs.o spatial.o \
              domain_decom.o printmatrix.o schecomm.o \
              pspltm1.o mmio.o qsort.o \
              sparse_matrices.o
@@ -107,19 +108,16 @@ DEP_OBJS = $(SIESTA_OBJS) $(TS_OBJS) $(SYSOBJ) $(EXTRA)
 # To separate unfold objects from siesta/transiesta
 UNFOLD_OBJS  = array.o hsx_m.o
 UNFOLD_OBJS += unfold.o 
-
-# Handlers and resolvers of last resort
-UNFOLD_OBJS += handlers.o
-#
+UNFOLD_OBJS += unfold_handlers_m.o
 
 #######################
 
 $(DEP_OBJS): $(COMP_LIBS) 
 
-unfold: $(MPI_INTERFACE) $(COMP_LIBS) $(NCPS) $(PSOP) $(DEP_OBJS) $(UNFOLD_OBJS) 
+unfold: $(MPI_INTERFACE) $(COMP_LIBS) $(NCPS) $(PSOP) $(LIBSYS) $(DEP_OBJS) $(UNFOLD_OBJS) 
 	$(FC) $(FFLAGS) $(LDFLAGS) -o unfold \
               $(DEP_OBJS) $(UNFOLD_OBJS) $(MPI_INTERFACE) \
-              $(XC) $(NCPS) $(PSOP) $(PSML_LIBS) $(XMLF90_LIBS) $(FDF_LIBS) $(COMP_LIBS) $(LIBS)
+              $(XC) $(NCPS) $(PSOP) $(PSML_LIBS) $(XMLF90_LIBS) $(FDF_LIBS) $(LIBSYS) $(COMP_LIBS) $(LIBS)
 
 .PHONY: clean
 clean: 
@@ -143,31 +141,29 @@ dep:
 	@sed -i -e 's/\.T90\.o:/.o:/g' Makefile
 
 # DO NOT DELETE THIS LINE - used by make depend
-arw.o: alloc.o parallel.o precision.o sys.o
+unfold.o: unfold_handlers_m.o
 arw.o: alloc.o parallel.o precision.o sys.o
 atm_types.o: precision.o radial.o
 atm_types.o: precision.o radial.o
-atmfuncs.o: atm_types.o precision.o radial.o spher_harm.o sys.o
+atmfuncs.o: atm_types.o precision.o radial.o spher_harm.o 
 atmfuncs.o: atm_types.o precision.o radial.o spher_harm.o sys.o
 atom.o: atm_types.o atmparams.o atom_options.o basis_specs.o basis_types.o
 atom.o: hamann.o interpolation.o m_filter.o periodic_table.o precision.o
 atom.o: radial.o sys.o
 atom.o: atm_types.o atmparams.o atom_options.o basis_specs.o basis_types.o
 atom.o: hamann.o interpolation.o m_filter.o periodic_table.o precision.o
-atom.o: radial.o sys.o
-atom_options.o: sys.o
+atom.o: radial.o 
 atom_options.o: sys.o
 basis_io.o: atm_types.o atmparams.o atom_options.o basis_types.o chemical.o
-basis_io.o: precision.o radial.o sys.o xml.o
+basis_io.o: precision.o radial.o  xml.o
 basis_io.o: atm_types.o atmparams.o atom_options.o basis_types.o chemical.o
 basis_io.o: precision.o radial.o sys.o xml.o
 basis_specs.o: atom_options.o basis_types.o chemical.o periodic_table.o
 basis_specs.o: precision.o sys.o
 basis_specs.o: atom_options.o basis_types.o chemical.o periodic_table.o
-basis_specs.o: precision.o sys.o
+basis_specs.o: precision.o 
+basis_types.o: alloc.o atmparams.o precision.o 
 basis_types.o: alloc.o atmparams.o precision.o sys.o
-basis_types.o: alloc.o atmparams.o precision.o sys.o
-bessph.o: precision.o sys.o
 bessph.o: precision.o sys.o
 bloch_unfold.o: units.o
 bloch_unfold.o: units.o
@@ -178,8 +174,6 @@ broadcast_basis.o: parallel.o radial.o
 cellsubs.o: precision.o
 cellsubs.o: precision.o
 chemical.o: parallel.o precision.o sys.o
-chemical.o: parallel.o precision.o sys.o
-chkdim.o: sys.o
 chkdim.o: sys.o
 class_Data1D.o: alloc.o
 class_Data2D.o: alloc.o
@@ -202,7 +196,7 @@ class_SpData3D.o: class_OrbitalDistribution.o class_Sparsity.o
 class_Sparsity.o: alloc.o
 class_Sparsity.o: alloc.o
 class_TriMat.o: alloc.o
-coor.o: alloc.o atmfuncs.o parallel.o precision.o siesta_geom.o sys.o units.o
+coor.o: alloc.o atmfuncs.o parallel.o precision.o siesta_geom.o  units.o
 coor.o: zmatrix.o
 coor.o: alloc.o atmfuncs.o parallel.o precision.o siesta_geom.o sys.o units.o
 coor.o: zmatrix.o
@@ -210,16 +204,15 @@ debugmpi.o: parallel.o
 debugmpi.o: parallel.o
 dftu_specs.o: alloc.o atm_types.o atmparams.o atom.o atom_options.o
 dftu_specs.o: basis_specs.o basis_types.o interpolation.o m_cite.o m_spin.o
-dftu_specs.o: m_vee_integrals.o parallel.o precision.o radial.o sys.o units.o
+dftu_specs.o: m_vee_integrals.o parallel.o precision.o radial.o  units.o
 dftu_specs.o: alloc.o atm_types.o atmparams.o atom.o atom_options.o
 dftu_specs.o: basis_specs.o basis_types.o interpolation.o m_cite.o m_spin.o
 dftu_specs.o: m_vee_integrals.o parallel.o precision.o radial.o sys.o units.o
-diag.o: alloc.o diag_option.o parallel.o precision.o sys.o
 diag_option.o: m_cite.o parallel.o precision.o
 diag_option.o: m_cite.o parallel.o precision.o
 diag_option.o: m_cite.o parallel.o precision.o
 domain_decom.o: alloc.o parallel.o precision.o printmatrix.o schecomm.o
-domain_decom.o: sparse_matrices.o sys.o
+domain_decom.o: sparse_matrices.o 
 domain_decom.o: alloc.o parallel.o precision.o printmatrix.o schecomm.o
 domain_decom.o: sparse_matrices.o sys.o
 find_kgrid.o: alloc.o minvec.o parallel.o precision.o units.o
@@ -227,22 +220,17 @@ find_kgrid.o: alloc.o minvec.o parallel.o precision.o units.o
 get_kpoints_scale.o: parallel.o siesta_geom.o units.o
 get_kpoints_scale.o: parallel.o siesta_geom.o units.o
 idiag.o: parallel.o sys.o
-idiag.o: parallel.o sys.o
 io.o: m_io.o
 io.o: m_io.o
 m_cell.o: precision.o siesta_geom.o units.o
 m_cell.o: precision.o siesta_geom.o units.o
 m_filter.o: bessph.o precision.o radfft.o sys.o
-m_filter.o: bessph.o precision.o radfft.o sys.o
 m_io.o: sys.o
-m_io.o: sys.o
-m_mpi_utils.o: precision.o sys.o
 m_mpi_utils.o: precision.o sys.o
 m_spin.o: precision.o
 m_spin.o: precision.o
+m_vee_integrals.o: precision.o 
 m_timer.o: m_io.o m_walltime.o moreParallelSubs.o parallel.o precision.o sys.o
-m_timer.o: m_io.o m_walltime.o moreParallelSubs.o parallel.o precision.o sys.o
-m_vee_integrals.o: precision.o sys.o
 m_vee_integrals.o: precision.o sys.o
 m_wallclock.o: m_walltime.o
 m_wallclock.o: m_walltime.o
@@ -250,11 +238,9 @@ memory.o: memory_log.o
 memory.o: memory_log.o
 memory_log.o: m_io.o parallel.o precision.o
 memory_log.o: m_io.o parallel.o precision.o
-minvec.o: cellsubs.o precision.o sorting.o sys.o
+moreParallelSubs.o: alloc.o m_io.o parallel.o precision.o 
 minvec.o: cellsubs.o precision.o sorting.o sys.o
 moreParallelSubs.o: alloc.o m_io.o parallel.o precision.o sys.o
-moreParallelSubs.o: alloc.o m_io.o parallel.o precision.o sys.o
-parallelsubs.o: domain_decom.o parallel.o precision.o spatial.o sys.o
 parallelsubs.o: domain_decom.o parallel.o precision.o spatial.o sys.o
 printmatrix.o: alloc.o
 printmatrix.o: alloc.o
@@ -262,7 +248,6 @@ radfft.o: alloc.o bessph.o m_fft_gpfa.o precision.o
 radfft.o: alloc.o bessph.o m_fft_gpfa.o precision.o
 radial.o: alloc.o interpolation.o precision.o xml.o
 radial.o: alloc.o interpolation.o precision.o xml.o
-redcel.o: parallel.o precision.o sys.o
 redcel.o: parallel.o precision.o sys.o
 schecomm.o: alloc.o
 schecomm.o: alloc.o
@@ -281,7 +266,6 @@ spatial.o: precision.o
 spher_harm.o: precision.o
 spher_harm.o: precision.o
 timer.o: m_timer.o parallel.o sys.o timer_tree.o
-timer.o: m_timer.o parallel.o sys.o timer_tree.o
 timer_tree.o: m_walltime.o
 timer_tree.o: m_walltime.o
 units.o: precision.o
@@ -289,8 +273,6 @@ units.o: precision.o
 xml.o: precision.o
 xml.o: precision.o
 zmatrix.o: alloc.o m_cell.o parallel.o precision.o siesta_geom.o sys.o units.o
-zmatrix.o: alloc.o m_cell.o parallel.o precision.o siesta_geom.o sys.o units.o
-array.o: precision.o sys.o
 array.o: precision.o sys.o
 unfold.o: alloc.o array.o atmfuncs.o basis_io.o basis_types.o cellsubs.o
 unfold.o: diag_option.o get_kpoints_scale.o hsx_m.o m_io.o m_mpi_utils.o
@@ -299,7 +281,7 @@ unfold.o: siesta_geom.o spher_harm.o sys.o
 unfold.o: alloc.o array.o atmfuncs.o basis_io.o basis_types.o cellsubs.o
 unfold.o: diag_option.o get_kpoints_scale.o hsx_m.o m_io.o m_mpi_utils.o
 unfold.o: m_timer.o memory_log.o parallel.o parallelsubs.o precision.o radfft.o
-unfold.o: siesta_geom.o spher_harm.o sys.o
+unfold.o: siesta_geom.o spher_harm.o 
 aux_proj.o: atom.o
 bloch_unfold_m.o: bloch_unfold.o
 class_ddata1d.o: class_Data1D.o

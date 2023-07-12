@@ -1,10 +1,9 @@
-set(top_srcdir "${CMAKE_SOURCE_DIR}/Src")
+set(top_srcdir "${PROJECT_SOURCE_DIR}/Src")
 
 set(sources
 
-   local_sys.f90
-   handlers.F
    tscontour.F90
+   local_timer.f90
   
 )
 list(
@@ -174,6 +173,7 @@ install(
   libgridxc::libgridxc
   ${PROJECT_NAME}-libncps
   ${PROJECT_NAME}-libpsop
+  ${PROJECT_NAME}-libsys
   $<$<BOOL:${WITH_NETCDF}>:NetCDF::NetCDF_Fortran>
   "$<$<BOOL:${WITH_NCDF}>:${PROJECT_NAME}-libncdf>"
   "$<$<BOOL:${WITH_NCDF}>:${PROJECT_NAME}-libfdict>"

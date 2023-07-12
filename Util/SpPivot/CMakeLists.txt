@@ -1,14 +1,12 @@
 #
-set(top_src_dir "${CMAKE_SOURCE_DIR}/Src")
+set(top_src_dir "${PROJECT_SOURCE_DIR}/Src")
 
 add_executable(pvtsp
 
    ${top_src_dir}/precision.F
    ${top_src_dir}/parallel.F
    ${top_src_dir}/alloc.F90
-   ${top_src_dir}/sys.F
    ${top_src_dir}/m_io.f
-   ${top_src_dir}/pxf.F90
    ${top_src_dir}/reclat.f
    ${top_src_dir}/io.f
    ${top_src_dir}/memory_log.F90
@@ -35,8 +33,10 @@ add_executable(pvtsp
    ${top_src_dir}/m_sparsity_handling.F90
 
    pvtsp.F90
-   handlers.f
+   local_timer.f90
 )
+
+target_link_libraries(pvtsp PRIVATE ${PROJECT_NAME}-libsys)
 
 install(
   TARGETS pvtsp

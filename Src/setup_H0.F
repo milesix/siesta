@@ -127,7 +127,7 @@ C     Add on force field contribution to energy
      &             1,
      &             dummy_dm, dummy_E, dummy_fa, dummy_stress,
      &             H_val,
-     &             matrix_elements_only=.true.) 
+     &             matrix_elements_only=.true.)
 
 !     Non-local-pseudop:  matrix elements only
       H_val => val(H_vkb_1D)

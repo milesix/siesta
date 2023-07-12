@@ -1,9 +1,8 @@
-set(top_srcdir "${CMAKE_SOURCE_DIR}/Src")
-set(grid_srcdir "${CMAKE_SOURCE_DIR}/Util/Grid")
+set(top_srcdir "${PROJECT_SOURCE_DIR}/Src")
+set(grid_srcdir "${PROJECT_SOURCE_DIR}/Util/Grid")
 
 set(sources
 
-  local_sys.f
   fftw3_mymod.f90
   extrapolate.f
   sts.f
@@ -15,7 +14,7 @@ set(sources
   reinitstm.f
   stm.f
   vacpot.f
-  handlers.f
+  local_timer.f90
   
 )
 
@@ -59,7 +58,6 @@ list(
   ${top_srcdir}/iodm.F
   ${top_srcdir}/memory_log.F90
   ${top_srcdir}/memory.F
-  ${top_srcdir}/pxf.F90
   ${top_srcdir}/m_fft_gpfa.F
   ${top_srcdir}/radfft.f
   ${top_srcdir}/volcel.f
@@ -102,6 +100,7 @@ install(
   libfdf::libfdf
   libpsml::libpsml
   ${PROJECT_NAME}-libncps
+  ${PROJECT_NAME}-libsys
   FFTW::Double
  )
 

@@ -1,5 +1,5 @@
 add_library(objs_getopts OBJECT
-            ${CMAKE_SOURCE_DIR}/Src/m_getopts.f90 )
+            ${PROJECT_SOURCE_DIR}/Src/m_getopts.f90 )
 	    
 add_executable(dmfilter dmfilter.f90)
 add_executable(dmbs2dm dmbs2dm.F90 )

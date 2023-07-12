@@ -1,11 +1,10 @@
-set(top_srcdir "${CMAKE_SOURCE_DIR}/Src" )
+set(top_srcdir "${PROJECT_SOURCE_DIR}/Src" )
 
 set(sources
-
   array.F90
   hsx_m.f90
   unfold.F90
-  handlers.f
+  unfold_handlers_m.F90
 )
 
 list(
@@ -14,7 +13,6 @@ list(
 
   ${top_srcdir}/precision.F
   ${top_srcdir}/broadcast_fdf_struct.F90
-  ${top_srcdir}/sys.F
   ${top_srcdir}/m_io.f
   ${top_srcdir}/alloc.F90
   ${top_srcdir}/parallel.F
@@ -102,38 +100,35 @@ list(
 
 add_executable(unfold "${sources}")
 
- target_link_libraries(
-  unfold
+target_link_libraries(unfold
   PRIVATE
-  libfdf::libfdf
-  libgridxc::libgridxc
-  libpsml::libpsml
+  $<$<BOOL:${WITH_NETCDF}>:NetCDF::NetCDF_Fortran>
+  ${PROJECT_NAME}-libsys
   ${PROJECT_NAME}-libncps
   ${PROJECT_NAME}-libpsop
-  "$<$<BOOL:${WITH_MPI}>:mpi_siesta>"
-  "$<$<BOOL:${WITH_NETCDF}>:NetCDF::NetCDF_Fortran>"
- ##  Unfold does not seem to depend on NCDF
- ##  "$<$<BOOL:${WITH_NCDF}>:${PROJECT_NAME}-libncdf>"
- ##  "$<$<BOOL:${WITH_NCDF}>:${PROJECT_NAME}-libfdict>"
+  libfdf::libfdf
+  libpsml::libpsml
+  libgridxc::libgridxc
+  $<$<BOOL:${WITH_MPI}>:mpi_siesta>
   $<$<BOOL:${WITH_ELPA}>:Elpa::elpa>
-  "$<$<BOOL:${WITH_MPI}>:Scalapack::Scalapack>"
+  $<$<BOOL:${WITH_MPI}>:SCALAPACK::SCALAPACK>
   LAPACK::LAPACK
+  $<$<BOOL:${WITH_OPENMP}>:OpenMP::OpenMP_Fortran>
  )
 
-target_compile_definitions(
-  unfold
+#get_target_property(out unfold LINK_LIBRARIES)
+#message(FATAL_ERROR "unfold ${WITH_MPI} ${WITH_ELPA} ${out}")
+target_compile_definitions(unfold
   PRIVATE
-  "$<$<BOOL:${WITH_MPI}>:MPI>"
-  "$<$<BOOL:${HAS_MRRR}>:SIESTA__MRRR>"
-  "$<$<BOOL:${WITH_ELPA}>:SIESTA__ELPA>"
-  "$<$<BOOL:${WITH_NETCDF}>:CDF>"
- ##  Unfold does not seem to depend on NCDF
- ##  "$<$<BOOL:${WITH_NCDF}>:NCDF>"
- ##  "$<$<BOOL:${WITH_NCDF}>:NCDF_4>"
+  $<$<BOOL:${WITH_MPI}>:MPI>
+  $<$<BOOL:${HAS_MRRR}>:SIESTA__MRRR>
+  $<$<BOOL:${HAS_2STAGE}>:SIESTA__DIAG_2STAGE>
+  $<$<BOOL:${WITH_ELPA}>:SIESTA__ELPA>
+  $<$<BOOL:${WITH_NETCDF}>:CDF>
 )
 
 
 install(
   TARGETS unfold
-  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+  RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
   )

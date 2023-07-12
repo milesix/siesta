@@ -7,7 +7,7 @@
 # which the current directory is not in the PATH ('./prog' could work
 # too). Otherwise mpiexec would not find it.
 
-function(setup_test prog)
+function(setup_test_mpi prog)
 
    set(mpiexec_args
           ${MPIEXEC_NUMPROC_FLAG} ${num_ranks}
@@ -22,7 +22,6 @@ endfunction()
 
 add_executable(pi3
   pi3.F
-  handlers.f
   )
 
 target_link_libraries(pi3 PRIVATE mpi_siesta)
@@ -34,32 +33,31 @@ target_link_libraries(pi3 PRIVATE mpi_siesta)
 add_test(NAME pi3_Runs_Singleton COMMAND pi3)
 
 # Normal MPI run with ${num_ranks}
-setup_test(pi3)
+setup_test_mpi(pi3)
 
 #
 add_executable(newcomm
   newcomm.F
-  handlers.f
   )
 
 target_link_libraries(newcomm PRIVATE mpi_siesta)
-setup_test(newcomm)
+setup_test_mpi(newcomm)
 
 #
 add_executable(blacs_prb  blacs_prb.f90 )
 target_link_libraries(blacs_prb
   PRIVATE
-  Scalapack::Scalapack
+  SCALAPACK::SCALAPACK
   MPI::MPI_Fortran
   LAPACK::LAPACK
 )
-setup_test(blacs_prb)
+setup_test_mpi(blacs_prb)
 
 #
   add_executable(pblas_prb  pblas_prb.f90 )
   target_link_libraries(pblas_prb
     PRIVATE
-    Scalapack::Scalapack
+    SCALAPACK::SCALAPACK
     MPI::MPI_Fortran
     LAPACK::LAPACK
   )
@@ -70,7 +68,7 @@ setup_test(blacs_prb)
 # Run the test automatically only if we have enough ranks available.
 #
 if("${num_ranks}" GREATER_EQUAL 4)
-  setup_test(pblas_prb)
+  setup_test_mpi(pblas_prb)
 endif()
 
 

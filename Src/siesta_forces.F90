@@ -354,7 +354,7 @@ contains
              call compute_max_diff(Hold, H, dHmax)
              
           else
-             
+
              call setup_hamiltonian( iscf )
              call compute_max_diff(Hold, H, dHmax)
              

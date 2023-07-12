@@ -690,7 +690,7 @@ C         Check whether any atom info has been read.
                 write (6,'(A,i3)')
      .               'read_Zmatrix: no atoms defined at molecule', m
              endif
-             call die()
+             call die("stopping program")
           endif
 C PB END
 
@@ -702,7 +702,7 @@ C Second atom
                 write(6,'(''read_Zmatrix: molecule nr '',i7,
      .                    ''; atom nr 2'')') m
               endif
-              call die()
+              call die("stopping program")
             endif
           endif
 
@@ -716,7 +716,7 @@ C Third atom
                 write(6,'(''read_Zmatrix: molecule nr '',i7,
      .                    ''; atom nr 3'')') m
               endif
-              call die ()
+              call die("stopping program")
             endif
           endif
 
@@ -729,7 +729,7 @@ C Fourth atom and up -> general case
                 write(6,'(''read_Zmatrix: molecule nr '',i7,
      .                    ''; atom nr '',i7)') m,i-nStart
               endif
-              call die()
+              call die("stopping program")
             endif
             if (iZmat(3*i-1).gt.i-1.or.
      .          iZmat(3*i-1).eq.iZmat(3*i)) then
@@ -738,7 +738,7 @@ C Fourth atom and up -> general case
                 write(6,'(''read_Zmatrix: molecule nr '',i7,
      .                    ''; atom nr '',i7)') m,i-nStart
               endif
-              call die()
+              call die("stopping program")
             endif
             if (iZmat(3*i).gt.i-1.or.
      .          iZmat(3*i).eq.iZmat(3*i-2)) then
@@ -747,7 +747,7 @@ C Fourth atom and up -> general case
                 write(6,'(''read_Zmatrix: molecule nr '',i7,
      .                    ''; atom nr '',i7)') m,i-nStart
               endif
-              call die()
+              call die("stopping program")
             endif
           enddo
 C End looping over molecules          

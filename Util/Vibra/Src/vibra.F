@@ -808,22 +808,8 @@ c Write eigenvalues ...
      .                label, kpoint, ek, 0.0d0)
       endif
 C ...
-
-
    33 format(7(f10.4,2x))
 Cc
       stop
-
-      CONTAINS
-
-      subroutine die(str)
-      character(len=*), intent(in), optional:: str
-      if (present(str)) then
-         write(6,"(a)") str
-         write(0,"(a)") str
-      endif
-      STOP
-      end subroutine die
-
 
       end

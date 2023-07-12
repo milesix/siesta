@@ -1,8 +1,8 @@
-set(top_srcdir "${CMAKE_SOURCE_DIR}/Src" )
+set(top_srcdir "${PROJECT_SOURCE_DIR}/Src" )
 
 set(sources
 
- handlers.F
+ tbt_handlers_m.F90
  m_tbt_contour.F90
  m_tbt_dH.F90
  m_tbt_dSE.F90
@@ -152,7 +152,6 @@ list(
   ${top_srcdir}/runinfo_m.F90
   ${top_srcdir}/siesta_geom.F90
   ${top_srcdir}/sorting.f
-  ${top_srcdir}/sys.F
   ${top_srcdir}/spin_subs.F90
   ${top_srcdir}/timer.F90
   ${top_srcdir}/timer_tree.f90
@@ -161,11 +160,9 @@ list(
   ${top_srcdir}/units.f90
 )
 
+
 add_executable(tbtrans ${sources})
 
-# -- Version information
-
-# 
 configure_file(
   version-info-template.inc
   ${CMAKE_CURRENT_BINARY_DIR}/generated/version-info.inc
@@ -181,35 +178,34 @@ target_include_directories(
 target_compile_definitions(
   tbtrans
   PRIVATE
-
-  TBTRANS   # Note this
-
+  TBTRANS # Notify about TBTRANS
   $<$<BOOL:${WITH_MPI}>:MPI>
-  $<$<BOOL:${HAS_MRRR}>:SIESTA__MRRR>     ## ???
-  $<$<BOOL:${WITH_ELPA}>:SIESTA__ELPA>    ## ???
+  $<$<BOOL:${HAS_MRRR}>:SIESTA__MRRR>
+  $<$<BOOL:${WITH_ELPA}>:SIESTA__ELPA>
   $<$<BOOL:${WITH_NETCDF}>:CDF>
   $<$<BOOL:${WITH_NCDF}>:NCDF>
   $<$<BOOL:${WITH_NCDF}>:NCDF_4>
   $<$<BOOL:${WITH_NCDF_PARALLEL}>:NCDF_PARALLEL>
 )
 
-TARGET_LINK_LIBRARIES(
+target_link_libraries(
   tbtrans
   PRIVATE
-  OpenMP::OpenMP_Fortran
+  $<$<BOOL:${WITH_OPENMP}>:OpenMP::OpenMP_Fortran>
   libfdf::libfdf
   $<$<BOOL:${WITH_MPI}>:mpi_siesta>
   $<$<BOOL:${WITH_NETCDF}>:NetCDF::NetCDF_Fortran>
   $<$<BOOL:${WITH_NCDF}>:${PROJECT_NAME}-libncdf>
   ${PROJECT_NAME}-libfdict     # Even if not using NCDF
-  $<$<BOOL:${WITH_ELPA}>:Elpa::elpa>     # ????
-  $<$<BOOL:${WITH_MPI}>:Scalapack::Scalapack>
+  ${PROJECT_NAME}-libsys
+  $<$<BOOL:${WITH_ELPA}>:Elpa::elpa>
+  $<$<BOOL:${WITH_MPI}>:SCALAPACK::SCALAPACK>
   LAPACK::LAPACK
 )
 
+
 install(
-  TARGETS tbtrans
+  TARGETS tbtrans 
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
   )
 
-     

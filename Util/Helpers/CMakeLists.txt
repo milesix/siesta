@@ -1,5 +1,5 @@
 #
-set(top_src_dir "${CMAKE_SOURCE_DIR}/Src")
+set(top_src_dir "${PROJECT_SOURCE_DIR}/Src")
 
 add_executable(get_chem_labels
    ${top_src_dir}/parallel.F
@@ -15,11 +15,14 @@ add_executable(get_chem_labels
    ${top_src_dir}/pxf.F90
    ${top_src_dir}/units.f90
    get_chem_labels.f90
-   local_sys.f
-   handlers.f
+   local_timer.f90
 )
 
-target_link_libraries(get_chem_labels libfdf::libfdf)
+target_link_libraries(get_chem_labels
+                        PRIVATE
+			${PROJECT_NAME}-libsys
+			libfdf::libfdf
+		     	)
 
 
 install(

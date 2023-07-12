@@ -36,9 +36,9 @@ C
       integer, save :: Node = 0
       integer, save :: Nodes = 1
       integer, save :: PEXSINodes = 1
-      integer, save :: BlockSize  = 24
+      integer, save :: BlockSize  = 64
       integer, save :: ProcessorY = 1
-      
+
       logical, save :: IOnode = .true.
 
       public
@@ -73,7 +73,7 @@ C
       elemental function parcount(Nodes,N)
       integer, intent(in) :: Nodes, N
       integer :: parcount
-      
+
       if ( mod(N,Nodes) == 0 ) then
          parcount = N
       else

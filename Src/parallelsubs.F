@@ -1,4 +1,4 @@
-! 
+!
 ! Copyright (C) 1996-2016	The SIESTA group
 !  This file is distributed under the terms of the
 !  GNU General Public License: see COPYING in the top directory
@@ -18,8 +18,14 @@ C
       use sys,          only : die
       implicit none
 
-      logical, public, save :: pexsi_dist 
+      logical, public, save :: pexsi_dist
       integer, public, save :: pexsi_bs
+
+      integer, private, parameter :: MAX_DEFAULT_BLOCK_SIZE = 64
+        !! Default block size for matrix operations. The routine
+        !! set_blocksizedefault downsizes this appropriately if
+        !! the number of orbitals is lower that the block size
+        !! times the number of CPUs.
 
       contains
 
@@ -74,7 +80,7 @@ C Saved variables
          else
             NorbNode = pexsi_bs
          endif
-         
+
          RETURN
       endif
 
@@ -146,7 +152,7 @@ C
 C  From parallel.h :
 C
 C  integer BlockSize = blocking size for orbital distribution across
-C                      the nodes. Choice of value affects the 
+C                      the nodes. Choice of value affects the
 C                      performance of the Scalapack routines
 C
 C  Output :
@@ -169,8 +175,8 @@ C  Local variables
          else
             lorb = 0
          endif
-         
-      else if (lspatial) then 
+
+      else if (lspatial) then
 C-------------------------
 C  Spatial distribution  -
 C-------------------------
@@ -232,7 +238,7 @@ C
 C  From parallel.h :
 C
 C  integer BlockSize = blocking size for orbital distribution across
-C                      the nodes. Choice of value affects the 
+C                      the nodes. Choice of value affects the
 C                      performance of the Scalapack routines
 C
 C  Output :
@@ -251,9 +257,9 @@ C  Local variables
       if (pexsi_dist) then
          gorb = pexsi_bs*Node + lorb
 
-      else if (lspatial) then 
+      else if (lspatial) then
 C-------------------------
-C  Spatial distribution  - 
+C  Spatial distribution  -
 C-------------------------
         GOrb = nL2G(LOrb,Node+1)
 
@@ -268,7 +274,7 @@ C-------------------------
 
           GOrb = LOrb + llimit - 1
         endif
-      else   
+      else
 C-----------------------------
 C  Blockcyclic distribution  -
 C-----------------------------
@@ -299,7 +305,7 @@ C
 C  From parallel.h :
 C
 C  integer BlockSize = blocking size for orbital distribution across
-C                      the nodes. Choice of value affects the 
+C                      the nodes. Choice of value affects the
 C                      performance of the Scalapack routines
 C
 C  Output :
@@ -313,14 +319,14 @@ C  Local variables
 
       if (pexsi_dist) then
          Node = (Gorb-1)/pexsi_bs
-         ! Check for overflow: if gorb is in the "remainder" set, 
+         ! Check for overflow: if gorb is in the "remainder" set,
          ! the above will be incorrect (e.g. 4 (or even 5) in a {0,1,2,3} set)
          ! (Consider the case norbs=13, pexsi_bs=2, nodes=5)
          if (Node > Nodes-1) Node = Nodes-1
 
-      else if (lspatial) then 
+      else if (lspatial) then
 C-------------------------
-C  Spatial distribution  - 
+C  Spatial distribution  -
 C-------------------------
         Node = nNode(GOrb)
       else if (use_dd) then
@@ -329,7 +335,7 @@ C-------------------------
          endif
         Node = dd_nnode(GOrb)
         !! Node = nNode(GOrb)
-      else   
+      else
 C-----------------------------
 C  Blockcyclic distribution  -
 C-----------------------------
@@ -366,7 +372,7 @@ C  Passed variables
       integer GMesh, Nxyz(3), Node, Nodes
 
 C  Local variables
-      integer 
+      integer
      .  Gy, Gz, Mesh(3)
 
 C  Trap zero mesh case
@@ -403,9 +409,9 @@ C  integer Nodes   = global number of processors
 C
 C  From parallel.h :
 C
-C  integer ProcessorY = second dimension of processor grid - 
+C  integer ProcessorY = second dimension of processor grid -
 C                      must be a factor of the number of processors
-C                      being used. 
+C                      being used.
 C
 C  Output :
 C
@@ -418,7 +424,7 @@ C  Passed variables
       integer Nxyz(3), Node, Nodes, NMeshPN, NxyzL(3)
 
 C  Local variables
-      integer 
+      integer
      .  BlockSizeY, BlockSizeZ, NRemY, NRemZ, Py, Pz,
      .  ProcessorZ
 
@@ -487,7 +493,7 @@ C  Passed variables
       integer GMesh, Nxyz(3), Node, Nodes, LMesh
 
 C  Local variables
-      integer 
+      integer
      .  Mesh(3), MeshL(3), NxyzL(3), Gx, Gy, Gz, NMeshPN
 
 C  Trap zero mesh size case
@@ -518,7 +524,7 @@ C  Find dimensions of local mesh so that we can work out pointer
       call HowManyMeshPerNode(Nxyz, Node, Nodes, NMeshPN, NxyzL)
 
 C  Generate the local mesh pointer based on the local element and blocks
-      LMesh = (MeshL(3)-1)*(Nxyz(1)*NxyzL(2)) + 
+      LMesh = (MeshL(3)-1)*(Nxyz(1)*NxyzL(2)) +
      .        (MeshL(2)-1)*Nxyz(1) + Gx
 
       end  subroutine GlobalToLocalMesh
@@ -539,9 +545,9 @@ C  integer Nodes   = total number of Nodes
 C
 C  From parallel.h :
 C
-C  integer ProcessorY = second dimension of processor grid - 
+C  integer ProcessorY = second dimension of processor grid -
 C                      must be a factor of the number of processors
-C                      being used. 
+C                      being used.
 C
 C  Output :
 C
@@ -552,7 +558,7 @@ C  Passed variables
       integer Mesh(3), Nxyz(3), Node, Nodes
 
 C  Local variables
-      integer 
+      integer
      .  ProcessorZ, PGy, PGz, BlockSizeY, BlockSizeZ,
      .  GSplitY, GSplitZ, NRemY, NRemZ
 
@@ -590,7 +596,7 @@ C  Find processor grid coordinates for this point
       else
         PGz = (Mesh(3) - 1 - GSplitZ)/(BlockSizeZ) + NRemZ + 1
       endif
-      
+
 C  Calculate processor number for this grid point
       Node = (PGy - 1)*ProcessorZ + PGz - 1
 
@@ -616,9 +622,9 @@ C  integer Nodes   = global number of processors
 C
 C  From parallel.h :
 C
-C  integer ProcessorY = second dimension of processor grid - 
+C  integer ProcessorY = second dimension of processor grid -
 C                      must be a factor of the number of processors
-C                      being used. 
+C                      being used.
 C
 C  Output :
 C
@@ -629,7 +635,7 @@ C  Passed variables
       integer Mesh(3), Nxyz(3), Node, Nodes, LMesh(3)
 
 C  Local variables
-      integer 
+      integer
      .  ProcessorZ, Py, Pz, PGy, PGz, BlockSizeY, BlockSizeZ,
      .  GSplitY, GSplitZ, NRemY, NRemZ
 
@@ -672,7 +678,7 @@ C  Find processor grid coordinates for this point
       else
         PGz = (Mesh(3) - 1 - GSplitZ)/(BlockSizeZ) + NRemZ + 1
       endif
-      
+
 C  If this node isn't the local one then set pointer to zero and return
       if (Py.ne.PGy.or.Pz.ne.PGz) then
         LMesh(1) = 0
@@ -832,7 +838,7 @@ C Choose default value as lowest of Nx and Ny
 C
 C Finds a sensible default value for the blocksize default.
 C When the number of orbitals is less than the blocksize
-C typically used then lower the blocksize to ensure that 
+C typically used then lower the blocksize to ensure that
 C some work is done on all nodes.
 C
 C Input :
@@ -859,9 +865,9 @@ C Passed arguments
 C Compare number of orbitals against sensible number
 ! Note that this number could be optimized...
 
-      if (nuotot.gt.24*Nodes) then
-        bs = 24
-      else if (nuotot.lt.Nodes) then
+      if ( nuotot > MAX_DEFAULT_BLOCK_SIZE*Nodes ) then
+        bs = MAX_DEFAULT_BLOCK_SIZE
+      else if (nuotot < Nodes) then
         bs = 1
       else
 
@@ -883,7 +889,7 @@ C Compare number of orbitals against sensible number
                exit
             endif
          enddo
-               
+
       endif
 
       end subroutine set_blocksizedefault

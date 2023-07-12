@@ -23,8 +23,9 @@ FC:=$(FC_SERIAL)         # Make it non-recursive
 
 INCFLAGS+= $(PSML_INCFLAGS) $(NCPS_INCFLAGS)
 INCFLAGS+= $(XMLF90_INCFLAGS) $(GRIDXC_INCFLAGS)
+INCFLAGS+= $(LIBSYS_INCFLAGS)
 #
-OBJS = 	psml2psf.o handlers.o
+OBJS = 	psml2psf.o 
 #
 #
 MOD_OBJS= m_getopts.o
@@ -36,9 +37,9 @@ $(COM_OBJS):
 #
 what:
 	echo "VPATH: " $(VPATH)
-psml2psf:   $(NCPS)  $(ALL_OBJS)
+psml2psf:   $(NCPS)  $(ALL_OBJS) $(LIBSYS)
 	$(FC) $(FFLAGS) $(LDFLAGS) -o psml2psf $(ALL_OBJS) \
-        $(NCPS) $(PSML_LIBS) $(XMLF90_LIBS)
+        $(NCPS) $(PSML_LIBS) $(XMLF90_LIBS) $(LIBSYS)
 #
 psml2psf.o: m_getopts.o 
 #

@@ -3,7 +3,7 @@
 # was needed to avoid ninja complaining about "two paths for the same
 # .mod file"
 #
-set(top_src_dir "${CMAKE_SOURCE_DIR}/Src")
+set(top_src_dir "${PROJECT_SOURCE_DIR}/Src")
 
 # To avoid "multiple rules" in Ninja
 # Maybe turn into global-utility targets
@@ -94,6 +94,7 @@ install(TARGETS cdf_get_cell RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} )
 
 # To avoid "multiple rules" in Ninja
 add_library(aux_fft  ${top_src_dir}/m_fft_gpfa.F)
+target_link_libraries(aux_fft PRIVATE ${PROJECT_NAME}-libsys)
 
 add_executable(cdf_laplacian
    ${top_src_dir}/reclat.f

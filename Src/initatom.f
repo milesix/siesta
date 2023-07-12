@@ -124,7 +124,7 @@
        write(6,'(/a)') 'Reading PAOs and KBs from ascii files...'
        call read_basis_ascii(ns)
        call elec_corr_setup()
-       
+
       else
         ! We generate PAOs and KB projectors
 !       New routines in basis_specs and basis_types.

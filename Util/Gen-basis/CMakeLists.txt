@@ -1,9 +1,8 @@
-set(top_srcdir "${CMAKE_SOURCE_DIR}/Src")
+set(top_srcdir "${PROJECT_SOURCE_DIR}/Src")
 
 set(sources
 
   gen-basis.F
-  handlers.f
   
 )
 list(
@@ -51,7 +50,6 @@ list(
     "${top_srcdir}/read_xc_info.F"
     "${top_srcdir}/siesta_geom.F90"
     "${top_srcdir}/sorting.f"
-    "${top_srcdir}/sys.F"
     "${top_srcdir}/units.f90"
     "${top_srcdir}/xml.f"
      ${top_srcdir}/m_spin.F90
@@ -80,6 +78,7 @@ install(
   libpsml::libpsml
   ${PROJECT_NAME}-libncps
   ${PROJECT_NAME}-libpsop
+  ${PROJECT_NAME}-libsys
   LAPACK::LAPACK
  )
 

@@ -433,7 +433,7 @@
           write(6,'(a,1x,a)')
      .      'WRONG species symbol in DFTU.proj:',
      .      trim(fdf_bnames(pline,1))
-          call die()
+          call die("stopping program")
         endif
 
         basp => basis_parameters(isp)
@@ -896,7 +896,7 @@
         write(6,'(a,i4)')
      .   'dftu_proj_gen: ERROR: Nrmax must be increased to at least',
      .    nrval
-        call die
+        call die("stopping program")
       endif
 
 !     Read the radial logarithmic mesh
@@ -1217,7 +1217,7 @@
      .         l, ' not bound in the atom'
                write(6,'(a)')
      .         'dftu_proj_gen: an rc  radius must be explicitly given'     
-               call die()
+               call die("stopping program")
              endif
 
              if( abs(energy_shift_dftu) .gt. 1.0d-5 ) then

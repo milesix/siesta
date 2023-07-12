@@ -24,10 +24,12 @@ VPATH=$(TOPDIR)/Util/SpPivot:$(TOPDIR)/Src
 include $(MAIN_OBJDIR)/arch.make
 include $(MAIN_OBJDIR)/check_for_build_mk.mk
 
+INCFLAGS += $(LIBSYS_INCFLAGS)
+
 # We force the compilation of the graphviz library
 FPPFLAGS += -DGRAPHVIZ
 
-SIESTA_OBJS  = precision.o parallel.o alloc.o m_io.o sys.o
+SIESTA_OBJS  = precision.o parallel.o alloc.o m_io.o
 SIESTA_OBJS += pxf.o reclat.o io.o memory.o memory_log.o
 
 # Add specific class objects
@@ -43,12 +45,12 @@ SIESTA_OBJS += m_pivot.o m_pivot_methods.o
 SIESTA_OBJS += m_sparse.o m_sparsity_handling.o
 SIESTA_OBJS += m_region.o m_interpolate.o
 
-LOCAL_OBJS= pvtsp.o handlers.o 
+LOCAL_OBJS= pvtsp.o local_timer.o
 
 OBJS = $(SIESTA_OBJS) $(LOCAL_OBJS)
 
-pvtsp: $(OBJS)
-	$(FC) $(FFLAGS) $(LDFLAGS) -o pvtsp $(OBJS) 
+pvtsp: $(OBJS) $(LIBSYS)
+	$(FC) $(FFLAGS) $(LDFLAGS) -o pvtsp $(OBJS) $(LIBSYS)
 
 clean: 
 	@echo "==> Cleaning object, library, and executable files"
@@ -88,7 +90,6 @@ geom_helper.o: intrinsic_missing.o
 io.o: m_io.o
 io_sparse.o: class_OrbitalDistribution.o class_SpData1D.o class_SpData2D.o
 io_sparse.o: class_Sparsity.o precision.o
-m_io.o: sys.o
 m_pivot.o: class_Sparsity.o m_pivot_methods.o m_region.o
 m_pivot_methods.o: class_Sparsity.o m_region.o precision.o
 m_region.o: class_OrbitalDistribution.o class_Sparsity.o geom_helper.o
@@ -103,7 +104,7 @@ m_sparsity_handling.o: intrinsic_missing.o m_interpolate.o m_region.o
 m_sparsity_handling.o: precision.o
 m_ts_io.o: alloc.o class_OrbitalDistribution.o class_SpData1D.o
 m_ts_io.o: class_SpData2D.o class_Sparsity.o geom_helper.o io_sparse.o m_os.o
-m_ts_io.o: m_sparse.o memory_log.o parallel.o precision.o sys.o
+m_ts_io.o: m_sparse.o memory_log.o parallel.o precision.o
 memory.o: memory_log.o
 memory_log.o: m_io.o parallel.o precision.o
 pvtsp.o: class_OrbitalDistribution.o class_Sparsity.o create_Sparsity_SC.o

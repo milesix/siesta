@@ -1,5 +1,5 @@
 #
-set(top_srcdir "${CMAKE_SOURCE_DIR}/Src")
+set(top_srcdir "${PROJECT_SOURCE_DIR}/Src")
 
 if (WITH_MPI)
 #
@@ -7,7 +7,6 @@ if (WITH_MPI)
 #
 add_executable(protoNEB
     protoNEB.F90
-    handlers.f
  
    ${top_srcdir}/reinit_m.F90
    ${top_srcdir}/siesta_cmlsubs.F90
