@@ -13,8 +13,20 @@ include(FindPackageHandleStandardArgs)
 # ... but we provide extra hooks for other places
 # for the subordinate libraries
 #
+# WARNING: Be sure to check that some things
+# are not picked up from other places, such as an ELSI installation...
+# The following deactivates searching in the default places
+
+set(avoided_heuristics
+    NO_CMAKE_PATH
+    NO_DEFAULT_PATH
+    NO_CMAKE_ENVIRONMENT_PATH
+    NO_SYSTEM_ENVIRONMENT_PATH
+    NO_CMAKE_SYSTEM_PATH
+    )
 
 find_library(PEXSI_LIBRARIES
+  ${avoided_heuristics}
   NAMES pexsi
   PATH_SUFFIXES lib
   HINTS
@@ -22,6 +34,7 @@ find_library(PEXSI_LIBRARIES
   DOC "PEXSI libraries list")
 
 find_library(PARMETIS_LIBRARIES
+  ${avoided_heuristics}
   NAMES parmetis
   PATH_SUFFIXES lib
   HINTS
@@ -30,6 +43,7 @@ find_library(PARMETIS_LIBRARIES
   DOC "Parmetis libraries list")
 
 find_library(METIS_LIBRARIES
+  ${avoided_heuristics}
   NAMES metis
   PATH_SUFFIXES lib
   HINTS
@@ -38,6 +52,7 @@ find_library(METIS_LIBRARIES
   DOC "Metis libraries list")
 
 find_library(SUPERLU_DIST_LIBRARIES
+  ${avoided_heuristics}
   NAMES superlu_dist
   PATH_SUFFIXES lib
   HINTS
@@ -46,6 +61,7 @@ find_library(SUPERLU_DIST_LIBRARIES
   DOC "SuperLU_dist libraries list")
 
 find_path(PEXSI_INCLUDE_DIR
+  ${avoided_heuristics}
   NAMES f_ppexsi_interface.mod
   PATH_SUFFIXES include
   HINTS
@@ -89,10 +105,6 @@ if(CustomPEXSI_FOUND AND NOT TARGET PEXSI::PEXSI)
   
   add_library(PEXSI::PEXSI INTERFACE IMPORTED)
 
-  # I need to add by hand "-lstdc++"
-  # This is non-optimal, since other platforms might have a different
-  # name for the C++ library
-
   target_link_libraries(PEXSI::PEXSI
                           INTERFACE
                           pexsi
@@ -105,7 +117,7 @@ if(CustomPEXSI_FOUND AND NOT TARGET PEXSI::PEXSI)
                         INTERFACE_INCLUDE_DIRECTORIES "${PEXSI_INCLUDE_DIR}")
 
   # This does not seem to be needed, but YMMV
-  #  target_link_libraries(PEXSI::PEXSI INTERFACE MPI::MPI_CXX)
+  target_link_libraries(PEXSI::PEXSI INTERFACE MPI::MPI_CXX)
   
 endif()
 
