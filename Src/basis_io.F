@@ -77,7 +77,6 @@
       character(len=128) :: filename
       character(len=128) :: dummy
 
-      call read_chemical_types()
       nspecies = number_of_species()
       ns = nspecies
 
@@ -356,7 +355,6 @@
 
       integer is
 
-      call read_chemical_types()
       nspecies = number_of_species()
       ns = nspecies
 
