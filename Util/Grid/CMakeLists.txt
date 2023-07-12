@@ -3,7 +3,7 @@
 # was needed to avoid ninja complaining about "two paths for the same
 # .mod file"
 #
-set(top_src_dir "${CMAKE_SOURCE_DIR}/Src")
+set(top_src_dir "${PROJECT_SOURCE_DIR}/Src")
 
 # To avoid "multiple rules" in Ninja
 # Maybe turn into global-utility targets

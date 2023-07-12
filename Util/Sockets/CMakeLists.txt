@@ -1,5 +1,5 @@
 #
-set(top_src_dir "${CMAKE_SOURCE_DIR}/Src")
+set(top_src_dir "${PROJECT_SOURCE_DIR}/Src")
 
 add_library(sockets_objs OBJECT
    ${top_src_dir}/fsockets.f90
