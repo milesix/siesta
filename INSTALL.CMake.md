@@ -608,13 +608,19 @@ how to link against ELPA.
 
 #### PEXSI (optional, native interface)
 
-Enabled by `-DWITH_PEXSI`.
+Enabled by `-DWITH_PEXSI`. MPI support is required.
 
 See the top-level `CMakeLists.txt` and
 `Config/cmake/Modules/FindCustomPEXSI.cmake` for details on how the
-PEXSI discovery is carried out. The variable PEXSI_2_0 can be set to
-"on" to enable discovery of pexsi v2.0. For 2.1 (which uses a new
-scheme with subordinate libraries) nothing extra is needed.
+PEXSI discovery is carried out:
+
+- The variable PEXSI_2_0 can be set to "on" to enable discovery of PEXSI
+v2.0. In this case, CMAKE_PREFIX_PATH must include the path to the
+PEXSI CMake config package.
+
+- For (pre-release) 2.1 (which uses a new scheme with subordinate
+libraries), the environment variable PEXSI_ROOT must point to the
+PEXSI installation directory.
 
 
 #### FFTW
