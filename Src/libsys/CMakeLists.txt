@@ -4,7 +4,7 @@ add_library(
   ${PROJECT_NAME}-libsys
    
   sys.F90
-  external_entries.f90
+  external_entries.F90
   )
 
 target_include_directories(
