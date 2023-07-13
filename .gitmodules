@@ -1,19 +1,15 @@
 [submodule "External/libfdf"]
 	path = External/libfdf
-	url = https://gitlab.com/siesta-project/libraries/libfdf
-	branch = master
+	url = https://gitlab.com/siesta-project/libraries/libfdf.git
 [submodule "External/xmlf90"]
 	path = External/xmlf90
 	url = https://gitlab.com/siesta-project/libraries/xmlf90.git
-	branch = cmake
 [submodule "External/libpsml"]
 	path = External/libpsml
 	url = https://gitlab.com/siesta-project/libraries/libpsml.git
-	branch = cmake
 [submodule "External/libgridxc"]
 	path = External/libgridxc
 	url = https://gitlab.com/siesta-project/libraries/libgridxc.git
-	branch = cmake-master
 [submodule "External/Lua-Engine/flook"]
 	path = External/Lua-Engine/flook
 	url = https://github.com/ElectronicStructureLibrary/flook.git
@@ -22,13 +18,13 @@
 	url = https://github.com/dftd3/simple-dftd3.git
 [submodule "External/DFTD3/mctc-lib"]
 	path = External/DFTD3/mctc-lib
-	url = https://github.com/grimme-lab/mctc-lib
+	url = https://github.com/grimme-lab/mctc-lib.git
 [submodule "External/DFTD3/mstore"]
 	path = External/DFTD3/mstore
-	url = https://github.com/grimme-lab/mstore
+	url = https://github.com/grimme-lab/mstore.git
 [submodule "External/DFTD3/toml-f"]
 	path = External/DFTD3/toml-f
-	url = https://github.com/toml-f/toml-f
+	url = https://github.com/toml-f/toml-f.git
 [submodule "External/DFTD3/test-drive"]
 	path = External/DFTD3/test-drive
-	url = https://github.com/fortran-lang/test-drive
+	url = https://github.com/fortran-lang/test-drive.git
