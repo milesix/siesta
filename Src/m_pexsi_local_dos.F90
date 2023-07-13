@@ -83,7 +83,7 @@
   use f_ppexsi_interface, only: f_ppexsi_plan_finalize
   use f_ppexsi_interface, only: f_ppexsi_plan_initialize
   use f_ppexsi_interface, only: f_ppexsi_selinv_complex_symmetric_matrix
-  use f_ppexsi_interface, only: f_ppexsi_load_real_symmetric_hs_matrix
+  use f_ppexsi_interface, only: f_ppexsi_load_real_hs_matrix
   use f_ppexsi_interface, only: f_ppexsi_set_default_options
   use f_ppexsi_interface, &
         only: f_ppexsi_symbolic_factorize_complex_symmetric_matrix
@@ -332,7 +332,7 @@
         info) 
   
   call check_info(info,"plan_initialize in LDOS")
-  call f_ppexsi_load_real_symmetric_hs_matrix(&
+  call f_ppexsi_load_real_hs_matrix(&
         plan,&
         options,&
         nrows,&
@@ -346,7 +346,7 @@
         SnzvalLocal,&
         info) 
   
-  call check_info(info,"load_real_sym_hs_matrix in LDOS")
+  call check_info(info,"load_real_hs_matrix in LDOS")
   
     call f_ppexsi_symbolic_factorize_complex_symmetric_matrix(&
          plan, &
@@ -379,14 +379,24 @@
         AnzvalLocal(loc+1) =  - broadening*Snzvallocal(i)
         loc = loc + 2
      enddo
-  
-     call f_ppexsi_selinv_complex_symmetric_matrix(&
+
+     block
+       ! Avoid complaints from compilers
+       use iso_c_binding, only: c_loc, c_f_pointer
+       complex(dp), pointer :: zval(:)
+       complex(dp), pointer :: invzval(:)
+
+       call c_f_pointer(c_loc(AnzvalLocal), zval, [nnzLocal])
+       call c_f_pointer(c_loc(AinvnzvalLocal), invzval, [nnzLocal])
+       
+       call f_ppexsi_selinv_complex_symmetric_matrix(&
           plan,&
           options,&
-          AnzvalLocal,&
-          AinvnzvalLocal,&
+          zval,   &           ! was: AnzvalLocal,&
+          invzval, &          ! was: AinvnzvalLocal,&
           info) 
-  
+     end block
+     
      call check_info(info,"selinv complex matrix in LDOS")
   
      ! Get DMnzvalLocal as 1/pi * Imag(Ainv...)

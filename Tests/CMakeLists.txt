@@ -157,6 +157,11 @@ siesta_test(h2o)
 #siesta_test(ch4)
 siesta_test(wannier
   EXTRA_FILES wannier.nnkp wannier.win)
+  
+if (WITH_PEXSI)
+  siesta_test(si-qdot-pexsi-native
+    EXTRA_FILES coords.Si987H372.fdf)
+endif()
 
 siesta_test(si_pdos_kgrid)
 if(WITH_LUA)

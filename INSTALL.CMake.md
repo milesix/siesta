@@ -614,6 +614,23 @@ The ELSI library interface must be pre-compiled, and
 it will be found if `ELSI_ROOT` is in `CMAKE_PREFIX_PATH`.
 
 
+#### PEXSI (optional, native interface)
+
+Enabled by `-DWITH_PEXSI`. MPI support is required.
+
+See the top-level `CMakeLists.txt` and
+`Config/cmake/Modules/FindCustomPEXSI.cmake` for details on how the
+PEXSI discovery is carried out:
+
+- The variable PEXSI_2_0 can be set to "on" to enable discovery of PEXSI
+v2.0. In this case, CMAKE_PREFIX_PATH must include the path to the
+PEXSI CMake config package.
+
+- For (pre-release) 2.1 (which uses a new scheme with subordinate
+libraries), the environment variable PEXSI_ROOT must point to the
+PEXSI installation directory.
+
+
 #### FFTW
 
 The FFTW library is only used in the Util/STM/ol-stm utility.

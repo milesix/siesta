@@ -34,6 +34,7 @@ option(WITH_GRID_SP "Use single-precision for grid magnitudes" FALSE)
 
 option(BUILD_DOCS "Create Doxygen-based documentation (WIP)" FALSE)
 option(WITH_ELSI "Use the ELSI library interface" FALSE)
+option(WITH_PEXSI "Use the PEXSI library (direct interface)" FALSE)
 #--------------------------------------
 
 
@@ -273,9 +274,49 @@ if( WITH_MPI )
   # no need to search for ELPA in non-mpi environments
   find_package(CustomElpa)
   option(WITH_ELPA "Include ELPA support" ${ELPA_FOUND})
-  message(NOTICE "Need to pick up ELPA_LIBDIR from the ELPA search!")
   message(STATUS "ELPA lib directory (for ELSI linking): ${ELPA_LIBDIR}")
 endif()
+
+if (WITH_PEXSI)
+
+   if (NOT WITH_MPI)
+      message(FATAL_ERROR "PEXSI support is only available with MPI")
+   endif()
+
+   enable_language(CXX)
+   #
+   # Avoid to link everything associated with PEXSI with C++
+   # (i.e., the linker will be the Fortran compiler, and
+   # the runtime C++ library will be added to the link statement)
+   #
+   set(CMAKE_CXX_LINKER_PREFERENCE_PROPAGATES 0)
+
+   # We want to support pre-release PEXSI-2.1, which has some issues
+   # with target installation. Hence we provide a "Custom" finder.
+   # If we are dealing with PEXSI-2.0, a proper cmake package is
+   # available
+
+   if (PEXSI_2_0)
+     find_package(PEXSI CONFIG REQUIRED)
+   else()
+     find_package(CustomPEXSI REQUIRED)
+   endif()
+
+   # This might apply only to 2.0, since 2.1 discovery is through
+   # library archives and not through a target that might have some
+   # properties set
+
+   if (WITH_MPI)
+    if (NOT TARGET MPI::MPI_CXX)
+      # Find MPI
+      find_package(MPI OPTIONAL_COMPONENTS CXX)
+      if( NOT MPI_CXX_FOUND )
+        message(FATAL_ERROR "MPI_CXX, needed by PEXSI, could not be found by CMake")
+      endif()
+    endif()
+   endif()
+   
+endif(WITH_PEXSI)
 
 if (WITH_ELSI AND NOT TARGET elsi::elsi)
 

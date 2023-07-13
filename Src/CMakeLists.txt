@@ -135,7 +135,6 @@ set(libsiesta_sources
   extrae_module.f90
   extrapolateSpData2D.F90
   extrapolon.f
-  f_ppexsi_interface.F90
   fdf_extra.F90
   fermid.F
   fft.F
@@ -533,6 +532,7 @@ target_compile_definitions(${PROJECT_NAME}-libsiesta
   $<$<BOOL:${WITH_GRID_SP}>:GRID_SP>
   $<$<BOOL:${WITH_ELPA}>:SIESTA__ELPA>
   $<$<BOOL:${WITH_ELSI}>:SIESTA__ELSI>
+  $<$<BOOL:${WITH_PEXSI}>:SIESTA__PEXSI>
   $<$<BOOL:${WITH_NETCDF}>:CDF>
   $<$<BOOL:${WITH_NCDF}>:NCDF>
   $<$<BOOL:${WITH_NCDF}>:NCDF_4>
@@ -570,6 +570,8 @@ target_link_libraries(${PROJECT_NAME}-libsiesta
   $<$<BOOL:${WITH_DFTD3}>:s-dftd3::s-dftd3>
   $<$<BOOL:${WITH_ELPA}>:Elpa::elpa>
   $<$<BOOL:${WITH_ELSI}>:elsi::elsi>
+  $<$<BOOL:${WITH_PEXSI}>:PEXSI::PEXSI>
+#  $<$<BOOL:${WITH_PEXSI}>:MPI::MPI_CXX>
   $<$<BOOL:${WITH_MPI}>:SCALAPACK::SCALAPACK>
   # Forced external dependencies
   LAPACK::LAPACK
