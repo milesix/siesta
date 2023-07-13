@@ -606,13 +606,16 @@ with Siesta which are required for TBtrans.
 See `Config/cmake/Modules/FindCustomElpa.cmake` for details on
 how to link against ELPA. (This refers to the native interface to
 ELPA in Siesta. ELPA is also offered by ELSI, both as built-in and
-as 'external'. Support for the latter is being worked on.)
+as 'external')
 
 #### ELSI (recommended)
 
 The ELSI library interface must be pre-compiled, and
 it will be found if `ELSI_ROOT` is in `CMAKE_PREFIX_PATH`.
 
+NOTE: It is possible to use the native ELPA interface
+at the same time as the ELSI library, as long as the latter
+has been compiled with the same ELPA library as "external".
 
 #### PEXSI (optional, native interface)
 
@@ -630,6 +633,9 @@ PEXSI CMake config package.
 libraries), the environment variable PEXSI_ROOT must point to the
 PEXSI installation directory.
 
+NOTE: It is not currently possible to use the native PEXSI interface
+at the same time as the ELSI library, unless the latter has been
+compiled without PEXSI support. 
 
 #### FFTW
 
