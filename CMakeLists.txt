@@ -278,6 +278,11 @@ if( WITH_MPI )
 endif()
 
 if (WITH_ELSI AND NOT TARGET elsi::elsi)
+
+  if (NOT WITH_MPI)
+     message(FATAL_ERROR "The ELSI interface needs  MPI support")
+  endif()
+  
   set(ELSI_MIN_VERSION "2.5.0")
   find_package(elsi ${ELSI_MIN_VERSION} REQUIRED)
   message(STATUS "Found ELSI library (CMake package) Version: ${elsi_VERSION}")
