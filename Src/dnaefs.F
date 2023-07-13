@@ -68,7 +68,7 @@ C Internal variables ......................................................
       parameter ( r2min = 1.d-15 )
 
       integer  :: div, mod, first, last
-
+      
 C ......................
       div   = nua / Nodes
       mod   = nua - div*Nodes
@@ -110,6 +110,7 @@ C Find neighbour atoms
         enddo
       enddo
       call reset_neighbour_arrays( )
+
 #ifdef MPI
       if (Nodes.gt.1) then
         call globalize_sum( DEna, MPI_Comm_World )

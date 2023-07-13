@@ -42,6 +42,8 @@ grouped under headings representing past (and upcoming) releases.
 
 * Bring the stand-alone PEXSI interface up to date with versions 2.X of the PEXSI library.
 
+* Revert the changes that allowed the change in 'nsm' in different distributions
+
 * Implement a new unit-handling paradigm in fdf: the units table and associated 'inquire_unit'
   function are implemented by the client code (Siesta). The libfdf library processes units by
   calling an appropriate procedure pointer. 

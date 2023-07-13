@@ -274,6 +274,7 @@ CONTAINS
            g1,g2,bridge_comm)
    enddo
    nullify(cdata1,cdata2)
+   
 !   if (myid == 0) print *, "Done transfers."
  
    deallocate(commsnnz)

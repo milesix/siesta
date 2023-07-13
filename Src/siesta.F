@@ -26,9 +26,6 @@
 #endif      
       use m_mpi_utils, only: broadcast
 
-#ifdef TRACING_SOLVEONLY
-      use extrae_module
-#endif
 
       implicit none
 
@@ -58,10 +55,6 @@
       call siesta_set_handlers()
       
       call siesta_init()
-
-#ifdef TRACING_SOLVEONLY
-      call extrae_shutdown
-#endif      
 
 #ifdef SIESTA__PEXSI
       if (ionode) call memory_snapshot("after siesta_init")
@@ -116,6 +109,10 @@ C     End of coordinate-relaxation loop
       call siesta_end()
 #ifdef SIESTA__PEXSI
       if (ionode) call memory_snapshot("at end of program")
+#endif
+
+#ifdef _TRACE_
+      call Extrae_fini( )
 #endif
 
 !-----------------------------------------------------------------------END

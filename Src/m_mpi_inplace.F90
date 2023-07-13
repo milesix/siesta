@@ -15,7 +15,7 @@
 !> will not be distinguishable from that in m_mpi_utils.
 
 module m_mpi_inplace
-      use precision, only: dp, sp
+      use precision, only: dp, sp, i8b
 #ifdef MPI
       use mpi
       implicit none
@@ -27,6 +27,7 @@ module m_mpi_inplace
       private
       
       interface globalize_sum
+       module procedure globalize_sum_inplace_i8b
        module procedure globalize_sum_inplace_dp
        module procedure globalize_sum_inplace_v_dp
        module procedure globalize_sum_inplace_vv_dp
@@ -35,6 +36,20 @@ module m_mpi_inplace
       CONTAINS
 
 !--------------------------------------------------------------
+!     In-place versions of 'i8b' interfaces
+      
+      subroutine Globalize_sum_inplace_i8b(var,comm)
+      integer(i8b), intent(inout) :: var
+      integer, intent(in)     :: comm
+
+#ifdef MPI
+      call MPI_AllReduce(MPI_IN_PLACE,var,1,MPI_integer8, &
+                         MPI_sum,comm,MPIerror)
+#else
+      ! do nothing
+#endif
+    end subroutine Globalize_sum_inplace_i8b
+    
 !     In-place versions of 'dp' interfaces
       
       subroutine Globalize_sum_inplace_dp(var,comm)
