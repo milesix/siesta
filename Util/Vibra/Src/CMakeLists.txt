@@ -7,7 +7,7 @@
 # must be the top one. Here only external 'die' et al are bundled in
 # the 'sys_externals.f90' file.
 #
-set(top_src_dir "${CMAKE_SOURCE_DIR}/Src")
+set(top_src_dir "${PROJECT_SOURCE_DIR}/Src")
 
 add_library(vibra_top_objs OBJECT
    ${top_src_dir}/io.f

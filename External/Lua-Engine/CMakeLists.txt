@@ -124,11 +124,11 @@ if(NOT "$ENV{FLOOK_PACKAGE}" STREQUAL "")
   set(url "$ENV{FLOOK_PACKAGE}")
   message(STATUS "flook: will compile on-the-fly from sources: $ENV{FLOOK_PACKAGE}")
 
-elseif(EXISTS "${CMAKE_SOURCE_DIR}/External/Lua-Engine/flook/LICENSE")
+elseif(EXISTS "${PROJECT_SOURCE_DIR}/External/Lua-Engine/flook/LICENSE")
   
   # The sub-module exists, or at least the LICENSE file does!
 
-  set(url "${CMAKE_SOURCE_DIR}/External/Lua-Engine/flook")
+  set(url "${PROJECT_SOURCE_DIR}/External/Lua-Engine/flook")
   set(FLOOK_SOURCE_DIR "${url}" PARENT_SCOPE)
   message(STATUS "flook: will compile on-the-fly from submodule in External/Lua-Engine/flook")
 

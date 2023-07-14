@@ -1,4 +1,4 @@
-file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/install_tests")
+file(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/install_tests")
 
 #
 #  Function to set up tests

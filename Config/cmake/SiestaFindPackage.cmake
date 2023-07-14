@@ -189,10 +189,12 @@ function(Siesta_find_package)
         if (DEFINED _f_MIN_VERSION)
 	   set(_version_string ${_f_MIN_VERSION})
         endif()
+
         find_package("${_cmake}" ${_version_string} CONFIG)
+
         if( ${_cmake}_FOUND OR TARGET "${_f_TARGET}")
           # signal to outer loop
-          set(${_pkg}_FOUND TRUE)
+          set(${pkg}_FOUND TRUE)
 
           # try and figure out targets
           if(NOT TARGET "${_f_TARGET}")
@@ -208,13 +210,20 @@ function(Siesta_find_package)
 
             else()
               message(STATUS "Located [${pkg}] through CMake package=${_cmake} but could not figure out target")
-              set(${_pkg}_FOUND FALSE)
+              set(${pkg}_FOUND FALSE)
             endif()
 
           endif()
 
-          if(${_pkg}_FOUND)
+          if(${pkg}_FOUND)
             mymsg(CHECK_PASS "found")
+
+            # Propagate the _DIR for the package found, so that it can be recorded
+            # in the cmake config file
+
+            set(${pkg}_DIR "${${pkg}_DIR}" PARENT_SCOPE)
+            message(STATUS "Storing ${pkg}_DIR: ${${pkg}_DIR}")
+
             break()
           endif()
 
@@ -223,7 +232,7 @@ function(Siesta_find_package)
         mymsg(CHECK_FAIL "not found")
       endforeach()
 
-      if(${_pkg}_FOUND)
+      if(${pkg}_FOUND)
         set(f_method "cmake")
         break()
       endif()
@@ -261,11 +270,20 @@ function(Siesta_find_package)
         if( ${pkg_name}_FOUND OR TARGET PkgConfig::${pkg_name})
           mymsg(CHECK_PASS "found")
 
+
           #add_library("${_f_TARGET}" ALIAS PkgConfig::${pkg_name})
           add_library("${_f_TARGET}" INTERFACE IMPORTED GLOBAL)
           target_link_libraries("${_f_TARGET}" INTERFACE "PkgConfig::${pkg_name}")
 
-          set(${_pkg}_FOUND TRUE)
+          set(${pkg}_FOUND TRUE)
+
+          # Propagate the PREFIX for the package found, so that it can be recorded
+          # in the cmake config file
+
+          get_filename_component(${pkg_name}_PREFIX "${${pkg_name}_LIBRARY_DIRS}" DIRECTORY)
+          message(STATUS "${pkg_name}_PREFIX: ${${pkg_name}_PREFIX}")
+          set(${pkg_name}_PREFIX "${${pkg_name}_PREFIX}" PARENT_SCOPE)
+
           break()
         else()
           mymsg(CHECK_FAIL "not found")
@@ -273,7 +291,7 @@ function(Siesta_find_package)
 
       endforeach()
 
-      if(${_pkg}_FOUND)
+      if(${pkg}_FOUND)
         set(f_method "pkgconf")
         break()
       endif()
@@ -292,7 +310,11 @@ function(Siesta_find_package)
           "${PROJECT_BINARY_DIR}/${pkg}"
         )
 
-        #add_library("${_f_TARGET}" ALIAS ${pkg})
+        # Needed in some cases (see below)
+	if(NOT EXISTS "${PROJECT_BINARY_DIR}/${pkg}/include")
+          make_directory("${PROJECT_BINARY_DIR}/${pkg}/include")
+        endif()
+
         add_library("${_f_TARGET}" INTERFACE IMPORTED GLOBAL)
         target_link_libraries("${_f_TARGET}" INTERFACE ${pkg})
 
@@ -317,7 +339,18 @@ function(Siesta_find_package)
       target_link_libraries("${_f_TARGET}" INTERFACE "${pkg}")
 
       # We need the module directory in the subproject before we finish the configure stage
+      # Note that this is relevant if the "Fortran_MODULE_DIRECTORY" property is set to
+      # the 'include' subdirectory, as it is done for some libraries.
+      #
+      # (This is found experimentally; it does not seem to apply always, but it does not
+      #  hurt to do it.)
+
       FetchContent_GetProperties("${pkg}" BINARY_DIR "${pkg_uc}_BINARY_DIR")
+      message(STATUS "BINARY_DIR for fetched ${pkg}: ${${pkg_uc}_BINARY_DIR}")
+
+      if(NOT EXISTS "${${pkg_uc}_BINARY_DIR}/include")
+        make_directory("${${pkg_uc}_BINARY_DIR}/include")
+      endif()
 
       mymsg(CHECK_PASS "fetched")
       set(f_method "fetch")

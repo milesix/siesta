@@ -1,5 +1,5 @@
-set(top_srcdir "${CMAKE_SOURCE_DIR}/Src")
-set(grid_srcdir "${CMAKE_SOURCE_DIR}/Util/Grid")
+set(top_srcdir "${PROJECT_SOURCE_DIR}/Src")
+set(grid_srcdir "${PROJECT_SOURCE_DIR}/Util/Grid")
 
 set(sources
 
