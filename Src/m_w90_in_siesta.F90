@@ -55,6 +55,9 @@ module m_w90_in_siesta
                                        ! Variable where the initial
                                        !   and final band of each
                                        !   manifold are stored
+
+  use w90_in_siesta_types,   only: wannier_coefficients_needed
+
   use w90_in_siesta_types,   only: compute_chempotwann
                                        ! Compute the Hamiltonian matrix
                                        !   elements between NAO
@@ -265,6 +268,11 @@ module m_w90_in_siesta
 !
     call read_w90_in_siesta_specs
 
+!   NOTE: This should be done only if the coefficients are going to be
+!         required later on.
+
+  if (wannier_coefficients_needed) then
+
 !   Compute the lists that will be required to handle the coefficients of 
 !   the Wannier functions as an expansion of Numerical Atomic Orbitals
 
@@ -359,6 +367,8 @@ module m_w90_in_siesta
 #ifdef MPI
     deallocate(blocksizeprojectors)
 #endif
+
+ endif   ! wannier_coefficients_needed
 
 !! For debugging
 !#ifdef MPI
@@ -459,6 +469,14 @@ module m_w90_in_siesta
           manifold_bands_w90_in(index_manifold))
     end do 
 
+    ! Pending specific info in the manifold blocks
+    wannier_coefficients_needed = fdf_get('Wannier.Compute.Coeffs',.false.)
+
+!   Read the chemical potential associated with a given Wannier function
+!   First check whether the block is present in the fdf file.
+!   If it is not present, do nothing
+    if (.not. fdf_block('Wannier.ChemicalPotential',bfdf)) RETURN
+
 !   --------------------------- Wannier 'Chemical Potential' shifts
 !   Allocate the pointer where the chemical potential associated with 
 !   a given Wannier function will be stored.
@@ -473,15 +491,12 @@ module m_w90_in_siesta
  &                 routine='read_w90_in_siesta_specs')
     chempotwann_val = 0.0_dp
     
-!   Read the chemical potential associated with a given Wannier function
-!   First check whether the block is present in the fdf file.
-!   If it is not present, do nothing
-    if (.not. fdf_block('Wannier.ChemicalPotential',bfdf)) RETURN
 
 !   If the block with the chemical potentials is present,
 !   set to true the flag to compute the shifts of the matrix elements
     compute_chempotwann = .true. 
-    first_chempotwann   = .true. 
+    first_chempotwann   = .true.
+    wannier_coefficients_needed = .true.
 
 !   Read the content of the block, line by line
     do while(fdf_bline(bfdf, pline))       

@@ -216,6 +216,8 @@
 ! Variables related with the computation of the matrix elements
 ! including the chemical potential for some Wannier functions
 !
+      logical, public :: wannier_coefficients_needed = .false.
+
       logical, public :: compute_chempotwann = .false.
                                        ! Compute the Hamiltonian matrix
                                        !   elements between NAO

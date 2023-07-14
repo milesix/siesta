@@ -60,6 +60,7 @@
       use m_w90_in_siesta,   only: compute_matrices
       use m_w90_in_siesta,   only: compute_wannier
       use m_w90_in_siesta,   only: deallocate_wannier
+      use w90_in_siesta_types, only: wannier_coefficients_needed
       use m_wannier_in_nao,  only: wannier_in_nao
       use class_dSpData2D,   only: val
 #endif
@@ -547,7 +548,9 @@ C
             call diagonalizeHk( ispin )
             call compute_matrices( ispin, index_manifold )
             call compute_wannier( ispin, index_manifold )
-            call wannier_in_nao( ispin, index_manifold )
+            if (wannier_coefficients_needed) then
+               call wannier_in_nao( ispin, index_manifold )
+            endif
           enddo 
         enddo
         call deallocate_wannier()
