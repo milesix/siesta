@@ -807,6 +807,7 @@ CONTAINS
   use atmfuncs,           only: phiatm        ! Subroutine to compute the
                                               !   atomic orbital at a point
 
+  use units,              only: Ang
 !-----------------------------------------------------------------
     integer, intent(in) :: ix, iy, iz
     integer, intent(in) :: nbands          ! Number of bands to process
@@ -901,8 +902,11 @@ CONTAINS
 !
 !           Transform Bohr^(-3/2) to Ang^(-3/2)
 !
+#ifdef SIESTA__UNITS_ORIGINAL
             values(1:nbands) =  2.59775721_dp * values(1:nbands)
-
+#else
+            values(1:nbands) =  Ang**(1.5_dp) * values(1:nbands)
+#endif
           end subroutine periodicpart
 
 end subroutine writeunk

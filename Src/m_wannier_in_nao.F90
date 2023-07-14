@@ -72,6 +72,8 @@ CONTAINS
                                              !   is polarized by the orbital io)
     use atmfuncs,       only: symfio         ! Symmetry of the orbital
 
+    use units,          only: Ang
+    
     ! data to map to info formerly inside wannier modules ----
     use w90_in_siesta_types,       only: w90_in_manifold_t
     use w90_in_siesta_types,       only: manifold_bands_w90_in
@@ -262,7 +264,9 @@ CONTAINS
     type(w90_in_manifold_t), pointer :: mnf
 
     ! mapping variables
-    real(kind=dp), parameter :: bohr_angstrom_internal = 0.52917720859_dp    
+#ifdef SIESTA__UNITS_ORIGINAL
+    real(kind=dp), parameter :: bohr_angstrom_internal = 0.52917720859_dp
+#endif
     integer :: num_proj, num_bands, num_kpts
     logical :: disentanglement
     real(dp) :: recip_lattice(3,3)
@@ -458,7 +462,12 @@ CONTAINS
  &                    kpt_latt(2,ik) * recip_lattice(2,:) +      &
  &                    kpt_latt(3,ik) * recip_lattice(3,:) 
 !         Transform the coordinates of the k-point to Bohr^-1
+
+#ifdef SIESTA__UNITS_ORIGINAL
           kpoint(:) = kpoint(:) * bohr_angstrom_internal
+#else
+          kpoint(:) = kpoint(:) * Ang
+#endif
 
 !         Compute the dot product between the k-point and the
 !         atomic position
