@@ -28,6 +28,10 @@ set(SCALAPACK_LIBRARY
      "-L/cineca/prod/opt/libraries/scalapack/2.1.0/spectrum_mpi--10.3.1--binary/lib -lscalapack"
      CACHE STRING "scalapack library chosen")
 
+set(PROFILE_NVTX_LIBRARY
+    "/cineca/prod/opt/compilers/cuda/11.0/none/targets/ppc64le-linux/lib/libnvToolsExt.so"
+    CACHE STRING "nvtx library")
+    
 set(WITH_NETCDF "OFF" CACHE STRING "netcdf support")    # Do not know yet how to activate it properly
 set(CMAKE_BUILD_TYPE "Release" CACHE STRING "build_type")
 set(Fortran_FLAGS_RELEASE  "-g -O2" CACHE STRING "Fortran release flags")
