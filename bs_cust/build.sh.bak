@@ -1,0 +1,33 @@
+#!/bin/bash
+module load espresso #not to use espresso but it loads many useful libraries
+module load cray-parallel-netcdf/1.12.3.3
+#module add PrgEnv-intel/8.3.3
+#module add cpu/1.0
+
+
+INSTALL_DIR=$(realpath ../siesta-max1-berkeley_install)
+export ELSI_ROOT=$(realpath $PSCRATCH/siesta_berkeley_pexsi/elsi_interface-ext-pexsi_install)
+export elsi_DIR=$(realpath $PSCRATCH/siesta_berkeley_pexsi/elsi_interface-ext-pexsi_install)
+export NETCDF_ROOT=/opt/cray/pe/netcdf-hdf5parallel/4.9.0.3/gnu/9.1
+export NETCDF_INCFLAGS=-I/opt/cray/pe/netcdf-hdf5parallel/4.9.0.3/gnu/9.1/include
+export LIBSCI_LIBS=-L$CRAY_LIBSCI_PREFIX_DIR/lib #for ScaLAPACK
+export PEXSI_ROOT=$(realpath $PSCRATCH/siesta_berkeley_pexsi/pexsi_install/v2.1_gnu)
+# export PEXSI_ROOT=/pscratch/sd/j/jah668/siesta_berkeley_pexsi/pexsi_install/v2.1_gnu
+
+HDIR=$(realpath .)
+BDIR=$HDIR/build
+#rm -rf ${BDIR}/*
+
+# Original
+# cmake -H${HDIR} -B${BDIR} -DCMAKE_TOOLCHAIN_FILE=$HDIR/perlmutter_cpu.cmake -DCMAKE_INSTALL_PREFIX=$INSTALL_DIR
+
+# Alberto's recommended changes
+# cmake -S. -B_pexsi -DSCALAPACK_LIBRARY=NONE -DWITH_PEXSI=ON
+
+cmake --trace-expand -H${HDIR} -B${BDIR} -DCMAKE_TOOLCHAIN_FILE=$HDIR/perlmutter_cpu.cmake -DCMAKE_INSTALL_PREFIX=$INSTALL_DIR -DSCALAPACK_LIBRARY=NONE -DWITH_PEXSI=TRUE -DWITH_ELSI=OFF
+
+cd ${BDIR}
+make -j 40
+make install
+cd ..
+
