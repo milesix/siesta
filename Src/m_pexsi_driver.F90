@@ -983,6 +983,9 @@ subroutine do_inertia_count(plan,muMin0,muMax0,muInertia)
             muMaxTemp = min(muMax, muCandidate(1) + sigma)
                 if (muMinTemp - muMaxTemp > 0) then
                     inertiaFlag = .false.
+                else if (muMin - muMax < 0)
+                    muMin = muMinTemp
+                    muMax = muMaxTemp
                 end if
         end if
 
@@ -1007,6 +1010,13 @@ subroutine do_inertia_count(plan,muMin0,muMax0,muInertia)
 
         ! where is muInertiaTolerance defined? (do I need to declare it?)
         ! Should be options%muInertiaTolerance
+
+        write (6, *) "For debugging:"
+        write (6, *) "options%muInertiaTolerance"
+        write (6, *) options%muInertiaTolerance
+        write (6, *) "muInertiaTolerance"
+        write (6, *) muInertiaTolerance
+
         if ((muMax - muMin < 2._dp * options%muInertiaTolerance) &
         .or. (updateRange > -0.01_dp * options%muInertiaTolerance)) then
             inertiaFlag = .false.
@@ -1041,11 +1051,11 @@ subroutine do_inertia_count(plan,muMin0,muMax0,muInertia)
             exit
         end if 
 
-        write (*, *) 
-        write (*, *) "Inertia Counting"
-        write (*, '(A, F6.2, A, F6.2, A)') "(muMin, muMax)   = (", muMin, ", ", muMax, ")"
-        write (*, '(A, I6)') "numShift           = ", numShift
-        write (*, *)
+        write (6, *) 
+        write (6, *) "Inertia Counting"
+        write (6, '(A, F6.2, A, F6.2, A)') "(muMin, muMax)   = (", muMin, ", ", muMax, ")"
+        write (6, '(A, I6)') "numShift           = ", numShift
+        write (6, *)
 
     end if
 
@@ -1080,12 +1090,16 @@ nInertiaRounds = nInertiaRounds + 1
       
       
            ! COMMENTED 7/27 BY JAH
-           ! inertiaFlagOld = .true.
+           inertiaFlagOld = .true.
       
-      !!$     if (inertia_original_electron_width < inertiaNumElectronTolerance) then
-      !!$        write (6,"(a)") 'Leaving inertia loop: electron tolerance'
-      !!$        inertiaFlagOld = .false.
-      !!$     endif
+           if (inertia_original_electron_width < inertiaNumElectronTolerance) then
+              write (6,"(a)") 'Leaving inertia loop: electron tolerance'
+              inertiaFlagOld = .false.
+           endif
+           ! if (inertia_original_electron_width < inertiaNumElectronTolerance) then
+           !    write (6,"(a)") 'Leaving inertia loop: electron tolerance'
+           !    inertiaFlagOld = .false.
+           ! endif
       !!$     if (inertia_electron_width < inertiaMinNumElectronTolerance) then
       !!$        write (6,"(a)") 'Leaving inertia loop: minimum workable electron tolerance'
       !!$        inertiaFlagOld = .false.
@@ -1137,7 +1151,7 @@ nInertiaRounds = nInertiaRounds + 1
 
         call broadcast(inertiaFlag,comm=World_Comm)
       
-        if (inertiaFlag) then
+        if (inertiaFlag .and. inertiaFlagOld) then
            ! stay in loop
            ! These values should be guarded, in case the refined interval
            ! is too tight. Use 2*kT
