@@ -990,14 +990,6 @@ subroutine do_inertia_count(plan,muMin0,muMax0,muInertia)
         updateRange = rangeNew - rangeOld
         muEstimate =  (muMin + muMax) / 2
 
-        ! write (6, '(A, F6.2, A)') "The mu has been found with time ", timeInertloopEnd - timeInertiaStaA, " [s]."
-        write (6, '(A, F6.2, A)') "The mu is estimated to be ", muEstimate, "."
-        write (6, '(A, F6.2, A)') "The muMAX ", muMax, "."
-        write (6, '(A, F6.2, A)') "The muMin ", muMin, "."
-        write (6, '(A, F6.2, A)') "The computed electrons ", inertiaElec, "."
-        write (6, '(A, F6.2, A)') "The shift equals ", hsShift, "."
-
-
         ! Print statements:
         ! Time it took to find a mu estimate
         ! muMax
@@ -1020,34 +1012,27 @@ subroutine do_inertia_count(plan,muMin0,muMax0,muInertia)
 
     !! End of large if statement
 
-    if (size(muCandidate) == 0) then
-        muMin = shiftVec(imin)
-        muMax = shiftVec(imax)
-        ! What is matrix_size?? 
-        if ((imin == 1 .and. imax == numshift) &
-        .or. (NeLower(imin) == 0 .and. NeUpper(imax) == nrows) &
-        .or. (muMax - muMin < 2.0 * options%muInertiaTolerance)) then
-            muMinInertia = shiftVec(imin)
-            muMaxInertia = shiftVec(imax)
+    ! if (size(muCandidate) == 0) then
+    !     muMin = shiftVec(imin)
+    !     muMax = shiftVec(imax)
+    !     ! What is matrix_size?? 
+    !     if ((imin == 1 .and. imax == numshift) &
+    !     .or. (NeLower(imin) == 0 .and. NeUpper(imax) == nrows) &
+    !     .or. (muMax - muMin < 2.0 * options%muInertiaTolerance)) then
+    !         muMinInertia = shiftVec(imin)
+    !         muMaxInertia = shiftVec(imax)
+    !         exit
+    !     end if 
+    ! end if
 
-            ! WRITE (*, '(A, E12.5, A)') "The mu has been found with time ", timeInertloopEnd - timeInertiaStaA, " [s]."
-
-            write(6, '(A, E12.5, A)') "The mu is estimated to be ", muEstimate, "."
-            write(6, '(A, E12.5, A)') "The muMAX ", muMaxInertia, "."
-            write(6, '(A, E12.5, A)') "The muMin ", muMinInertia, "."
-            write(6, '(A, I8, A)') "The computed electrons ", inertiaElec, "."
-            write(6, '(A, E12.5, A)') "The shift equals ", hsShift, "."
-
-            exit
-        end if 
-
-        write (*, *) 
-        write (*, *) "Inertia Counting"
-        write (*, '(A, F6.2, A, F6.2, A)') "(muMin, muMax)   = (", muMin, ", ", muMax, ")"
-        write (*, '(A, I6)') "numShift           = ", numShift
-        write (*, *)
-
+    if ((imin == 1 .and. imax == numshift) .or. &
+        (NeLower(imin) == 0 .and. NeUpper(imax) == nrows) .or. &
+        (muMax - muMin < 2.0 * options%muInertiaTolerance)) then
+        muMinInertia = shiftVec(imin)
+        muMaxInertia = shiftVec(imax)
+        exit
     end if
+
 
 nInertiaRounds = nInertiaRounds + 1
       
@@ -1133,9 +1118,7 @@ nInertiaRounds = nInertiaRounds + 1
         !    exit refine_interval
         ! endif
 
-        ! call broadcast(inertiaFlagOld,comm=World_Comm)
-
-        call broadcast(inertiaFlag,comm=World_Comm)
+        call broadcast(inertiaFlagOld,comm=World_Comm)
       
         if (inertiaFlag) then
            ! stay in loop
