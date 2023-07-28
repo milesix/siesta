@@ -740,7 +740,7 @@ subroutine do_inertia_count(plan,muMin0,muMax0,muInertia)
   real(dp), parameter ::   eps_inertia = 0.1_dp
   type(converger_t)   ::   conv_mu
   logical             ::   bad_lower_bound, bad_upper_bound
-  logical             ::   interval_problem, inertiaFlag
+  logical             ::   interval_problem, inertiaFlag, inertiaFlagOld
   real(dp)            ::   inertia_electron_width
   real(dp)            ::   inertia_original_electron_width
   real(dp)            ::   inertia_energy_width
