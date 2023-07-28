@@ -983,7 +983,7 @@ subroutine do_inertia_count(plan,muMin0,muMax0,muInertia)
             muMaxTemp = min(muMax, muCandidate(1) + sigma)
                 if (muMinTemp - muMaxTemp > 0) then
                     inertiaFlag = .false.
-                else if (muMin - muMax < 0)
+                else if (muMin - muMax < 0) then
                     muMin = muMinTemp
                     muMax = muMaxTemp
                 end if
@@ -992,7 +992,7 @@ subroutine do_inertia_count(plan,muMin0,muMax0,muInertia)
         rangeNew = abs(muMin - muMax)
         updateRange = rangeNew - rangeOld
         muEstimate =  (muMin + muMax) / 2
-
+        muInertia = muEstimate
         ! write (6, '(A, F6.2, A)') "The mu has been found with time ", timeInertloopEnd - timeInertiaStaA, " [s]."
         write (6, '(A, F6.2, A)') "The mu is estimated to be ", muEstimate, "."
         write (6, '(A, F6.2, A)') "The muMAX ", muMax, "."
@@ -1014,8 +1014,8 @@ subroutine do_inertia_count(plan,muMin0,muMax0,muInertia)
         write (6, *) "For debugging:"
         write (6, *) "options%muInertiaTolerance"
         write (6, *) options%muInertiaTolerance
-        write (6, *) "muInertiaTolerance"
-        write (6, *) muInertiaTolerance
+       ! write (6, *) "muInertiaTolerance"
+       ! write (6, *) muInertiaTolerance
 
         if ((muMax - muMin < 2._dp * options%muInertiaTolerance) &
         .or. (updateRange > -0.01_dp * options%muInertiaTolerance)) then
@@ -1033,19 +1033,24 @@ subroutine do_inertia_count(plan,muMin0,muMax0,muInertia)
     if (size(muCandidate) == 0) then
         muMin = shiftVec(imin)
         muMax = shiftVec(imax)
+        muMinInertia = shiftVec(imin)
+        muMaxInertia = shiftVec(imax)
+        muEstimate =  (muMin + muMax) / 2
+        muInertia = muEstimate
         ! What is matrix_size?? 
         if ((imin == 1 .and. imax == numshift) &
         .or. (NeLower(imin) == 0 .and. NeUpper(imax) == nrows) &
         .or. (muMax - muMin < 2.0 * options%muInertiaTolerance)) then
-            muMinInertia = shiftVec(imin)
-            muMaxInertia = shiftVec(imax)
+           ! muMinInertia = shiftVec(imin)
+           ! muMaxInertia = shiftVec(imax)
+            inertiaFlag = .false.
 
             ! WRITE (*, '(A, E12.5, A)') "The mu has been found with time ", timeInertloopEnd - timeInertiaStaA, " [s]."
 
             write(6, '(A, E12.5, A)') "The mu is estimated to be ", muEstimate, "."
             write(6, '(A, E12.5, A)') "The muMAX ", muMaxInertia, "."
             write(6, '(A, E12.5, A)') "The muMin ", muMinInertia, "."
-            write(6, '(A, I8, A)') "The computed electrons ", inertiaElec, "."
+           ! write(6, '(A, I8, A)') "The computed electrons ", inertiaElec, "."
             write(6, '(A, E12.5, A)') "The shift equals ", hsShift, "."
 
             exit
@@ -1090,9 +1095,10 @@ nInertiaRounds = nInertiaRounds + 1
       
       
            ! COMMENTED 7/27 BY JAH
+          !logical :: inertiaFlagOld
            inertiaFlagOld = .true.
-      
-           if (inertia_original_electron_width < inertiaNumElectronTolerance) then
+           !inertiaNumElectronTolerance is replace with options%numElectronPEXSITolerance 
+           if (inertia_original_electron_width < options%numElectronPEXSITolerance) then
               write (6,"(a)") 'Leaving inertia loop: electron tolerance'
               inertiaFlagOld = .false.
            endif
