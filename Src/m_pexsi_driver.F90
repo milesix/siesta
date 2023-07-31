@@ -775,6 +775,7 @@ subroutine do_inertia_count(plan,muMin0,muMax0,muInertia)
   real(dp) :: rangeNew
   real(dp) :: updateRange
   real(dp) :: muEstimate
+  integer :: k, l
   
   ! Minimum number of sampling points for inertia counts                                            
   numMinICountShifts = fdf_get("PEXSI.inertia-min-num-shifts", 10)
@@ -787,7 +788,7 @@ subroutine do_inertia_count(plan,muMin0,muMax0,muInertia)
         exit
      endif
   enddo
-  
+
   allocate(shiftVec(numShift), inertiaVec(numShift))
   allocate(inertiaVec_out(numShift))
   
@@ -796,9 +797,15 @@ subroutine do_inertia_count(plan,muMin0,muMax0,muInertia)
 !----------------------START OF REFINE INTERVAL--------------------------------!
   refine_interval: do
       numTotalInertiaIter = numTotalInertiaIter + 1
+
+      write(6,*) "Beginning refine_interval..."
+      write(6,*) "numTotalInertiaIter: ", numTotalInertiaIter
       
       options%muMin0 = muMin0
       options%muMax0 = muMax0
+
+      write(6,*) "muMin0: ", muMin0
+      write(6,*) "muMax0: ", muMax0
       
       if (mpirank == 0) then
          write (6,"(a,2f9.4,a,a,i4)") 'Calling inertiaCount: [', &
@@ -810,11 +817,19 @@ subroutine do_inertia_count(plan,muMin0,muMax0,muInertia)
       
       ! NEEDS TO BE DECLARED ABOVE
       ! real(dp) :: hsShift
+      write(6,*) "numShift: ", numShift
       hsShift = (muMax0 - muMin0) / (numShift - 1)
+      write(6,*) "hsShift: ", hsShift
 
       do i = 1, numShift
          shiftVec(i) = muMin0 + (i-1) * hsShift
       enddo
+
+      write(6,*) "Printing shiftVec: ", shiftVec
+
+      ! do k=1,size(shiftVec),12
+      ! write(6, '(12F8.3)') (shiftVec(l), l=k, min(i+11,size(shiftVec))
+      ! end do
       
       call f_ppexsi_inertia_count_real_matrix(&
            plan,&
@@ -910,8 +925,10 @@ subroutine do_inertia_count(plan,muMin0,muMax0,muInertia)
       ! real(dp), allocatable :: muCandidateTemp(:)
       ! integer :: inertiaElec
       ! integer :: muCandidateCount
-      
+
+      if (allocated(muCandidate)) deallocate(muCandidate)
       allocate(muCandidate(numShift))
+      
       muCandidate = 0._dp
       muCandidateCount = 0._dp
       do i = 1, numShift
@@ -924,12 +941,18 @@ subroutine do_inertia_count(plan,muMin0,muMax0,muInertia)
 
       !!!!!!!!!!! BEGIN TRIM muCandidate !!!!!!!!!!!!!
       ! Allocate temporary array
+      if (allocated(muCandidateTemp)) deallocate(muCandidateTemp)
       allocate(muCandidateTemp(muCandidateCount))
       muCandidateTemp = 0._dp
+
       ! Copy values
       muCandidateTemp = muCandidate(1:muCandidateCount)
+      deallocate(muCandidate)
       ! Move the allocation from muCandidateTemp -> muCandidate
-      call move_alloc(muCandidateTemp, muCandidate)
+      allocate(muCandidate(size(muCandidateTemp)))
+      muCandidate = muCandidateTemp
+      deallocate(muCandidateTemp)
+      ! call move_alloc(muCandidateTemp, muCandidate)
       !!!!!!!!!!! END TRIM muCandidate !!!!!!!!!!!!!
 
       ! real(dp), allocatable ::  NeLower
