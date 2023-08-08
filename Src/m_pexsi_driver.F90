@@ -503,10 +503,26 @@ solver_loop: do
    numTotalPEXSIIter =  numTotalPEXSIIter + 1
 
    if (abs(numElectronPEXSI-numElectronExact) > PEXSINumElectronTolerance) then
+
+      if (mpirank ==0) then
+          write(6,*) "abs(numElectronPEXSI-numElectronExact) > PEXSINumElectronTolerance:"
+          write(6,*) abs(numElectronPEXSI-numElectronExact) > PEXSINumElectronTolerance
+          write(6,*) "numElectronPEXSI: ", numElectronPEXSI
+          write(6,*) "numElectronExact: ", numElectronExact
+          write(6,*) "PEXSINumElectronTolerance: ", PEXSINumElectronTolerance
+          write(6,*) "abs(numElectronPEXSI-numElectronExact):"
+          write(6,*) abs(numElectronPEXSI-numElectronExact)
+          write(6,*) "numElectronDrvMuPEXSI: ", numElectronDrvMuPEXSI
+      endif
    
       deltaMu = - (numElectronPEXSI - numElectronExact) / numElectronDrvMuPEXSI
       ! The simple DFT driver uses the size of the jump to flag problems:
       ! if (abs(deltaMu) > options%muPEXSISafeGuard) then
+
+      if (mpirank ==0) then
+          write(6,*) "deltaMu = - (numElectronPEXSI - numElectronExact) / numElectronDrvMuPEXSI: "
+          write(6,*) deltaMu
+      endif
    
       if ( ((mu + deltaMu) < muMin0) .or. ((mu + deltaMu) > muMax0) ) then
          if (mpirank ==0) then
@@ -514,21 +530,65 @@ solver_loop: do
          endif
    
          ! We choose for now to expand the bracket to include the jumped-to point
-   
+         if (mpirank == 0) then
+             write(6,*) "Expanding mu bracket, here are the original parameters"
+             write(6,*) "mu (Ry): ", mu
+             write(6,*) "mu (eV): ", mu/eV
+             write(6,*) "muMin0 (Ry): ", muMin0
+             write(6,*) "muMin0 (eV): ", muMin0/eV
+             write(6,*) "muMax0 (Ry): ", muMax0
+             write(6,*) "muMax0 (eV): ", muMax0/eV
+             write(6,*) "deltaMu (Ry)", deltaMu
+             write(6,*) "deltaMu (eV)", deltaMu/eV
+         end if
+
          muMin0 = min(muMin0,mu+deltaMu)
          muMax0 = max(muMax0,mu+deltaMu)
+
+         if (mpirank == 0) then
+             write(6,*) "muMin0 = min(muMin0,mu+deltaMu)"
+             write(6,*) "muMax0 = max(muMax0,mu+deltaMu)"
+             write(6,*) "muMin0 (Ry): ", muMin0
+             write(6,*) "muMin0 (eV): ", muMin0/eV
+             write(6,*) "muMax0 (Ry): ", muMax0
+             write(6,*) "muMax0 (eV): ", muMax0/eV
+             write(6,*) "Calling do_inertia_count..."
+         end if
    
          call do_inertia_count(plan,muMin0,muMax0,mu)
+
+         if (mpirank == 0) then
+             write(6,*) "Cycling solver loop..."
+         end if
    
          cycle solver_loop
+
    
       endif
+
+      if (mpirank == 0) then
+          write(6,*) "mu (Ry): ", mu
+          write(6,*) "mu (eV): ", mu/eV
+          write(6,*) "deltaMu (Ry)", deltaMu
+          write(6,*) "deltaMu (eV)", deltaMu/eV
+          write(6,*) "mu = mu + deltaMu"
+      end if
+
       mu = mu + deltaMu
+
+      if (mpirank == 0) then
+          write(6,*) "mu (Ry): ", mu
+          write(6,*) "mu (eV): ", mu/eV
+          write(6,*) "Cycling solver loop..."
+      end if
+
       cycle solver_loop
+
    else
       ! Converged
       if (mpirank == 0) then
          write(6,"(a,f10.4)") "PEXSI solver converged. mu: ", mu/eV
+         write(6,*) "Exiting solver loop..."
       endif
       exit solver_loop
    endif
@@ -815,8 +875,10 @@ subroutine do_inertia_count(plan,muMin0,muMax0,muInertia)
       options%muMax0 = muMax0
 
       if (mpirank == 0) then
-          write(6,*) "muMin0: ", muMin0
-          write(6,*) "muMax0: ", muMax0
+          write(6,*) "muMin0 (Ry): ", muMin0
+          write(6,*) "muMin0 (eV): ", muMin0/eV
+          write(6,*) "muMax0 (Ry): ", muMax0
+          write(6,*) "muMax0 (eV): ", muMax0/eV
       endif
       
       if (mpirank == 0) then
@@ -1102,11 +1164,11 @@ subroutine do_inertia_count(plan,muMin0,muMax0,muInertia)
             ! WRITE (*, '(A, E12.5, A)') "The mu has been found with time ", timeInertloopEnd - timeInertiaStaA, " [s]."
 
             if (mpirank == 0) then
-               write(6, '(A, E12.5, A)') "The mu is estimated to be ", muEstimate, "."
-               write(6, '(A, E12.5, A)') "The muMAX ", muMaxInertia, "."
-               write(6, '(A, E12.5, A)') "The muMin ", muMinInertia, "."
-               write(6, '(A, I8, A)') "The computed electrons ", inertiaElec, "."
-               write(6, '(A, E12.5, A)') "The shift equals ", hsShift, "."
+               write(6, '(A, E12.5, A)') "muEstimate (eV): ", muEstimate/eV, "."
+               write(6, '(A, E12.5, A)') "muMin (eV): ", muMinInertia/eV, "."
+               write(6, '(A, E12.5, A)') "muMax (eV): ", muMaxInertia/eV, "."
+               write(6, '(A, I25, A)') "Total number of electrons [inertiaElec]: ", inertiaElec, "."
+               write(6, '(A, E12.5, A)') "Shift [hsShift]: ", hsShift/eV, "."
             end if
 
             exit
@@ -1115,21 +1177,25 @@ subroutine do_inertia_count(plan,muMin0,muMax0,muInertia)
         if (mpirank == 0) then
             write (6, *) 
             write (6, *) "Inertia Counting"
-            write (6, '(A, F6.2, A, F6.2, A)') "(muMin, muMax)   = (", muMin, ", ", muMax, ")"
-            write (6, '(A, I6)') "numShift           = ", numShift
+            write (6, '(A, F15.2, A, F15.2, A)') "(muMin, muMax)   = (", muMin, ", ", muMax, ")"
+            write (6, '(A, I15)') "numShift = ", numShift
             write (6, *)
         end if
 
     end if
 
 nInertiaRounds = nInertiaRounds + 1
-      
       if (mpirank == 0) then
-         write (6,"(a,i3,f10.4,i3,f10.4)") 'imin, muMinInertia, imax, muMaxInertia: ',&
-                imin, muMinInertia/eV, imax, muMaxInertia/eV
-         write (6,"(a,2f10.4,a,f10.4)") 'muLower, muUpper: ', muLower/eV, muUpper/eV, &
-              ' mu estimated: ', muInertia/eV
-      endif
+          write(6,*) "Increased nInertiaRounds by 1"
+          write(6,*) "nInertiaRounds = ", nInertiaRounds
+      end if
+      
+      ! if (mpirank == 0) then
+      !    write (6,"(a,i3,f10.4,i3,f10.4)") 'imin, muMinInertia, imax, muMaxInertia: ',&
+      !           imin, muMinInertia/eV, imax, muMaxInertia/eV
+      !    write (6,"(a,2f10.4,a,f10.4)") 'muLower, muUpper: ', muLower/eV, muUpper/eV, &
+      !         'muEstimate (muInertia)', muInertia/eV
+      ! endif
         
         if (mpirank==0) then
       
@@ -1419,15 +1485,48 @@ write_ok = ((mpirank == 0) .and. (verbosity >= 1))
   if (scf_step > 1) then
      if (prevDmax < safe_dDmax_Ef_solver) then
         if (write_ok) write(6,"(a)") "&o Solver mu shifted by delta_Ef"
+        if (mpirank == 0) then
+            write(6,*) "mu (Ry): ", mu
+            write(6,*) "mu (eV): ", mu/eV
+            write(6,*) "delta_Ef (Ry): ", delta_Ef
+            write(6,*) "delta_Ef (eV): ", delta_Ef/eV
+        end if
         mu = mu + delta_Ef
+        if (mpirank == 0) then
+            write(6,*) "Setting mu = mu + delta_Ef"
+            write(6,*) "mu (Ry): ", mu
+            write(6,*) "mu (eV): ", mu/eV
+        end if
      endif
      ! Always provide a safe bracket around mu, in case we need to fallback
      ! to executing a cycle of inertia-counting
      if (write_ok) write(6,"(a)") "&o Safe solver bracket around mu"
+     if (mpirank == 0) then
+         write(6,*) "Adjusting bracket around mu, in case ic fallback necessary"
+         write(6,*) "mu (Ry): ", mu
+         write(6,*) "mu (eV): ", mu/eV
+         write(6,*) "safe_width_solver (Ry): ", safe_width_solver
+         write(6,*) "safe_width_solver (eV): ", safe_width_solver/eV
+         write(6,*) "muMin0 (Ry): ", muMin0
+         write(6,*) "muMin0 (eV): ", muMin0/eV
+         write(6,*) "muMax0 (Ry): ", muMax0
+         write(6,*) "muMax0 (eV): ", muMax0/eV
+         write(6,*) "muMin0 = mu - 0.5*safe_width_solver: "
+         write(6,*) "muMax0 = mu + 0.5*safe_width_solver: "
+     end if
      muMin0 = mu - 0.5*safe_width_solver
      muMax0 = mu + 0.5*safe_width_solver
+     if (mpirank == 0) then
+         write(6,*) "muMin0 (Ry): ", muMin0
+         write(6,*) "muMin0 (eV): ", muMin0/eV
+         write(6,*) "muMax0 (Ry): ", muMax0
+         write(6,*) "muMax0 (eV): ", muMax0/eV
+     end if
   else
      if (write_ok) write(6,"(a)") "&o Solver called with iscf=1 parameters"
+     if (mpirank == 0) then
+         write(6,*) "mu, muMin0, muMax0 NOT CHANGED"
+     end if
      ! do nothing. Keep mu, muMin0 and muMax0 as they are inherited
   endif
 end subroutine get_bracket_for_solver
