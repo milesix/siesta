@@ -499,7 +499,9 @@ solver_loop: do
          write(6,"(a,f10.4)") "Fermi Operator. dN_e/dmu: ", numElectronDrvMuPEXSI*eV
       endif
    endif
+
    numTotalPEXSIIter =  numTotalPEXSIIter + 1
+
    if (abs(numElectronPEXSI-numElectronExact) > PEXSINumElectronTolerance) then
    
       deltaMu = - (numElectronPEXSI - numElectronExact) / numElectronDrvMuPEXSI
@@ -776,6 +778,10 @@ subroutine do_inertia_count(plan,muMin0,muMax0,muInertia)
   real(dp) :: updateRange
   real(dp) :: muEstimate
   integer :: k, l
+
+  real(dp) :: sig_mod ! sigma modifier
+  real(dp) :: param_1 
+  real(dp) :: param_2
   
   ! Minimum number of sampling points for inertia counts                                            
   numMinICountShifts = fdf_get("PEXSI.inertia-min-num-shifts", 10)
@@ -798,14 +804,20 @@ subroutine do_inertia_count(plan,muMin0,muMax0,muInertia)
   refine_interval: do
       numTotalInertiaIter = numTotalInertiaIter + 1
 
-      write(6,*) "Beginning refine_interval..."
-      write(6,*) "numTotalInertiaIter: ", numTotalInertiaIter
+      if (mpirank == 0) then
+          write(6,*) "Beginning refine_interval..."
+          write(6,*) "numTotalInertiaIter: ", numTotalInertiaIter
+      endif
+
       
+      ! What does this do? Is this necessary
       options%muMin0 = muMin0
       options%muMax0 = muMax0
 
-      write(6,*) "muMin0: ", muMin0
-      write(6,*) "muMax0: ", muMax0
+      if (mpirank == 0) then
+          write(6,*) "muMin0: ", muMin0
+          write(6,*) "muMax0: ", muMax0
+      endif
       
       if (mpirank == 0) then
          write (6,"(a,2f9.4,a,a,i4)") 'Calling inertiaCount: [', &
@@ -814,18 +826,21 @@ subroutine do_inertia_count(plan,muMin0,muMax0,muInertia)
       endif
       
       call timer("pexsi-inertia-ct", 1)
-      
-      ! NEEDS TO BE DECLARED ABOVE
-      ! real(dp) :: hsShift
-      write(6,*) "numShift: ", numShift
+
       hsShift = (muMax0 - muMin0) / (numShift - 1)
-      write(6,*) "hsShift: ", hsShift
+      
+      if (mpirank == 0) then
+          ! NEEDS TO BE DECLARED ABOVE
+          ! real(dp) :: hsShift
+          write(6,*) "numShift: ", numShift
+          write(6,*) "hsShift: ", hsShift
+      endif 
 
       do i = 1, numShift
          shiftVec(i) = muMin0 + (i-1) * hsShift
       enddo
 
-      write(6,*) "Printing shiftVec: ", shiftVec
+      ! write(6,*) "Printing shiftVec: ", shiftVec
 
       ! do k=1,size(shiftVec),12
       ! write(6, '(12F8.3)') (shiftVec(l), l=k, min(i+11,size(shiftVec))
@@ -918,7 +933,9 @@ subroutine do_inertia_count(plan,muMin0,muMax0,muInertia)
       ! NEEDS TO BE DECLARED ABOVE
       ! real(dp) :: sigma
       ! integer :: tau
-      sigma = 3._dp * temperature ! Are the units correct?? Need to check.
+      sig_mod = fdf_get("PEXSI.sig_mod", 1._dp)
+      sigma = 3._dp * temperature 
+      sigma = sigma * sig_mod
       tau = ceiling(sigma / hsShift)
 
       ! real(dp), allocatable :: muCandidate(:)
@@ -940,30 +957,38 @@ subroutine do_inertia_count(plan,muMin0,muMax0,muInertia)
       end do
 
       !!!!!!!!!!! BEGIN TRIM muCandidate !!!!!!!!!!!!!
-      ! Allocate temporary array
-      if (allocated(muCandidateTemp)) deallocate(muCandidateTemp)
-      allocate(muCandidateTemp(muCandidateCount))
-      muCandidateTemp = 0._dp
-
-      ! Copy values
-      muCandidateTemp = muCandidate(1:muCandidateCount)
-      deallocate(muCandidate)
-      ! Move the allocation from muCandidateTemp -> muCandidate
-      allocate(muCandidate(size(muCandidateTemp)))
-      muCandidate = muCandidateTemp
-      deallocate(muCandidateTemp)
+      ! Allocate temporary array if muCandidate is allocated
+      if (allocated(muCandidate)) then
+          allocate(muCandidateTemp(muCandidateCount))
+          muCandidateTemp = muCandidate(1:muCandidateCount)
+          deallocate(muCandidate)
+          allocate(muCandidate(muCandidateCount))
+          muCandidate = muCandidateTemp
+          deallocate(muCandidateTemp)
+      end if
       ! call move_alloc(muCandidateTemp, muCandidate)
       !!!!!!!!!!! END TRIM muCandidate !!!!!!!!!!!!!
 
       ! real(dp), allocatable ::  NeLower
       ! real(dp), allocatable ::  NeUpper
+
+      if (allocated(neLower)) deallocate(neLower)
       allocate(neLower(numShift))
+      if (allocated(neUpper)) deallocate(neUpper)
       allocate(neUpper(numShift))
 
+      ! Let's modify this coefficient and see how this changes things
+      ! 0.3 + 0.7 for first NeLower
+      ! 0.7 + 0.3 for NeUpper
+      ! Create parameters to go in front of these (inertieVec(..) + (inertiaVec(..))
+
+      param_1 = fdf_get("PEXSI.param_1", 1._dp)
+      param_2 = fdf_get("PEXSI.param_2", 1._dp)
       ! Check the indexing here
       do i = tau, numShift - 1
-          neLower(i + 1) = 0.5_dp * (inertiaVec(i + 1 - tau) + inertiaVec(i + 1))
-          neUpper(i + 1 - tau) = 0.5_dp * (inertiaVec(i + 1 - tau) + inertiaVec(i + 1))
+          ! param_1 + param_2 should sum to 2
+          neLower(i + 1) = 0.5_dp * (param_1 * inertiaVec(i + 1 - tau) + param_2 * inertiaVec(i + 1))
+          neUpper(i + 1 - tau) = 0.5_dp * (param_1 * inertiaVec(i + 1 - tau) + param_2 * inertiaVec(i + 1))
       end do
 
       imin = 1
@@ -995,6 +1020,7 @@ subroutine do_inertia_count(plan,muMin0,muMax0,muInertia)
     ! real(dp) :: rangeNew
     ! real(dp) :: updateRange
     ! real(dp) :: muEstimate
+
     if (size(muCandidate) > 0) then
         if (muCandidate(1) == muCandidate(size(muCandidate))) then
             muRange = max(sigma, hsShift)
@@ -1016,12 +1042,16 @@ subroutine do_inertia_count(plan,muMin0,muMax0,muInertia)
         updateRange = rangeNew - rangeOld
         muEstimate =  (muMin + muMax) / 2
         muInertia = muEstimate
+
         ! write (6, '(A, F6.2, A)') "The mu has been found with time ", timeInertloopEnd - timeInertiaStaA, " [s]."
-        write (6, '(A, F6.2, A)') "The mu is estimated to be ", muEstimate, "."
-        write (6, '(A, F6.2, A)') "The muMAX ", muMax, "."
-        write (6, '(A, F6.2, A)') "The muMin ", muMin, "."
-        write (6, '(A, F6.2, A)') "The computed electrons ", inertiaElec, "."
-        write (6, '(A, F6.2, A)') "The shift equals ", hsShift, "."
+
+        if (mpirank == 0) then
+            write (6, '(A, F6.2, A)') "mu is estimated to be ", muEstimate, "."
+            write (6, '(A, F6.2, A)') "muMax ", muMax, "."
+            write (6, '(A, F6.2, A)') "muMin ", muMin, "."
+            write (6, '(A, F6.2, A)') "computed electrons ", inertiaElec, "."
+            write (6, '(A, F6.2, A)') "shift equals ", hsShift, "."
+        end if
 
 
         ! Print statements:
@@ -1034,9 +1064,10 @@ subroutine do_inertia_count(plan,muMin0,muMax0,muInertia)
         ! where is muInertiaTolerance defined? (do I need to declare it?)
         ! Should be options%muInertiaTolerance
 
-        write (6, *) "For debugging:"
-        write (6, *) "options%muInertiaTolerance"
-        write (6, *) options%muInertiaTolerance
+        ! write (6, *) "For debugging:"
+        ! write (6, *) "options%muInertiaTolerance"
+        ! write (6, *) options%muInertiaTolerance
+
        ! write (6, *) "muInertiaTolerance"
        ! write (6, *) muInertiaTolerance
 
@@ -1070,20 +1101,24 @@ subroutine do_inertia_count(plan,muMin0,muMax0,muInertia)
 
             ! WRITE (*, '(A, E12.5, A)') "The mu has been found with time ", timeInertloopEnd - timeInertiaStaA, " [s]."
 
-            write(6, '(A, E12.5, A)') "The mu is estimated to be ", muEstimate, "."
-            write(6, '(A, E12.5, A)') "The muMAX ", muMaxInertia, "."
-            write(6, '(A, E12.5, A)') "The muMin ", muMinInertia, "."
-           ! write(6, '(A, I8, A)') "The computed electrons ", inertiaElec, "."
-            write(6, '(A, E12.5, A)') "The shift equals ", hsShift, "."
+            if (mpirank == 0) then
+               write(6, '(A, E12.5, A)') "The mu is estimated to be ", muEstimate, "."
+               write(6, '(A, E12.5, A)') "The muMAX ", muMaxInertia, "."
+               write(6, '(A, E12.5, A)') "The muMin ", muMinInertia, "."
+               write(6, '(A, I8, A)') "The computed electrons ", inertiaElec, "."
+               write(6, '(A, E12.5, A)') "The shift equals ", hsShift, "."
+            end if
 
             exit
         end if 
 
-        write (6, *) 
-        write (6, *) "Inertia Counting"
-        write (6, '(A, F6.2, A, F6.2, A)') "(muMin, muMax)   = (", muMin, ", ", muMax, ")"
-        write (6, '(A, I6)') "numShift           = ", numShift
-        write (6, *)
+        if (mpirank == 0) then
+            write (6, *) 
+            write (6, *) "Inertia Counting"
+            write (6, '(A, F6.2, A, F6.2, A)') "(muMin, muMax)   = (", muMin, ", ", muMax, ")"
+            write (6, '(A, I6)') "numShift           = ", numShift
+            write (6, *)
+        end if
 
     end if
 
@@ -1193,7 +1228,16 @@ nInertiaRounds = nInertiaRounds + 1
       
   enddo refine_interval
 
-  deallocate(shiftVec,inertiaVec)
+  ! Figure out what else needs to be deallocated
+  if (allocated(shiftVec)) deallocate(shiftVec)
+  if (allocated(inertiaVec)) deallocate(inertiaVec)
+  if (allocated(muCandidate)) deallocate(muCandidate)
+  if (allocated(muCandidateTemp)) deallocate(muCandidateTemp)
+  if (allocated(neLower)) deallocate(neLower)
+  if (allocated(neUpper)) deallocate(neUpper)
+
+
+  ! deallocate(inertiaVec_out) hmm where is this used?
    
  end subroutine do_inertia_count
 !----------------------END OF REFINE INTERVAL----------------------------------!
