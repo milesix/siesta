@@ -474,8 +474,19 @@ solver_loop: do
    call check_info(info,"fermi_operator")
       
    ! Per spin
+   if (mpirank == 0) then
+       write(6,*) "Per spin -"
+       write(6,*) "numElectron_out: ", numElectron_out
+       write(6,*) "numElectronDrvMu_out: ", numElectronDrvMu_out
+       write(6,*) "numElectron_out = numElectron_out / nspin"
+       write(6,*) "numElectronDrvMu_out =  numElectronDrvMu_out / nspin"
+   endif
    numElectron_out = numElectron_out / nspin
    numElectronDrvMu_out =  numElectronDrvMu_out / nspin
+   if (mpirank == 0) then
+       write(6,*) "numElectron_out: ", numElectron_out
+       write(6,*) "numElectronDrvMu_out: ", numElectronDrvMu_out
+   endif
    
    ! Gather the results for both spins on all processors
    
@@ -483,9 +494,24 @@ solver_loop: do
          numElectronSpin,1,MPI_Double_precision,PEXSI_Spin_Comm,ierr)
    call MPI_AllGather(numElectronDrvMu_out,1,MPI_Double_precision,&
          numElectronDrvMuSpin,1,MPI_Double_precision,PEXSI_Spin_Comm,ierr)
+
+   if (mpirank == 0) then
+       write(6,*) "numElectronSpin: "
+       write(6,*) numElectronSpin
+       write(6,*) "numElectronDrvMuSpin: "
+       write(6,*) numElectronDrvMuSpin
+       write(6,*) "nspin: ", nspin
+       write(6,*) "numElectronPEXSI = sum(numElectronSpin(1:nspin))"
+       write(6,*) "numElectronDrvMuPEXSI = sum(numElectronDrvMuSpin(1:nspin))"
+   endif
    
    numElectronPEXSI = sum(numElectronSpin(1:nspin))
    numElectronDrvMuPEXSI = sum(numElectronDrvMuSpin(1:nspin))
+
+   if (mpirank == 0) then
+       write(6,*) "numElectronPEXSI: ", numElectronPEXSI
+       write(6,*) "numElectronDrvMuPEXSI: ", numElectronDrvMuSpin 
+   endif
    
    if (mpirank == 0) then
       write(6,"(a,f10.4)") "Fermi Operator. mu: ", mu/eV
