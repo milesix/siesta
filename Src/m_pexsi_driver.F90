@@ -478,6 +478,7 @@ solver_loop: do
        write(6,*) "Per spin -"
        write(6,*) "numElectron_out: ", numElectron_out
        write(6,*) "numElectronDrvMu_out: ", numElectronDrvMu_out
+       write(6,*) "Dividing the above values by nspin"
        write(6,*) "numElectron_out = numElectron_out / nspin"
        write(6,*) "numElectronDrvMu_out =  numElectronDrvMu_out / nspin"
    endif
@@ -545,13 +546,14 @@ solver_loop: do
       ! The simple DFT driver uses the size of the jump to flag problems:
       ! if (abs(deltaMu) > options%muPEXSISafeGuard) then
 
-      if (mpirank ==0) then
+
+      if (mpirank == 0) then
           write(6,*) "deltaMu = - (numElectronPEXSI - numElectronExact) / numElectronDrvMuPEXSI: "
           write(6,*) deltaMu
       endif
    
       if ( ((mu + deltaMu) < muMin0) .or. ((mu + deltaMu) > muMax0) ) then
-         if (mpirank ==0) then
+         if (mpirank == 0) then
             write(6,"(a,f9.3)") "DeltaMu: ", deltaMu, " is too big. Falling back to IC"
          endif
    
@@ -567,6 +569,17 @@ solver_loop: do
              write(6,*) "deltaMu (Ry)", deltaMu
              write(6,*) "deltaMu (eV)", deltaMu/eV
          end if
+
+         ! jah668, diyi implementation of muPEXSISafeGuard
+         ! this deltaMu value needs to be scaled appropriately
+         if (abs(deltaMu) > options%muPEXSISafeGuard) then
+             write(6,*) "deltaMu is larger than the safeguard!"
+             write(6,*) "options%muPEXSISafeGuard: " options%muPEXSISafeGuard
+             write(6,*) "Old value of deltaMu: " deltaMu
+             write(6,*) "Scaling the value... "
+             deltaMu = deltaMu * abs(options%muPEXSISafeGuard)/abs(deltaMu)
+             write(6,*) "New value of deltaMu: " deltaMu
+         end if 
 
          muMin0 = min(muMin0,mu+deltaMu)
          muMax0 = max(muMax0,mu+deltaMu)
