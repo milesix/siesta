@@ -116,6 +116,10 @@ real(dp) :: deltaMu
 real(dp)       :: bs_energy, eBandH, free_bs_energy
 real(dp)       :: buffer1
 real(dp), save :: previous_pexsi_temperature
+!! Added 8/10/2023 by JAH
+real(dp) :: mu_old
+real(dp) :: numElectronPEXSI_old
+
 !  --------  for serial compilation
 #ifndef MPI
     call die("PEXSI needs MPI")
@@ -462,56 +466,81 @@ solver_loop: do
       write (6,"(a,f9.4,f9.5)") 'Monitoring bracket: ', muMin0/eV, muMax0/eV
    endif
    
-   call f_ppexsi_calculate_fermi_operator_real(&
+   ! call f_ppexsi_calculate_fermi_operator_real(&
+   !      plan,&
+   !      options,&
+   !      mu,&
+   !      numElectronExact,&
+   !      numElectron_out,&
+   !      numElectronDrvMu_out,&
+   !      info)
+
+   if (mpirank == 0) then
+      write(6,"(a)") "Calling f_ppexsi_calculate_fermi_operator_real3 with the following arguments:"
+      write(6,*) "plan: ", plan
+      write(6,*) "options: ", options
+      write(6,*) "mu: ", mu
+      write(6,*) "numElectronExact: ", numElectronExact
+      write(6,*) "info: ", info
+   endif
+
+   call f_ppexsi_calculate_fermi_operator_real3(&
         plan,&
         options,&
-        mu,&
         numElectronExact,&
+        mu,&
         numElectron_out,&
-        numElectronDrvMu_out,&
         info)
+
+   if (mpirank == 0) then
+      write(6,"(a)") "Output of f_ppexsi_calculate_fermi_operator_real3: "
+      write(6,*) "numElectron_out", numElectron_out
+      write(6,*) "info", info
+   endif
    
+   ! What does this do?
    call check_info(info,"fermi_operator")
       
    ! Per spin
    if (mpirank == 0) then
        write(6,*) "Per spin -"
        write(6,*) "numElectron_out: ", numElectron_out
-       write(6,*) "numElectronDrvMu_out: ", numElectronDrvMu_out
+       ! write(6,*) "numElectronDrvMu_out: ", numElectronDrvMu_out
        write(6,*) "Dividing the above values by nspin"
        write(6,*) "numElectron_out = numElectron_out / nspin"
-       write(6,*) "numElectronDrvMu_out =  numElectronDrvMu_out / nspin"
+       ! No longer necessary with f_ppexsi_calculate_fermi_operator_real3
+       ! write(6,*) "numElectronDrvMu_out =  numElectronDrvMu_out / nspin"
    endif
    numElectron_out = numElectron_out / nspin
-   numElectronDrvMu_out =  numElectronDrvMu_out / nspin
+   ! numElectronDrvMu_out =  numElectronDrvMu_out / nspin
    if (mpirank == 0) then
        write(6,*) "numElectron_out: ", numElectron_out
-       write(6,*) "numElectronDrvMu_out: ", numElectronDrvMu_out
+       ! write(6,*) "numElectronDrvMu_out: ", numElectronDrvMu_out
    endif
    
    ! Gather the results for both spins on all processors
    
    call MPI_AllGather(numElectron_out,1,MPI_Double_precision,&
          numElectronSpin,1,MPI_Double_precision,PEXSI_Spin_Comm,ierr)
-   call MPI_AllGather(numElectronDrvMu_out,1,MPI_Double_precision,&
-         numElectronDrvMuSpin,1,MPI_Double_precision,PEXSI_Spin_Comm,ierr)
+   ! call MPI_AllGather(numElectronDrvMu_out,1,MPI_Double_precision,&
+   !       numElectronDrvMuSpin,1,MPI_Double_precision,PEXSI_Spin_Comm,ierr)
 
    if (mpirank == 0) then
        write(6,*) "numElectronSpin: "
        write(6,*) numElectronSpin
-       write(6,*) "numElectronDrvMuSpin: "
-       write(6,*) numElectronDrvMuSpin
+       ! write(6,*) "numElectronDrvMuSpin: "
+       ! write(6,*) numElectronDrvMuSpin
        write(6,*) "nspin: ", nspin
        write(6,*) "numElectronPEXSI = sum(numElectronSpin(1:nspin))"
-       write(6,*) "numElectronDrvMuPEXSI = sum(numElectronDrvMuSpin(1:nspin))"
+       ! write(6,*) "numElectronDrvMuPEXSI = sum(numElectronDrvMuSpin(1:nspin))"
    endif
    
    numElectronPEXSI = sum(numElectronSpin(1:nspin))
-   numElectronDrvMuPEXSI = sum(numElectronDrvMuSpin(1:nspin))
+   ! numElectronDrvMuPEXSI = sum(numElectronDrvMuSpin(1:nspin))
 
    if (mpirank == 0) then
        write(6,*) "numElectronPEXSI: ", numElectronPEXSI
-       write(6,*) "numElectronDrvMuPEXSI: ", numElectronDrvMuSpin 
+       ! write(6,*) "numElectronDrvMuPEXSI: ", numElectronDrvMuSpin 
    endif
    
    if (mpirank == 0) then
@@ -519,13 +548,28 @@ solver_loop: do
       if (nspin == 2) then
          write(6,"(a,2f10.4,a,f10.4)") "Fermi Operator. numElectron(Up,Down): ", &
                         numElectronSpin(1:nspin), " Total: ", numElectronPEXSI
-         write(6,"(a,2f10.4,a,f10.4)") "Fermi Operator. dN_e/dmu(Up,Down): ", &
-                        numElectronDrvMuSpin(1:nspin)*eV, " Total: ", numElectronDrvMuPEXSI*eV
+         ! write(6,"(a,2f10.4,a,f10.4)") "Fermi Operator. dN_e/dmu(Up,Down): ", &
+         !                numElectronDrvMuSpin(1:nspin)*eV, " Total: ", numElectronDrvMuPEXSI*eV
       else
          write(6,"(a,f10.4)") "Fermi Operator. numElectron: ", numElectronPEXSI
-         write(6,"(a,f10.4)") "Fermi Operator. dN_e/dmu: ", numElectronDrvMuPEXSI*eV
+         ! write(6,"(a,f10.4)") "Fermi Operator. dN_e/dmu: ", numElectronDrvMuPEXSI*eV
       endif
    endif
+
+  !! TEMPORARY CHECK
+  ! Need a new way to check whether deltaMU is too large
+  deltaMu = - (numElectronPEXSI - numElectronExact) / 0.018
+
+  ! The simple DFT driver uses the size of the jump to flag problems:
+  ! if (abs(deltaMu) > options%muPEXSISafeGuard) then
+
+
+  if (mpirank == 0) then
+      write(6,*) "Temporary check of deltaMu"
+      write(6,*) "deltaMu = - (numElectronPEXSI - numElectronExact) / 0.018: "
+      write(6,*) deltaMu
+  endif
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
    numTotalPEXSIIter =  numTotalPEXSIIter + 1
 
@@ -539,89 +583,154 @@ solver_loop: do
           write(6,*) "PEXSINumElectronTolerance: ", PEXSINumElectronTolerance
           write(6,*) "abs(numElectronPEXSI-numElectronExact):"
           write(6,*) abs(numElectronPEXSI-numElectronExact)
-          write(6,*) "numElectronDrvMuPEXSI: ", numElectronDrvMuPEXSI
+          ! write(6,*) "numElectronDrvMuPEXSI: ", numElectronDrvMuPEXSI
       endif
    
-      deltaMu = - (numElectronPEXSI - numElectronExact) / numElectronDrvMuPEXSI
-      ! The simple DFT driver uses the size of the jump to flag problems:
-      ! if (abs(deltaMu) > options%muPEXSISafeGuard) then
+      ! Old way to calculate deltaMu, no longer feasable
+      ! deltaMu = - (numElectronPEXSI - numElectronExact) / numElectronDrvMuPEXSI
 
+      ! Need a new way to check whether deltaMU is too large
+      ! Maybe a finite differencing scheme?
+      ! deltaMu = - (numElectronPEXSI - numElectronExact) / 0.018
 
-      if (mpirank == 0) then
-          write(6,*) "deltaMu = - (numElectronPEXSI - numElectronExact) / numElectronDrvMuPEXSI: "
-          write(6,*) deltaMu
-      endif
-   
-      if ( ((mu + deltaMu) < muMin0) .or. ((mu + deltaMu) > muMax0) ) then
+      numElectronPEXSI_old = numElectronPEXSI
+      mu_old = mu
+
+      if (numTotalPEXSIIter == 1) then 
+
+         deltaMu = 0.01_dp ! Some arbitrary value
+
          if (mpirank == 0) then
-            write(6,"(a,f9.3)") "DeltaMu: ", deltaMu, " is too big. Falling back to IC"
-         endif
-   
-         ! We choose for now to expand the bracket to include the jumped-to point
-         if (mpirank == 0) then
-             write(6,*) "Expanding mu bracket, here are the original parameters"
-             write(6,*) "mu (Ry): ", mu
-             write(6,*) "mu (eV): ", mu/eV
-             write(6,*) "muMin0 (Ry): ", muMin0
-             write(6,*) "muMin0 (eV): ", muMin0/eV
-             write(6,*) "muMax0 (Ry): ", muMax0
-             write(6,*) "muMax0 (eV): ", muMax0/eV
-             write(6,*) "deltaMu (Ry)", deltaMu
-             write(6,*) "deltaMu (eV)", deltaMu/eV
+            write(6, *) "Only one pexsi iteration has been completed..."
+            write(6, *) "mu (Ry): ", mu
+            write(6, *) "mu (eV): ", mu/eV
+            write(6,*) "deltaMu (Ry): ", deltaMu 
+            write(6,*) "deltaMu (eV): ", deltaMu/eV
+            write(6, *) "Adjusting mu = mu + deltaMu"
          end if
 
-         ! jah668, diyi implementation of muPEXSISafeGuard
-         ! this deltaMu value needs to be scaled appropriately
-         if (abs(deltaMu) > options%muPEXSISafeGuard) then
-             write(6,*) "deltaMu is larger than the safeguard!"
-             write(6,*) "options%muPEXSISafeGuard: " options%muPEXSISafeGuard
-             write(6,*) "Old value of deltaMu: " deltaMu
-             write(6,*) "Scaling the value... "
-             deltaMu = deltaMu * abs(options%muPEXSISafeGuard)/abs(deltaMu)
-             write(6,*) "New value of deltaMu: " deltaMu
-         end if 
-
-         muMin0 = min(muMin0,mu+deltaMu)
-         muMax0 = max(muMax0,mu+deltaMu)
+         mu = mu + deltaMu
 
          if (mpirank == 0) then
-             write(6,*) "muMin0 = min(muMin0,mu+deltaMu)"
-             write(6,*) "muMax0 = max(muMax0,mu+deltaMu)"
-             write(6,*) "muMin0 (Ry): ", muMin0
-             write(6,*) "muMin0 (eV): ", muMin0/eV
-             write(6,*) "muMax0 (Ry): ", muMax0
-             write(6,*) "muMax0 (eV): ", muMax0/eV
-             write(6,*) "Calling do_inertia_count..."
+            write(6, *) "mu (Ry): ", mu
+            write(6, *) "mu (eV): ", mu/eV
+            write(6, *) "Cycling the solver loop"
          end if
-   
-         call do_inertia_count(plan,muMin0,muMax0,mu)
 
-         if (mpirank == 0) then
-             write(6,*) "Cycling solver loop..."
-         end if
-   
+         ! Always cycle the solver after the first iteration if not converged
          cycle solver_loop
 
+      else 
+
+          ! Calculate dN_e/dmu by finite differencing
+          numElectronDrvMuPEXSI = (numElectronPEXSI - numElectronPEXSI_old) / (mu - mu_old)
+          deltaMu = - (numElectronPEXSI - numElectronExact) / numElectronDrvMuPEXSI
+
+         if (mpirank == 0) then
+            write(6,*) "numElectronDrvMuPEXSI: ", numElectronDrvMuPEXSI 
+            write(6,*) "deltaMu (Ry): ", deltaMu 
+            write(6,*) "deltaMu (eV): ", deltaMu/eV
+         end if
+
+          ! The simple DFT driver uses the size of the jump to flag problems:
+          ! if (abs(deltaMu) > options%muPEXSISafeGuard) then
+
+          ! if (mpirank == 0) then
+          !     ! write(6,*) "deltaMu = - (numElectronPEXSI - numElectronExact) / numElectronDrvMuPEXSI: "
+          !     write(6,*) "deltaMu = - (numElectronPEXSI - numElectronExact) / 0.018: "
+          !     write(6,*) deltaMu
+          ! endif
    
-      endif
+          if ( ((mu + deltaMu) < muMin0) .or. ((mu + deltaMu) > muMax0) ) then
+             if (mpirank == 0) then
+                write(6,"(a,f9.3)") "DeltaMu: ", deltaMu, " is too big. Falling back to IC"
+             endif
+   
+             ! We choose for now to expand the bracket to include the jumped-to point
+             if (mpirank == 0) then
+                 write(6,*) "Expanding mu bracket, here are the original parameters"
+                 write(6,*) "mu (Ry): ", mu
+                 write(6,*) "mu (eV): ", mu/eV
+                 write(6,*) "muMin0 (Ry): ", muMin0
+                 write(6,*) "muMin0 (eV): ", muMin0/eV
+                 write(6,*) "muMax0 (Ry): ", muMax0
+                 write(6,*) "muMax0 (eV): ", muMax0/eV
+                 write(6,*) "deltaMu (Ry)", deltaMu
+                 write(6,*) "deltaMu (eV)", deltaMu/eV
+             end if
 
-      if (mpirank == 0) then
-          write(6,*) "mu (Ry): ", mu
-          write(6,*) "mu (eV): ", mu/eV
-          write(6,*) "deltaMu (Ry)", deltaMu
-          write(6,*) "deltaMu (eV)", deltaMu/eV
-          write(6,*) "mu = mu + deltaMu"
+             ! jah668, diyi implementation of muPEXSISafeGuard
+             ! this deltaMu value needs to be scaled appropriately
+             ! if (abs(deltaMu) > options%muPEXSISafeGuard) then
+             !     if (mpirank == 0) then
+             !        write(6,*) "deltaMu is larger than the safeguard!"
+             !        write(6,*) "options%muPEXSISafeGuard: ", options%muPEXSISafeGuard
+             !        write(6,*) "Old value of deltaMu: ", deltaMu
+             !        write(6,*) "Scaling the value... "
+             !     end if 
+
+             !     deltaMu = deltaMu * abs(options%muPEXSISafeGuard)/abs(deltaMu)
+
+             !     if (mpirank == 0) then
+             !        write(6,*) "New value of deltaMu: ", deltaMu
+             !     end if
+             ! end if 
+
+             muMin0 = min(muMin0,mu+deltaMu)
+             muMax0 = max(muMax0,mu+deltaMu)
+
+             if (mpirank == 0) then
+                 write(6,*) "Here are the parmeters after expanding the interval: ..."
+                 write(6,*) "muMin0 = min(muMin0,mu+deltaMu)"
+                 write(6,*) "muMax0 = max(muMax0,mu+deltaMu)"
+                 write(6,*) "muMin0 (Ry): ", muMin0
+                 write(6,*) "muMin0 (eV): ", muMin0/eV
+                 write(6,*) "muMax0 (Ry): ", muMax0
+                 write(6,*) "muMax0 (eV): ", muMax0/eV
+                 write(6,*) "Calling do_inertia_count..."
+             end if
+   
+             call do_inertia_count(plan,muMin0,muMax0,mu)
+
+             if (mpirank == 0) then
+                 write(6,*) "Cycling solver loop..."
+                 write(6,*) "muMin0 (Ry): ", muMin0
+                 write(6,*) "muMin0 (eV): ", muMin0/eV
+                 write(6,*) "muMax0 (Ry): ", muMax0
+                 write(6,*) "muMax0 (eV): ", muMax0/eV
+                 write(6,*) "mu (Ry): ", mu
+                 write(6,*) "mu (eV): ", mu/eV
+             end if
+   
+             cycle solver_loop
+
+             if (mpirank == 0) then
+                 write(6,*) "mu (Ry): ", mu
+                 write(6,*) "mu (eV): ", mu/eV
+                 write(6,*) "Cycling solver loop..."
+             end if
+   
+          end if
+
+          if (mpirank == 0) then
+              write(6,*) "mu (Ry): ", mu
+              write(6,*) "mu (eV): ", mu/eV
+              write(6,*) "deltaMu (Ry)", deltaMu
+              write(6,*) "deltaMu (eV)", deltaMu/eV
+              write(6,*) "mu = mu + deltaMu"
+          end if
+
+          mu = mu + deltaMu
+
+          if (mpirank == 0) then
+              write(6,*) "mu (Ry): ", mu
+              write(6,*) "mu (eV): ", mu/eV
+              write(6,*) "Cycling solver loop..."
+          end if
+
+          cycle solver_loop
+
       end if
-
-      mu = mu + deltaMu
-
-      if (mpirank == 0) then
-          write(6,*) "mu (Ry): ", mu
-          write(6,*) "mu (eV): ", mu/eV
-          write(6,*) "Cycling solver loop..."
-      end if
-
-      cycle solver_loop
 
    else
       ! Converged
@@ -877,6 +986,7 @@ subroutine do_inertia_count(plan,muMin0,muMax0,muInertia)
   real(dp) :: updateRange
   real(dp) :: muEstimate
   integer :: k, l
+  logical :: found = .false.
 
   real(dp) :: sig_mod ! sigma modifier
   real(dp) :: param_1 
@@ -920,11 +1030,11 @@ subroutine do_inertia_count(plan,muMin0,muMax0,muInertia)
           write(6,*) "muMax0 (eV): ", muMax0/eV
       endif
       
-      if (mpirank == 0) then
-         write (6,"(a,2f9.4,a,a,i4)") 'Calling inertiaCount: [', &
-              muMin0/eV, muMax0/eV, "] (eV)", &
-              " Nshifts: ", numShift
-      endif
+      ! if (mpirank == 0) then
+      !    write (6,"(a,2f9.4,a,a,i4)") 'Calling inertiaCount: [', &
+      !         muMin0/eV, muMax0/eV, "] (eV)", &
+      !         " Nshifts: ", numShift
+      ! endif
       
       call timer("pexsi-inertia-ct", 1)
 
@@ -940,6 +1050,14 @@ subroutine do_inertia_count(plan,muMin0,muMax0,muInertia)
       do i = 1, numShift
          shiftVec(i) = muMin0 + (i-1) * hsShift
       enddo
+
+      if (mpirank == 0) then
+          ! NEEDS TO BE DECLARED ABOVE
+          ! real(dp) :: hsShift
+          write(6,*) "numShift: ", numShift
+          write(6,*) "hsShift: ", hsShift
+      endif 
+      
 
       ! write(6,*) "Printing shiftVec: ", shiftVec
 
@@ -966,6 +1084,13 @@ subroutine do_inertia_count(plan,muMin0,muMax0,muInertia)
       ! If nspin=1, each state is doubly occupied
       ! 
       inertiaVec(:) = 2 * inertiaVec(:) / nspin
+
+      if (mpirank == 0) then
+          write(6,*) "inertiaVec: "
+          do i = 1, size(inertiaVec)
+          write(6,*)  i, "  ", inertiaVec(i)
+          end do
+      endif 
       
       call timer("pexsi-inertia-ct", 2)
       
@@ -1039,6 +1164,15 @@ subroutine do_inertia_count(plan,muMin0,muMax0,muInertia)
       sigma = sigma * sig_mod
       tau = ceiling(sigma / hsShift)
 
+      if (mpirank == 0) then
+          write(6,*) "temperature: ", temperature
+          write(6,*) "sigma = 3._dp * temperature"
+          write(6,*) "sigma: ", sigma
+          write(6,*) "tau = ceiling(sigma / hsShift)"
+          write(6,*) "tau: ", tau
+      end if
+      
+
       ! real(dp), allocatable :: muCandidate(:)
       ! real(dp), allocatable :: muCandidateTemp(:)
       ! integer :: inertiaElec
@@ -1053,9 +1187,13 @@ subroutine do_inertia_count(plan,muMin0,muMax0,muInertia)
           if (inertiaVec(i) == numElectronExact) then
               muCandidateCount = muCandidateCount + 1
               muCandidate(muCandidateCount) = shiftVec(i) 
-              inertiaElec = inertiaVec(i)
+              ! inertiaElec = inertiaVec(i)
           end if
       end do
+
+      if (mpirank == 0) then
+          write(6,*) "muCandidateCount: ", muCandidateCount
+      end if
 
       !!!!!!!!!!! BEGIN TRIM muCandidate !!!!!!!!!!!!!
       ! Allocate temporary array if muCandidate is allocated
@@ -1092,17 +1230,85 @@ subroutine do_inertia_count(plan,muMin0,muMax0,muInertia)
           neUpper(i + 1 - tau) = 0.5_dp * (param_1 * inertiaVec(i + 1 - tau) + param_2 * inertiaVec(i + 1))
       end do
 
+      if (mpirank == 0) then
+          write(6,*) "neLower: "
+          do i = 1, size(neLower)
+             write(6,*) i, "  ", neLower(i)
+          end do
+          write(6,*) "neUpper: "
+          do i = 1, size(neUpper)
+             write(6,*) i, "  ", neUpper(i)
+          end do
+      end if 
+
       imin = 1
       imax = numShift
 
-      ! Did I implement this if/else if correctly?
-      do i = 2, numShift - 1
-          if ((NeUpper(i) < numElectronExact) .and. (NeUpper(i + 1) >= numElectronExact)) then
-          imin = i
-          else if ((NeLower(i) > numElectronExact) .and. (NeLower(i - 1) <= numElectronExact)) then
-          imax = i
-          end if
+      if (mpirank == 0) then
+         write(6,*) "imin: ", imin
+         write(6,*) "imax: ", imax
+         write(6,*) "Adjusting imin and imax..."
+      end if 
+
+      do i = 1, size(neLower)
+         if ((neLower(i) < numElectronExact) .and. (numElectronExact < neUpper(i))) then
+             
+            if (mpirank == 0) then
+               write(6,*) "found = .true."
+            end if 
+
+             found = .true.
+         end if
       end do
+
+      ! Changes may need to be implemented for edge case in which only viable inertia counts
+      ! are the interal extrema.
+      if (found) then
+         if (mpirank == 0) then
+             write(6,*) "Dealing with the standard case."
+         end if 
+         do i = 2, numShift - 1
+             if ((neUpper(i) < numElectronExact) .and. (neUpper(i + 1) >= numElectronExact)) then
+             imin = i
+             else if ((neLower(i) > numElectronExact) .and. (neLower(i - 1) <= numElectronExact)) then
+             imax = i
+             end if
+         end do
+         found = .false.
+      else
+         if (mpirank == 0) then
+             write(6,*) "Dealing with the nonstandard case."
+         end if 
+         do i = 1, size(inertiaVec) - 1
+            if ((inertiaVec(i) .le. numElectronExact) .and. (inertiaVec(i+1) > numElectronExact)) then
+                imin = i
+                imax = imin + 1
+            end if 
+         end do
+      end if
+
+      ! if (.not. found) then
+      !     do i = 1, size(inertiaVec) - 1
+      !        if ((inertiaVec(i) < numElectronExact) .and. (inertiaVec(i+1) > numElectronExact)) then
+      !            imin = i
+      !            imax = imin + 1
+      !        end if 
+      !     end do
+      ! end if
+
+      ! do i = 2, numShift - 1
+      !     if ((neUpper(i) < numElectronExact) .and. (neUpper(i + 1) >= numElectronExact)) then
+      !     imin = i
+      !     else if ((neLower(i) > numElectronExact) .and. (neLower(i - 1) <= numElectronExact)) then
+      !     imax = i
+      !     end if
+      ! end do
+
+      if (mpirank == 0) then
+         write(6,*) "Adjusted values of imin and imax: "
+         write(6,*) "imin: ", imin
+         write(6,*) "imax: ", imax
+      end if 
 
 
     ! real(dp) :: muMin
@@ -1123,6 +1329,13 @@ subroutine do_inertia_count(plan,muMin0,muMax0,muInertia)
     ! real(dp) :: muEstimate
 
     if (size(muCandidate) > 0) then
+        if (mpirank == 0) then
+           write(6,*) "in size(muCandidate > 0) branch"
+           write(6,*) "muMin (Ry)", muMin
+           write(6,*) "muMin (eV)", muMin/eV
+           write(6,*) "muMax (Ry)", muMax
+           write(6,*) "muMax (eV)", muMax/eV
+        end if 
         if (muCandidate(1) == muCandidate(size(muCandidate))) then
             muRange = max(sigma, hsShift)
             ! rangeL = abs(muMin - muMax)
@@ -1174,18 +1387,34 @@ subroutine do_inertia_count(plan,muMin0,muMax0,muInertia)
 
         if ((muMax - muMin < 2._dp * options%muInertiaTolerance) &
         .or. (updateRange > -0.01_dp * options%muInertiaTolerance)) then
-            inertiaFlag = .false.
+           if (mpirank == 0) then
+               write(6,*) "inertiaFlag set to false"
+           end if
+           inertiaFlag = .false.
         end if
 
         muMinInertia = muMin
         muMaxInertia = muMax
         muCandidateCount = 0
         muCandidate = 0._dp
+        if (mpirank == 0) then
+            write (6,*) "muMinInertia: ", muMinInertia
+            write (6,*) "muMaxInertia: ", muMaxInertia
+            write (6,*) "Setting muCandidateCount to 0"
+            write (6,*) "Setting muCandidate to 0._dp"
+        end if
     end if 
 
     !! End of large if statement
 
     if (size(muCandidate) == 0) then
+        if (mpirank == 0) then
+           write(6,*) "in size(muCandidate == 0) branch"
+           write(6,*) "muMin (Ry)", muMin
+           write(6,*) "muMin (eV)", muMin/eV
+           write(6,*) "muMax (Ry)", muMax
+           write(6,*) "muMax (eV)", muMax/eV
+        end if 
         muMin = shiftVec(imin)
         muMax = shiftVec(imax)
         muMinInertia = shiftVec(imin)
@@ -1193,7 +1422,7 @@ subroutine do_inertia_count(plan,muMin0,muMax0,muInertia)
         muEstimate =  (muMin + muMax) / 2
         muInertia = muEstimate
         ! What is matrix_size?? 
-        if ((imin == 1 .and. imax == numshift) &
+        if ((imin == 1 .and. imax == numShift) &
         .or. (NeLower(imin) == 0 .and. NeUpper(imax) == nrows) &
         .or. (muMax - muMin < 2.0 * options%muInertiaTolerance)) then
            ! muMinInertia = shiftVec(imin)
@@ -1206,11 +1435,14 @@ subroutine do_inertia_count(plan,muMin0,muMax0,muInertia)
                write(6, '(A, E12.5, A)') "muEstimate (eV): ", muEstimate/eV, "."
                write(6, '(A, E12.5, A)') "muMin (eV): ", muMinInertia/eV, "."
                write(6, '(A, E12.5, A)') "muMax (eV): ", muMaxInertia/eV, "."
-               write(6, '(A, I25, A)') "Total number of electrons [inertiaElec]: ", inertiaElec, "."
+               ! write(6, '(A, I25, A)') "Total number of electrons [inertiaElec]: ", inertiaElec, "."
                write(6, '(A, E12.5, A)') "Shift [hsShift]: ", hsShift/eV, "."
+               write(6,*) "inertiaFlag set to false"
             end if
 
-            exit
+            !!!!!!!! Loop can exit here !!!!!!!!
+            ! exit
+
         end if 
 
         if (mpirank == 0) then
@@ -1224,6 +1456,7 @@ subroutine do_inertia_count(plan,muMin0,muMax0,muInertia)
     end if
 
 nInertiaRounds = nInertiaRounds + 1
+
       if (mpirank == 0) then
           write(6,*) "Increased nInertiaRounds by 1"
           write(6,*) "nInertiaRounds = ", nInertiaRounds
@@ -1260,19 +1493,20 @@ nInertiaRounds = nInertiaRounds + 1
            ! COMMENTED 7/27 BY JAH
           !logical :: inertiaFlagOld
            inertiaFlagOld = .true.
+
            !inertiaNumElectronTolerance is replace with options%numElectronPEXSITolerance 
-           if (inertia_original_electron_width < options%numElectronPEXSITolerance) then
-              write (6,"(a)") 'Leaving inertia loop: electron tolerance'
-              inertiaFlagOld = .false.
-           endif
+           ! if (inertia_original_electron_width < options%numElectronPEXSITolerance) then
+           !    write (6,"(a)") 'Leaving inertia loop: electron tolerance'
+           !    inertiaFlagOld = .false.
+           ! endif
            ! if (inertia_original_electron_width < inertiaNumElectronTolerance) then
            !    write (6,"(a)") 'Leaving inertia loop: electron tolerance'
            !    inertiaFlagOld = .false.
            ! endif
-      !!$     if (inertia_electron_width < inertiaMinNumElectronTolerance) then
-      !!$        write (6,"(a)") 'Leaving inertia loop: minimum workable electron tolerance'
-      !!$        inertiaFlagOld = .false.
-      !!$     endif
+           ! if (inertia_electron_width < inertiaMinNumElectronTolerance) then
+           !    write (6,"(a)") 'Leaving inertia loop: minimum workable electron tolerance'
+           !    inertiaFlagOld = .false.
+           ! endif
       
            ! This is the first clause of Lin's criterion
            ! in the simple DFT driver. The second clause is the same as the next one
@@ -1281,24 +1515,24 @@ nInertiaRounds = nInertiaRounds + 1
            ! I am not sure about the basis for this
 
            ! COMMENTED 7/27 BY JAH
-           ! if (abs(muMaxInertia -numElectronExact) < eps_inertia ) then
-           !    write (6,"(a,f12.6)") "Leaving inertia loop: |muMaxInertia-N_e|: ", &
-           !         abs(muMaxInertia -numElectronExact)
-           !    inertiaFlagOld = .false.
-           ! endif
-           ! if (inertia_energy_width < energyWidthInertiaTolerance) then
-           !    write (6,"(a,f12.6)") 'Leaving inertia loop: energy width tolerance: ', &
-           !     energyWidthInertiaTolerance/eV
-           !    inertiaFlagOld = .false.
-           ! endif
-           ! if (is_converged(conv_mu)) then
-           !    write (6,"(a,f12.6)") 'Leaving inertia loop: mu tolerance: ', options%muInertiaTolerance/eV
-           !    inertiaFlagOld = .false.
-           ! endif
-           ! if (nInertiaRounds == inertiaMaxIter) then
-           !    write (6,"(a)") 'Leaving inertia loop: too many rounds'
-           !    inertiaFlagOld = .false.
-           ! endif
+           if (abs(muMaxInertia -numElectronExact) < eps_inertia ) then
+              write (6,"(a,f12.6)") "Leaving inertia loop: |muMaxInertia-N_e|: ", &
+                   abs(muMaxInertia -numElectronExact)
+              inertiaFlagOld = .false.
+           endif
+           if (inertia_energy_width < energyWidthInertiaTolerance) then
+              write (6,"(a,f12.6)") 'Leaving inertia loop: energy width tolerance: ', &
+               energyWidthInertiaTolerance/eV
+              inertiaFlagOld = .false.
+           endif
+           if (is_converged(conv_mu)) then
+              write (6,"(a,f12.6)") 'Leaving inertia loop: mu tolerance: ', options%muInertiaTolerance/eV
+              inertiaFlagOld = .false.
+           endif
+           if (nInertiaRounds == inertiaMaxIter) then
+              write (6,"(a)") 'Leaving inertia loop: too many rounds'
+              inertiaFlagOld = .false.
+           endif
         endif
 
 
@@ -1319,6 +1553,7 @@ nInertiaRounds = nInertiaRounds + 1
         ! call broadcast(inertiaFlagOld,comm=World_Comm)
 
         call broadcast(inertiaFlag,comm=World_Comm)
+        call broadcast(inertiaFlagOld,comm=World_Comm)
       
         if (inertiaFlag .and. inertiaFlagOld) then
            ! stay in loop
@@ -1328,6 +1563,13 @@ nInertiaRounds = nInertiaRounds + 1
            muMin0 = muMinInertia
            muMax0 = muMaxInertia
         else
+           if (mpirank == 0) then
+              write(6,*) "Exited because: "
+              write(6,*) "inertiaFlagOld = ", inertiaFlagOld
+              write(6,*) "inertiaFlag = ", inertiaFlag
+           end if 
+           inertiaFlag = .true.
+           inertiaFlagOld = .true.
            exit refine_interval
         endif
       
@@ -1340,6 +1582,7 @@ nInertiaRounds = nInertiaRounds + 1
   if (allocated(muCandidateTemp)) deallocate(muCandidateTemp)
   if (allocated(neLower)) deallocate(neLower)
   if (allocated(neUpper)) deallocate(neUpper)
+
 
 
   ! deallocate(inertiaVec_out) hmm where is this used?
