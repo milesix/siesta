@@ -117,8 +117,12 @@ real(dp)       :: bs_energy, eBandH, free_bs_energy
 real(dp)       :: buffer1
 real(dp), save :: previous_pexsi_temperature
 !! Added 8/10/2023 by JAH
-real(dp) :: mu_old
-real(dp) :: numElectronPEXSI_old
+
+real(dp), save :: mu_old
+real(dp), save :: numElectronPEXSI_old
+integer, save :: numTotalPEXSIIter_global = 0
+integer :: deltaMu_switch
+real(dp) :: deltaMu_initial
 
 !  --------  for serial compilation
 #ifndef MPI
@@ -449,6 +453,9 @@ endif
 numTotalPEXSIIter = 0
 allocate(numElectronSpin(nspin),numElectronDrvMuSpin(nspin))
 
+! Select the method used to calculate deltaMu
+deltaMu_switch = fdf_get("PEXSI.deltamu-switch", 1)
+
 solver_loop: do
    if (numTotalPEXSIIter > options%maxPEXSIIter ) then
       ! Do not die immediately, and trust further DM normalization
@@ -558,20 +565,25 @@ solver_loop: do
 
   !! TEMPORARY CHECK
   ! Need a new way to check whether deltaMU is too large
-  deltaMu = - (numElectronPEXSI - numElectronExact) / 0.018
+  ! deltaMu = - (numElectronPEXSI - numElectronExact) / 0.018
 
   ! The simple DFT driver uses the size of the jump to flag problems:
   ! if (abs(deltaMu) > options%muPEXSISafeGuard) then
 
 
-  if (mpirank == 0) then
-      write(6,*) "Temporary check of deltaMu"
-      write(6,*) "deltaMu = - (numElectronPEXSI - numElectronExact) / 0.018: "
-      write(6,*) deltaMu
-  endif
+  ! if (mpirank == 0) then
+  !     write(6,*) "Temporary check of deltaMu"
+  !     write(6,*) "deltaMu = - (numElectronPEXSI - numElectronExact) / 0.018: "
+  !     write(6,*) deltaMu
+  ! endif
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+
    numTotalPEXSIIter =  numTotalPEXSIIter + 1
+
+   ! To keep track of how many total pexsi iterations are run over all scf 
+   ! iterations
+   numTotalPEXSIIter_global = numTotalPEXSIIter_global + 1
 
    if (abs(numElectronPEXSI-numElectronExact) > PEXSINumElectronTolerance) then
 
@@ -586,34 +598,42 @@ solver_loop: do
           ! write(6,*) "numElectronDrvMuPEXSI: ", numElectronDrvMuPEXSI
       endif
    
-      ! Old way to calculate deltaMu, no longer feasable
-      ! deltaMu = - (numElectronPEXSI - numElectronExact) / numElectronDrvMuPEXSI
 
-      ! Need a new way to check whether deltaMU is too large
-      ! Maybe a finite differencing scheme?
-      ! deltaMu = - (numElectronPEXSI - numElectronExact) / 0.018
+      ! Cases to test
+      ! 1. Naive interpolation vs naive finite differencing method
+      ! 2. Saving mu_old and numElectronPEXSI_old and using them to calculate 
+      !    deltaMu for the first run in the next SCF iteration
+      ! 3. Not using arbitrary deltaMu on first PEXSI iteration on each SCF loop
+      !    but only the first scf loop.
+      
+      ! Check whether we are on the first PEXSI iteration over all scf loops
+      ! If it has, take the use the output of the previous evaluation in the following.
+      if (numTotalPEXSIIter_global == 1) then 
 
-      numElectronPEXSI_old = numElectronPEXSI
-      mu_old = mu
+         deltaMu_initial = fdf_get("PEXSI.deltamu-initial", 0.22_dp, "Ry")
 
-      if (numTotalPEXSIIter == 1) then 
-
-         deltaMu = 0.01_dp ! Some arbitrary value
+         deltaMu = deltaMu_initial
 
          if (mpirank == 0) then
-            write(6, *) "Only one pexsi iteration has been completed..."
-            write(6, *) "mu (Ry): ", mu
-            write(6, *) "mu (eV): ", mu/eV
-            write(6,*) "deltaMu (Ry): ", deltaMu 
+            write(6, *) "On the first global PEXSI iteration"
+            write(6, *) "Assigning a specified deltaMu for the first iteration"
+            write(6, *) "initial value of mu (Ry): ", mu
+            write(6, *) "initial value of mu (eV): ", mu/eV
+            write(6,*) " initial value of deltaMu (Ry): ", deltaMu 
             write(6,*) "deltaMu (eV): ", deltaMu/eV
             write(6, *) "Adjusting mu = mu + deltaMu"
          end if
+
+         numElectronPEXSI_old = numElectronPEXSI
+         mu_old = mu
 
          mu = mu + deltaMu
 
          if (mpirank == 0) then
             write(6, *) "mu (Ry): ", mu
             write(6, *) "mu (eV): ", mu/eV
+            write(6, *) "mu_old (Ry): ", mu_old
+            write(6, *) "mu_old (eV): ", mu_old/eV
             write(6, *) "Cycling the solver loop"
          end if
 
@@ -622,14 +642,52 @@ solver_loop: do
 
       else 
 
-          ! Calculate dN_e/dmu by finite differencing
-          numElectronDrvMuPEXSI = (numElectronPEXSI - numElectronPEXSI_old) / (mu - mu_old)
-          deltaMu = - (numElectronPEXSI - numElectronExact) / numElectronDrvMuPEXSI
+           if (mpirank == 0) then
+              write(6, *) "On global PEXSI iteration: ", numTotalPEXSIIter_global
+              write(6, *) "On local PEXSI iteration: ", numTotalPEXSIIter
+              write(6, *) "mu (Ry): ", mu
+              write(6, *) "mu (eV): ", mu/eV
+              write(6, *) "mu_old (Ry): ", mu_old
+              write(6, *) "mu_old (eV): ", mu_old/eV
+              write(6, *) "numElectronPEXSI_old", numElectronPEXSI_old
+           end if
 
-         if (mpirank == 0) then
-            write(6,*) "numElectronDrvMuPEXSI: ", numElectronDrvMuPEXSI 
-            write(6,*) "deltaMu (Ry): ", deltaMu 
-            write(6,*) "deltaMu (eV): ", deltaMu/eV
+
+         ! Basic finite difference implementation
+         if (deltaMu_switch == 1) then
+            numElectronDrvMuPEXSI = (numElectronPEXSI - numElectronPEXSI_old) / (mu - mu_old)
+            deltaMu = - (numElectronPEXSI - numElectronExact) / numElectronDrvMuPEXSI
+
+            if (mpirank == 0) then
+               write(6,*) "Using finite differencing to calculate deltaMu..."
+               write(6,*) "numElectronDrvMuPEXSI: ", numElectronDrvMuPEXSI  
+               write(6,*) "deltaMu (Ry): ", deltaMu 
+               write(6,*) "deltaMu (eV): ", deltaMu/eV
+            end if
+
+         ! Interpolation method
+         else if (deltaMu_switch == 2) then
+
+             deltaMu =  (numElectronExact - numElectronPEXSI)*(mu_old + mu) &
+                     & / (numElectronPEXSI - numElectronPEXSI_old)
+
+            if (mpirank == 0) then
+               write(6,*) "Using interpolation to calculate deltaMu"
+               write(6,*) "deltaMu (Ry): ", deltaMu 
+               write(6,*) "deltaMu (eV): ", deltaMu/eV
+            end if
+
+         ! Interpolation method with negative sign
+         else if (deltaMu_switch == 3) then
+
+             deltaMu = -1._dp * (numElectronExact - numElectronPEXSI)*(mu_old + mu) &
+                     & / (numElectronPEXSI - numElectronPEXSI_old)
+
+            if (mpirank == 0) then
+               write(6,*) "Using interpolation to calculate deltaMu"
+               write(6,*) "deltaMu (Ry): ", deltaMu 
+               write(6,*) "deltaMu (eV): ", deltaMu/eV
+            end if
          end if
 
           ! The simple DFT driver uses the size of the jump to flag problems:
@@ -680,7 +738,7 @@ solver_loop: do
              muMax0 = max(muMax0,mu+deltaMu)
 
              if (mpirank == 0) then
-                 write(6,*) "Here are the parmeters after expanding the interval: ..."
+                 write(6,*) "Here are the parmeters after expanding the interval:"
                  write(6,*) "muMin0 = min(muMin0,mu+deltaMu)"
                  write(6,*) "muMax0 = max(muMax0,mu+deltaMu)"
                  write(6,*) "muMin0 (Ry): ", muMin0
@@ -720,22 +778,35 @@ solver_loop: do
               write(6,*) "mu = mu + deltaMu"
           end if
 
-          mu = mu + deltaMu
+         numElectronPEXSI_old = numElectronPEXSI
+         mu_old = mu
 
-          if (mpirank == 0) then
-              write(6,*) "mu (Ry): ", mu
-              write(6,*) "mu (eV): ", mu/eV
-              write(6,*) "Cycling solver loop..."
-          end if
+         mu = mu + deltaMu
+
+         if (mpirank == 0) then
+            write(6, *) "mu (Ry): ", mu
+            write(6, *) "mu (eV): ", mu/eV
+            write(6, *) "mu_old (Ry): ", mu_old
+            write(6, *) "mu_old (eV): ", mu_old/eV
+            write(6, *) "Cycling the solver loop"
+         end if
 
           cycle solver_loop
 
       end if
 
    else
+      numElectronPEXSI_old = numElectronPEXSI
+      mu_old = mu
       ! Converged
       if (mpirank == 0) then
-         write(6,"(a,f10.4)") "PEXSI solver converged. mu: ", mu/eV
+         ! write(6,"(a,f10.4)") "PEXSI solver converged. mu: ", mu/eV
+         write(6, *) "PEXSI solver converged"
+         write(6, *) "mu (Ry): ", mu
+         write(6, *) "mu (eV): ", mu/eV
+         write(6, *) "mu_old (Ry): ", mu_old
+         write(6, *) "mu_old (eV): ", mu_old/eV
+         write(6, *) "numElectronPEXSI_old: ", numElectronPEXSI_old
          write(6,*) "Exiting solver loop..."
       endif
       exit solver_loop
